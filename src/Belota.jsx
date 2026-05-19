@@ -1,8 +1,6 @@
 // BELOTA — Table plein écran style belote authentique
 
 import { useState, useEffect, useRef, Component } from "react";
-// ─── ERROR BOUNDARY ─────────────────────────────────────────────────────────
-import { Component } from "react";
 class ErrorBoundary extends Component {
   constructor(props){ super(props); this.state={error:null}; }
   static getDerivedStateFromError(e){ return{error:e}; }
