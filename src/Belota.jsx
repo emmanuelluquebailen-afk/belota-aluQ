@@ -205,7 +205,8 @@ function CardView({card,faceDown,isLegal,W,H,onClick}){
 // ─── ÉVENTAIL ────────────────────────────────────────────────────────────────
 function FanCard({card,angle,isLegal,zIdx,cw,ch,pv,onClick}){
   const[hov,setHov]=useState(false);
-  const lift=isLegal?(hov?-22:-12):0;
+  // Cartes légales soulevées de base de 16px, 28px au hover
+  const lift=isLegal?(hov?-28:-16):0;
   return(
     <div onClick={isLegal?onClick:undefined}
       onMouseEnter={()=>isLegal&&setHov(true)}
@@ -213,7 +214,9 @@ function FanCard({card,angle,isLegal,zIdx,cw,ch,pv,onClick}){
       style={{position:'absolute',bottom:0,left:`calc(50% - ${cw/2}px)`,
         width:cw,height:ch,transformOrigin:`50% ${ch+pv}px`,
         transform:`rotate(${angle}deg) translateY(${lift}px)`,
-        zIndex:zIdx,transition:'transform .12s',cursor:isLegal?'pointer':'default'}}>
+        zIndex:isLegal?zIdx+20:zIdx,transition:'transform .12s',
+        cursor:isLegal?'pointer':'default',
+        pointerEvents:'auto'}}>
       <CardView card={card} isLegal={isLegal} W={cw} H={ch} onClick={onClick}/>
     </div>
   );
@@ -222,11 +225,11 @@ function FanHand({hand,legalIDs,onPlay,trump,cw=62,ch=88,pv=340}){
   const ids=legalIDs||new Set();
   const sorted=sortHand(hand,trump);
   const n=sorted.length;if(!n)return<div style={{height:ch}}/>;
-  const spread=n<=1?0:Math.min(n*5.5,46);
+  const spread=n<=1?0:Math.min(n*5,36);
   const step=n>1?spread/(n-1):0,start=-spread/2;
-  const fh=ch+Math.round((1-Math.cos(spread/2*Math.PI/180))*(pv+ch))+10;
+  const fh=Math.min(ch+160, ch+Math.round((1-Math.cos(spread/2*Math.PI/180))*(pv+ch))+10);
   return(
-    <div style={{position:'relative',height:Math.max(fh,ch+10),width:'100%'}}>
+    <div style={{position:'relative',height:Math.max(fh,ch+10),width:'100%',pointerEvents:'none'}}>
       {sorted.map((card,i)=>(
         <FanCard key={card.id} card={card} angle={start+i*step}
           isLegal={ids.has(card.id)} zIdx={i+1}
@@ -439,26 +442,41 @@ export default function Belota(){
           <CardView card={G.flipCard} W={70} H={100}/>
         </div>
         {isH&&(
-          <div style={{position:'absolute',bottom:'28%',left:'50%',transform:'translateX(-50%)',zIndex:10,textAlign:'center'}}>
-            <div style={{fontSize:13,fontWeight:'bold',marginBottom:8,
-              background:'rgba(0,0,0,.65)',borderRadius:20,padding:'6px 18px'}}>
+          <div style={{position:'absolute',top:'55%',left:'50%',
+            transform:'translateX(-50%)',zIndex:99,textAlign:'center',
+            background:'rgba(0,0,0,.78)',borderRadius:16,
+            padding:'12px 20px',border:'2px solid rgba(255,255,255,.25)',
+            boxShadow:'0 8px 32px rgba(0,0,0,.6)'}}>
+            <div style={{fontSize:14,fontWeight:'bold',marginBottom:10,color:'white'}}>
               {G.bidRound===1?`Prendre à ${SUIT_FR[G.flipCard?.s]} ?`:"Choisissez l'atout :"}
             </div>
-            <div style={{display:'flex',gap:8,justifyContent:'center',flexWrap:'wrap'}}>
+            <div style={{display:'flex',gap:10,justifyContent:'center',flexWrap:'wrap'}}>
               {G.bidRound===1?(<>
-                <button onClick={()=>humanBid(G.flipCard.s)} style={BS('#27ae60')}>Prendre {G.flipCard.s}</button>
-                <button onClick={()=>humanBid(null)} style={BS('#555')}>Passer</button>
+                <button onClick={()=>humanBid(G.flipCard.s)}
+                  style={{...BS('#27ae60'),fontSize:15,padding:'10px 22px'}}>
+                  ✓ Prendre {G.flipCard.s}
+                </button>
+                <button onClick={()=>humanBid(null)}
+                  style={{...BS('#7f8c8d'),fontSize:15,padding:'10px 22px'}}>
+                  Passer
+                </button>
               </>):(<>
                 {SUITS.filter(s=>s!==G.flipCard?.s).map(s=>(
-                  <button key={s} onClick={()=>humanBid(s)} style={BS(RED_S(s)?'#c0392b':'#2c3e50')}>{s} {SUIT_FR[s]}</button>
+                  <button key={s} onClick={()=>humanBid(s)}
+                    style={{...BS(RED_S(s)?'#c0392b':'#2c3e50'),fontSize:14,padding:'10px 16px'}}>
+                    {s} {SUIT_FR[s]}
+                  </button>
                 ))}
-                <button onClick={()=>humanBid(null)} style={BS('#555')}>Passer</button>
+                <button onClick={()=>humanBid(null)}
+                  style={{...BS('#7f8c8d'),fontSize:14,padding:'10px 16px'}}>
+                  Passer
+                </button>
               </>)}
             </div>
           </div>
         )}
         <div style={{position:'absolute',bottom:0,left:0,right:0,zIndex:8}}>
-          <FanHand hand={hand0} trump={null} cw={62} ch={88} pv={340}/>
+          <FanHand hand={hand0} trump={null} cw={62} ch={88} pv={280}/>
         </div>
       </div>
     );
@@ -507,7 +525,7 @@ export default function Belota(){
         top:'10%',
         left:'50%',
         transform:'translateX(-50%)',
-        zIndex:30,
+        zIndex:1000,
         display:'grid',
         gridTemplateColumns:`${PC_W}px 48px ${PC_W}px`,
         gridTemplateRows:`${PC_H}px 24px ${PC_H}px`,
@@ -550,9 +568,9 @@ export default function Belota(){
       </div>
 
       {/* Éventail */}
-      <div style={{position:'absolute',bottom:0,left:0,right:0,zIndex:8}}>
+      <div style={{position:'absolute',bottom:0,left:0,right:0,zIndex:8,pointerEvents:'none'}}>
         <FanHand hand={hand0} legalIDs={legalIDs} onPlay={humanPlay}
-          trump={G.trump} cw={62} ch={88} pv={340}/>
+          trump={G.trump} cw={62} ch={88} pv={280}/>
       </div>
     </div>
   );
