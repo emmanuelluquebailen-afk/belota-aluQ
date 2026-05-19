@@ -202,6 +202,20 @@ function calcResult(G){
   return{...G,phase:go?'GAME_OVER':'ROUND_END',scores:ns,roundResult:{pts,rp,res,msg,detail},announce:''};
 }
 
+// ─── EMPLACEMENT VIDE (slot pli) ─────────────────────────────────────────────
+function Slot({W,H}){
+  return <div style={{width:W,height:H,borderRadius:6,
+    border:'1px dashed rgba(255,255,255,.15)',
+    background:'rgba(0,0,0,.1)'}}/>;
+}
+
+// ─── STYLE BOUTON ────────────────────────────────────────────────────────────
+function BS(bg){
+  return{background:bg,color:'white',border:'none',borderRadius:22,
+    padding:'8px 18px',fontSize:13,cursor:'pointer',fontWeight:'bold',
+    boxShadow:'0 3px 8px rgba(0,0,0,.4)'};
+}
+
 // ─── CARTE ───────────────────────────────────────────────────────────────────
 function CardView({card,faceDown,isLegal,W,H,onClick}){
   const w=W||54,h=H||76;
@@ -612,12 +626,6 @@ function BelotaGame(){
       </div>
     </div>
   );
-}
-
-function BS(bg){
-  return{background:bg,color:'white',border:'none',borderRadius:22,
-    padding:'8px 18px',fontSize:13,cursor:'pointer',fontWeight:'bold',
-    boxShadow:'0 3px 8px rgba(0,0,0,.4)'};
 }
 
 export default function Belota(){
