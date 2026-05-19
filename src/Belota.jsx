@@ -24,35 +24,27 @@ const nextP   = p => (p+1)%4;
 
 const AI_DELAY=1500, TRICK_PAUSE=2500, BID_DELAY=900;
 
-// ─── TRI ─────────────────────────────────────────────────────────────────────
+// Taille cartes du pli — fixée une seule fois ici
+const PC_W=58, PC_H=82;
+
+// Positions des 4 cartes sur la TABLE (% de l'écran)
+// Calculées pour être bien espacées et jamais cachées
+const CARD_POS = {
+  2: { top:'10%',   left:'50%',  transform:'translateX(-50%)' },  // Nord
+  1: { top:'35%',   left:'16%',  transform:'translateY(-50%)' },  // Ouest
+  3: { top:'35%',   left:'72%',  transform:'translateY(-50%)' },  // Est
+  0: { top:'52%',   left:'50%',  transform:'translateX(-50%)' },  // Vous
+};
 
 // ─── TRI ─────────────────────────────────────────────────────────────────────
 function sortHand(hand, trump) {
-  const safe = (hand || []).filter(c => c && c.s && c.r);
+  const safe = (hand||[]).filter(c=>c&&c.s&&c.r);
   if (!safe.length) return [];
-  // Atout en premier, puis ♠♥♣♦ sans l'atout
-  const suitOrder = trump
-    ? [trump, ...['♠','♥','♣','♦'].filter(s => s !== trump)]
-    : ['♠','♥','♣','♦'];
-  const str = c => c.s === trump
-    ? {J:8,'9':7,A:6,'10':5,K:4,Q:3,'8':2,'7':1}[c.r]
-    : {A:8,'10':7,K:6,Q:5,J:4,'9':3,'8':2,'7':1}[c.r];
-  return [...safe].sort((a, b) => {
+  const suitOrder = trump ? [trump,...SUIT_ORDER.filter(s=>s!==trump)] : [...SUIT_ORDER];
+  const str = c => (c.s===trump ? TRUMP_STR : PLAIN_STR)[c.r];
+  return [...safe].sort((a,b) => {
     const si = suitOrder.indexOf(a.s) - suitOrder.indexOf(b.s);
-    if (si !== 0) return si;
-    return str(b) - str(a);
-  });
-}
-
-function sortHand_OLD_UNUSED(hand,trump){
-  const safe=(hand||[]).filter(c=>c&&c.s&&c.r);
-  if(!safe.length)return[];
-  const po=SUIT_ORDER.filter(s=>s!==trump);
-  return[...safe].sort((a,b)=>{
-    const aT=!!(trump&&a.s===trump),bT=!!(trump&&b.s===trump);
-    if(aT&&!bT)return -1;if(!aT&&bT)return 1;
-    if(a.s!==b.s){const o=aT?[trump]:po;return o.indexOf(a.s)-o.indexOf(b.s);}
-    return(aT?TRUMP_STR[b.r]:PLAIN_STR[b.r])-(aT?TRUMP_STR[a.r]:PLAIN_STR[a.r]);
+    return si !== 0 ? si : str(b) - str(a);
   });
 }
 
@@ -63,8 +55,7 @@ function dealInitial(fp){
   const d=shuffle(mkDeck());const h=[[],[],[],[]];let i=0;
   for(let k=0;k<4;k++){const p=(fp+k)%4;h[p].push(d[i++],d[i++],d[i++]);}
   for(let k=0;k<4;k++){const p=(fp+k)%4;h[p].push(d[i++],d[i++]);}
-  const flip=d[i++];
-  return{hands:h,flipCard:flip,rest:d.slice(i)};
+  const flip=d[i++];return{hands:h,flipCard:flip,rest:d.slice(i)};
 }
 function completeHands(hands,flip,rest,taker){
   const nh=hands.map(h=>h.filter(c=>c&&c.id));
@@ -138,8 +129,12 @@ function initRound(scores,dealer){
   return{phase:'BIDDING',hands,flipCard,rest,dealer:dl,firstPlayer:fp,
     trump:null,bidRound:1,bidIdx:fp,bidCount:0,taker:null,takerTeam:null,
     trick:[],done:[],curPlayer:fp,scores:sc,announce:'',
-    belB:[0,0],belH:null,belP:[0,0,0,0],roundResult:null,ltWin:null,pendingWin:null};
+    belB:[0,0],belH:null,belP:[0,0,0,0],roundResult:null,ltWin:null,pendingWin:null,
+    // displayTrick stocke les 4 cartes pendant la pause — séparé de trick
+    displayTrick:[],
+  };
 }
+
 function applyPlayCard(G,player,card){
   const newHands=G.hands.map((h,i)=>i===player?h.filter(c=>c&&c.id&&c.id!==card.id):h.filter(c=>c&&c.id));
   const newTrick=[...G.trick,{p:player,c:card}];
@@ -149,16 +144,31 @@ function applyPlayCard(G,player,card){
     if(bp[player]===1)ann='Belote !';
     if(bp[player]===2){ann='Rebelote !';bb=[...bb];bb[teamOf(player)]+=20;}
   }
-  if(newTrick.length<4)return{...G,hands:newHands,trick:newTrick,curPlayer:nextP(player),announce:ann,belB:bb,belP:bp};
+  if(newTrick.length<4){
+    return{...G,hands:newHands,trick:newTrick,displayTrick:newTrick,curPlayer:nextP(player),announce:ann,belB:bb,belP:bp};
+  }
+  // Pli complet : on stocke les 4 cartes dans displayTrick
+  // et on vide trick → la résolution lit displayTrick
   const win=trickWinner(newTrick,G.trump);
-  return{...G,hands:newHands,trick:newTrick,phase:'TRICK_DONE',pendingWin:win,announce:ann,belB:bb,belP:bp};
+  return{
+    ...G,
+    hands:newHands,
+    trick:[],            // vide tout de suite pour que la 4e carte ne soit pas dans le flux
+    displayTrick:newTrick, // les 4 cartes à afficher
+    phase:'TRICK_DONE',
+    pendingWin:win,
+    announce:ann,belB:bb,belP:bp,
+  };
 }
+
 function resolveTrick(G){
   const win=G.pendingWin;
-  const nd=[...G.done,{winner:win,cards:G.trick.map(t=>t.c)}];
-  const base={...G,trick:[],done:nd,phase:'PLAYING',pendingWin:null,ltWin:win,announce:''};
+  const cards=G.displayTrick.map(t=>t.c);
+  const nd=[...G.done,{winner:win,cards}];
+  const base={...G,trick:[],displayTrick:[],done:nd,phase:'PLAYING',pendingWin:null,ltWin:win,announce:''};
   return nd.length===8?calcResult(base):{...base,curPlayer:win};
 }
+
 function calcResult(G){
   const t0=G.done.filter(d=>teamOf(d.winner)===0).length;
   let pts=[0,0];
@@ -181,25 +191,24 @@ function calcResult(G){
   return{...G,phase:go?'GAME_OVER':'ROUND_END',scores:ns,roundResult:{pts,rp,res,msg,detail},announce:''};
 }
 
-// ─── COMPOSANT CARTE ─────────────────────────────────────────────────────────
-function CardView({card,faceDown,isLegal,W,H,onClick,style={}}){
+// ─── CARTE ───────────────────────────────────────────────────────────────────
+function CardView({card,faceDown,isLegal,W,H,onClick}){
   const w=W||54,h=H||76;
   if(faceDown||!card||!card.s){
     return <div style={{width:w,height:h,borderRadius:6,flexShrink:0,
       background:'#1a3580',border:'2px solid #2244aa',
       backgroundImage:'repeating-linear-gradient(45deg,#1a3580,#1a3580 4px,#243fa0 4px,#243fa0 8px)',
-      boxShadow:'0 3px 8px rgba(0,0,0,.5)',...style}}/>;
+      boxShadow:'0 3px 8px rgba(0,0,0,.5)'}}/>;
   }
   const tc=RED_S(card.s)?'#c0392b':'#1a1a2e';
-  const fs=w<42?7:w<52?9:w<62?10:11;
-  const ms=w<42?13:w<52?16:w<62?20:24;
+  const fs=w<44?7:w<54?9:10, ms=w<44?13:w<54?16:20;
   return(
     <div onClick={isLegal?onClick:undefined} style={{
       width:w,height:h,borderRadius:6,flexShrink:0,
       position:'relative',overflow:'hidden',background:'white',
       border:`2px solid ${isLegal?'#2ecc71':'rgba(0,0,0,.15)'}`,
-      boxShadow:isLegal?'0 0 14px rgba(46,204,113,.9), 0 4px 12px rgba(0,0,0,.4)':'0 4px 12px rgba(0,0,0,.5)',
-      cursor:isLegal?'pointer':'default',...style}}>
+      boxShadow:isLegal?'0 0 14px rgba(46,204,113,.9),0 4px 12px rgba(0,0,0,.4)':'0 4px 14px rgba(0,0,0,.55)',
+      cursor:isLegal?'pointer':'default'}}>
       <div style={{position:'absolute',top:2,left:3,fontSize:fs,fontWeight:700,color:tc,lineHeight:1.1}}>
         {DISP[card.r]}<br/>{card.s}
       </div>
@@ -224,13 +233,12 @@ function FanCard({card,angle,isLegal,zIdx,cw,ch,pv,onClick}){
       style={{position:'absolute',bottom:0,left:`calc(50% - ${cw/2}px)`,
         width:cw,height:ch,transformOrigin:`50% ${ch+pv}px`,
         transform:`rotate(${angle}deg) translateY(${lift}px)`,
-        zIndex:zIdx,transition:'transform .12s',
-        cursor:isLegal?'pointer':'default'}}>
+        zIndex:zIdx,transition:'transform .12s',cursor:isLegal?'pointer':'default'}}>
       <CardView card={card} isLegal={isLegal} W={cw} H={ch} onClick={onClick}/>
     </div>
   );
 }
-function FanHand({hand,legalIDs,onPlay,trump,cw=60,ch=86,pv=320}){
+function FanHand({hand,legalIDs,onPlay,trump,cw=62,ch=88,pv=340}){
   const ids=legalIDs||new Set();
   const sorted=sortHand(hand,trump);
   const n=sorted.length;if(!n)return<div style={{height:ch}}/>;
@@ -249,6 +257,24 @@ function FanHand({hand,legalIDs,onPlay,trump,cw=60,ch=86,pv=320}){
   );
 }
 
+// ─── CHIP JOUEUR ─────────────────────────────────────────────────────────────
+function PlayerChip({name,cards,active,dealer,team}){
+  return(
+    <div style={{textAlign:'center'}}>
+      <div style={{fontSize:11,fontWeight:'bold',
+        color:active?'#f1c40f':'rgba(255,255,255,.8)',
+        textShadow:'0 1px 4px rgba(0,0,0,.9)',marginBottom:3}}>
+        {active?'▼ ':''}{name}{dealer?' 🔴':''}
+      </div>
+      <div style={{background:'rgba(0,0,0,.5)',borderRadius:20,padding:'3px 10px',
+        fontSize:11,display:'inline-block',
+        border:`1px solid ${team===0?'rgba(46,204,113,.4)':'rgba(231,76,60,.4)'}`}}>
+        {cards}🂠
+      </div>
+    </div>
+  );
+}
+
 // ─── PRINCIPAL ───────────────────────────────────────────────────────────────
 export default function Belota(){
   const[G,setG]=useState(()=>initRound());
@@ -259,7 +285,7 @@ export default function Belota(){
     window.addEventListener('resize',u);return()=>window.removeEventListener('resize',u);
   },[]);
 
-  // Résoudre pli après pause
+  // Résoudre pli après TRICK_PAUSE
   useEffect(()=>{
     if(G.phase!=='TRICK_DONE')return;
     if(tRef.current)clearTimeout(tRef.current);
@@ -292,7 +318,7 @@ export default function Belota(){
     return()=>clearTimeout(t);
   },[G.phase,G.bidIdx,G.bidRound]);
 
-  // IA jeu
+  // IA jeu — uniquement en phase PLAYING
   useEffect(()=>{
     if(G.phase!=='PLAYING'||G.curPlayer===0)return;
     const t=setTimeout(()=>{
@@ -330,7 +356,7 @@ export default function Belota(){
     setG(prev=>applyPlayCard(prev,0,card));
   }
 
-  // ── Portrait overlay
+  // Portrait overlay
   if(!isLs)return(
     <div style={{height:'100dvh',background:'#1a5c20',display:'flex',flexDirection:'column',
       alignItems:'center',justifyContent:'center',fontFamily:'Georgia,serif',color:'white',textAlign:'center',gap:16}}>
@@ -342,45 +368,29 @@ export default function Belota(){
     </div>
   );
 
+  // TABLE = fond vert plein écran
+  const TABLE={position:'fixed',inset:0,
+    background:'radial-gradient(ellipse at 50% 40%,#2d7a35 0%,#1a5020 60%,#0f3614 100%)',
+    fontFamily:'Georgia,serif',color:'white',userSelect:'none',overflow:'hidden'};
+
   const isDone=G.phase==='TRICK_DONE';
-  const trickMap=Object.fromEntries(G.trick.map(t=>[t.p,t.c]));
+  // On affiche toujours displayTrick pendant la pause, trick sinon
+  const shownTrick = isDone ? G.displayTrick : G.trick;
+  const trickMap=Object.fromEntries(shownTrick.map(t=>[t.p,t.c]));
   const hand0=(G.hands[0]||[]).filter(c=>c&&c.id);
   const legalIDs=(G.phase==='PLAYING'&&G.curPlayer===0)
     ?new Set(legalMoves(hand0,G.trick,G.trump,0).map(c=>c.id)):new Set();
   const t0=G.done.filter(d=>teamOf(d.winner)===0).length;
   const t1=G.done.filter(d=>teamOf(d.winner)===1).length;
-
-  // ── TABLE COMMUNE (fond vert feutre plein écran)
-  const TABLE={
-    position:'fixed',inset:0,
-    background:'radial-gradient(ellipse at 50% 40%,#2d7a35 0%,#1a5020 60%,#0f3614 100%)',
-    fontFamily:'Georgia,serif',color:'white',userSelect:'none',
-    overflow:'hidden',
-  };
-
-  // ── CHIPS de joueur (label + nb cartes)
-  const PlayerChip=({name,cards,active,dealer,team})=>(
-    <div style={{textAlign:'center'}}>
-      <div style={{fontSize:11,fontWeight:'bold',color:active?'#f1c40f':'rgba(255,255,255,.75)',
-        textShadow:'0 1px 3px rgba(0,0,0,.8)',marginBottom:3}}>
-        {active?'▼ ':''}{name}{dealer?' 🔴':''}
-      </div>
-      <div style={{background:'rgba(0,0,0,.45)',borderRadius:20,padding:'3px 10px',
-        fontSize:11,display:'inline-block',backdropFilter:'blur(4px)',
-        border:`1px solid ${team===0?'rgba(46,204,113,.4)':'rgba(231,76,60,.4)'}`}}>
-        {cards}🂠
-      </div>
-    </div>
-  );
+  const ac=G.trump&&RED_S(G.trump)?'#ff9090':'white';
 
   // ── FIN DE MANCHE / PARTIE
   if(G.phase==='ROUND_END'||G.phase==='GAME_OVER'){
     const r=G.roundResult,nd=nextP(G.dealer);
     return(
       <div style={{...TABLE,display:'flex',alignItems:'center',justifyContent:'center'}}>
-        <div style={{background:'rgba(0,0,0,.65)',borderRadius:16,padding:24,
-          maxWidth:460,width:'90%',textAlign:'center',backdropFilter:'blur(8px)',
-          border:'1px solid rgba(255,255,255,.15)'}}>
+        <div style={{background:'rgba(0,0,0,.7)',borderRadius:16,padding:24,
+          maxWidth:460,width:'90%',textAlign:'center',border:'1px solid rgba(255,255,255,.15)'}}>
           <div style={{fontSize:16,fontWeight:'bold',marginBottom:12}}>
             {G.phase==='GAME_OVER'?'🏆 Partie terminée !':'✓ Fin de manche'}
           </div>
@@ -400,10 +410,10 @@ export default function Belota(){
             </div>
           </>}
           {G.phase==='GAME_OVER'?(
-            <>
+            <div>
               <div style={{fontSize:15,marginBottom:14}}>{G.scores[0]>=1000?'🎉 Vous gagnez !':'😔 Les adversaires gagnent.'}</div>
               <button onClick={()=>setG(initRound())} style={BS('#27ae60')}>Nouvelle partie</button>
-            </>
+            </div>
           ):(
             <button onClick={()=>setG(initRound(G.scores,nd))} style={BS('#2980b9')}>
               Manche suivante → Donneur : {PNAME[nd]}
@@ -414,68 +424,45 @@ export default function Belota(){
     );
   }
 
-  // ── ENCHÈRES — table avec carte retournée au centre
+  // ── ENCHÈRES
   if(G.phase==='BIDDING'){
     const isH=G.bidIdx===0;
-    // Statuts enchères par joueur
-    const status=(p)=>{
-      if(p===G.bidIdx)return G.bidIdx===0?null:'réfléchit…';
-      return''; // pas encore passé
-    };
     return(
       <div style={TABLE}>
-        {/* Score + infos en overlay haut */}
         <div style={{position:'absolute',top:8,left:0,right:0,
           display:'flex',justifyContent:'space-between',padding:'0 16px',zIndex:10}}>
-          <div style={{background:'rgba(0,0,0,.5)',borderRadius:20,padding:'4px 12px',fontSize:12}}>
+          <div style={{background:'rgba(0,0,0,.55)',borderRadius:20,padding:'4px 14px',fontSize:12}}>
             🃏 <strong>BELOTA</strong>
           </div>
-          <div style={{background:'rgba(0,0,0,.5)',borderRadius:20,padding:'4px 12px',fontSize:12}}>
+          <div style={{background:'rgba(0,0,0,.55)',borderRadius:20,padding:'4px 14px',fontSize:12}}>
             <span style={{color:'#2ecc71',fontWeight:'bold'}}>{G.scores[0]}</span>
             <span style={{opacity:.4}}> – </span>
             <span style={{color:'#e74c3c',fontWeight:'bold'}}>{G.scores[1]}</span>
           </div>
-          <div style={{background:'rgba(0,0,0,.5)',borderRadius:20,padding:'4px 12px',fontSize:11,opacity:.7}}>
+          <div style={{background:'rgba(0,0,0,.55)',borderRadius:20,padding:'4px 14px',fontSize:11,opacity:.8}}>
             Don: {PNAME[G.dealer]}
           </div>
         </div>
-
-        {/* Nord — position haut centre */}
-        <div style={{position:'absolute',top:'8%',left:'50%',transform:'translateX(-50%)',zIndex:5,textAlign:'center'}}>
-          <PlayerChip name="Nord" cards={(G.hands[2]||[]).length}
-            active={G.bidIdx===2} dealer={G.dealer===2} team={0}/>
-          {G.bidIdx===2&&<div style={{marginTop:4,fontSize:11,opacity:.7}}>réfléchit…</div>}
+        <div style={{position:'absolute',top:'10%',left:'50%',transform:'translateX(-50%)',zIndex:5}}>
+          <PlayerChip name="Nord" cards={(G.hands[2]||[]).length} active={G.bidIdx===2} dealer={G.dealer===2} team={0}/>
+          {G.bidIdx===2&&<div style={{textAlign:'center',fontSize:11,opacity:.7,marginTop:3}}>réfléchit…</div>}
         </div>
-
-        {/* Ouest — position gauche */}
-        <div style={{position:'absolute',top:'42%',left:'3%',transform:'translateY(-50%)',zIndex:5}}>
-          <PlayerChip name="Ouest" cards={(G.hands[1]||[]).length}
-            active={G.bidIdx===1} dealer={G.dealer===1} team={1}/>
-          {G.bidIdx===1&&<div style={{marginTop:4,fontSize:11,opacity:.7,textAlign:'center'}}>réfléchit…</div>}
+        <div style={{position:'absolute',top:'42%',left:'4%',transform:'translateY(-50%)',zIndex:5}}>
+          <PlayerChip name="Ouest" cards={(G.hands[1]||[]).length} active={G.bidIdx===1} dealer={G.dealer===1} team={1}/>
+          {G.bidIdx===1&&<div style={{textAlign:'center',fontSize:11,opacity:.7,marginTop:3}}>réfléchit…</div>}
         </div>
-
-        {/* Est — position droite */}
-        <div style={{position:'absolute',top:'42%',right:'3%',transform:'translateY(-50%)',zIndex:5}}>
-          <PlayerChip name="Est" cards={(G.hands[3]||[]).length}
-            active={G.bidIdx===3} dealer={G.dealer===3} team={1}/>
-          {G.bidIdx===3&&<div style={{marginTop:4,fontSize:11,opacity:.7,textAlign:'center'}}>réfléchit…</div>}
+        <div style={{position:'absolute',top:'42%',right:'4%',transform:'translateY(-50%)',zIndex:5}}>
+          <PlayerChip name="Est" cards={(G.hands[3]||[]).length} active={G.bidIdx===3} dealer={G.dealer===3} team={1}/>
+          {G.bidIdx===3&&<div style={{textAlign:'center',fontSize:11,opacity:.7,marginTop:3}}>réfléchit…</div>}
         </div>
-
-        {/* Carte retournée — centre table */}
-        <div style={{position:'absolute',top:'50%',left:'50%',
-          transform:'translate(-50%,-50%)',zIndex:5,textAlign:'center'}}>
-          <div style={{fontSize:11,opacity:.7,marginBottom:6,
-            textShadow:'0 1px 4px rgba(0,0,0,.9)'}}>Carte retournée</div>
+        <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-60%)',zIndex:5,textAlign:'center'}}>
+          <div style={{fontSize:11,opacity:.7,marginBottom:6,textShadow:'0 1px 4px rgba(0,0,0,.9)'}}>Carte retournée</div>
           <CardView card={G.flipCard} W={70} H={100}/>
         </div>
-
-        {/* Boutons enchères humain — juste au-dessus de la main */}
         {isH&&(
-          <div style={{position:'absolute',bottom:'28%',left:'50%',
-            transform:'translateX(-50%)',zIndex:10,textAlign:'center'}}>
+          <div style={{position:'absolute',bottom:'28%',left:'50%',transform:'translateX(-50%)',zIndex:10,textAlign:'center'}}>
             <div style={{fontSize:13,fontWeight:'bold',marginBottom:8,
-              background:'rgba(0,0,0,.6)',borderRadius:20,padding:'6px 16px',
-              textShadow:'none'}}>
+              background:'rgba(0,0,0,.65)',borderRadius:20,padding:'6px 18px'}}>
               {G.bidRound===1?`Prendre à ${SUIT_FR[G.flipCard?.s]} ?`:"Choisissez l'atout :"}
             </div>
             <div style={{display:'flex',gap:8,justifyContent:'center',flexWrap:'wrap'}}>
@@ -484,18 +471,13 @@ export default function Belota(){
                 <button onClick={()=>humanBid(null)} style={BS('#555')}>Passer</button>
               </>):(<>
                 {SUITS.filter(s=>s!==G.flipCard?.s).map(s=>(
-                  <button key={s} onClick={()=>humanBid(s)}
-                    style={BS(RED_S(s)?'#c0392b':'#2c3e50')}>
-                    {s} {SUIT_FR[s]}
-                  </button>
+                  <button key={s} onClick={()=>humanBid(s)} style={BS(RED_S(s)?'#c0392b':'#2c3e50')}>{s} {SUIT_FR[s]}</button>
                 ))}
                 <button onClick={()=>humanBid(null)} style={BS('#555')}>Passer</button>
               </>)}
             </div>
           </div>
         )}
-
-        {/* Main joueur — éventail en bas */}
         <div style={{position:'absolute',bottom:0,left:0,right:0,zIndex:8}}>
           <FanHand hand={hand0} trump={null} cw={62} ch={88} pv={340}/>
         </div>
@@ -503,138 +485,96 @@ export default function Belota(){
     );
   }
 
-  // ── JEU — table plein écran
-  const ac = G.trump && RED_S(G.trump) ? '#ff9090' : 'white';
-  const pliNum = G.done.length + 1;
-
-  // ZONE DE PLI : boîte fixe 310×210px centrée dans la partie supérieure du tapis
-  // Positions en pixels absolus → garantit que les 4 cartes sont toujours visibles
-  const CW=54, CH=76; // taille cartes dans le pli
-  const ZW=310, ZH=210; // dimensions zone de pli
-
-  // Positions des cartes dans la zone (pixels depuis les bords de la zone)
-  // Nord  : haut-centre
-  // Ouest : gauche-centre  
-  // Est   : droite-centre
-  // Vous  : bas-centre
-  const cardPos = {
-    2: { top: 6,                    left: ZW/2-CW/2 },  // Nord
-    1: { top: ZH/2-CH/2,           left: 6          },  // Ouest
-    3: { top: ZH/2-CH/2,           right: 6         },  // Est
-    0: { bottom: 6,                 left: ZW/2-CW/2  },  // Vous
-  };
-
-  return (
+  // ── JEU
+  const pliNum=G.done.length+1;
+  return(
     <div style={TABLE}>
-      {/* ── OVERLAY INFOS ── */}
+      {/* Infos coins */}
       <div style={{position:'absolute',top:6,left:10,zIndex:20,
-        background:'rgba(0,0,0,.55)',borderRadius:20,padding:'4px 12px',fontSize:11}}>
+        background:'rgba(0,0,0,.6)',borderRadius:20,padding:'4px 12px',fontSize:11}}>
         <strong style={{color:ac}}>{G.trump} {G.trump?SUIT_FR[G.trump]:''}</strong>
-        <span style={{opacity:.6,fontSize:9}}> {G.takerTeam===0?'(vous+N)':'(adv.)'}</span>
+        <span style={{opacity:.55,fontSize:9}}> {G.takerTeam===0?'(vous+N)':'(adv.)'}</span>
       </div>
       <div style={{position:'absolute',top:6,left:'50%',transform:'translateX(-50%)',zIndex:20,
-        background:'rgba(0,0,0,.55)',borderRadius:20,padding:'4px 14px',
+        background:'rgba(0,0,0,.6)',borderRadius:20,padding:'4px 14px',
         fontSize:12,color:isDone?'#f1c40f':'rgba(255,255,255,.85)',fontWeight:'bold'}}>
-        {G.announce || (isDone ? `Pli ${pliNum}/8 ⏳` : `Pli ${pliNum}/8`)}
+        {G.announce||(isDone?`Pli ${pliNum}/8 ⏳`:`Pli ${pliNum}/8`)}
       </div>
       <div style={{position:'absolute',top:6,right:10,zIndex:20,
-        background:'rgba(0,0,0,.55)',borderRadius:20,padding:'4px 12px',fontSize:11}}>
+        background:'rgba(0,0,0,.6)',borderRadius:20,padding:'4px 12px',fontSize:11}}>
         <span style={{color:'#2ecc71',fontWeight:'bold'}}>{G.scores[0]}</span>
         <span style={{opacity:.4}}> – </span>
         <span style={{color:'#e74c3c',fontWeight:'bold'}}>{G.scores[1]}</span>
         <span style={{opacity:.35,fontSize:9}}> {t0}-{t1}</span>
       </div>
 
-      {/* ── CHIPS JOUEURS (positions fixes sur le tapis) ── */}
-      {/* Nord */}
+      {/* Chips joueurs */}
       <div style={{position:'absolute',top:'5%',left:'50%',transform:'translateX(-50%)',zIndex:10}}>
-        <PlayerChip name="Nord"
-          cards={(G.hands[2]||[]).filter(c=>c&&c.id).length}
+        <PlayerChip name="Nord" cards={(G.hands[2]||[]).filter(c=>c&&c.id).length}
           active={G.curPlayer===2&&!isDone} dealer={G.dealer===2} team={0}/>
       </div>
-      {/* Ouest */}
-      <div style={{position:'absolute',top:'50%',left:'2%',transform:'translateY(-50%)',zIndex:10}}>
-        <PlayerChip name="Ouest"
-          cards={(G.hands[1]||[]).filter(c=>c&&c.id).length}
+      <div style={{position:'absolute',top:'45%',left:'2%',transform:'translateY(-50%)',zIndex:10}}>
+        <PlayerChip name="Ouest" cards={(G.hands[1]||[]).filter(c=>c&&c.id).length}
           active={G.curPlayer===1&&!isDone} dealer={G.dealer===1} team={1}/>
       </div>
-      {/* Est */}
-      <div style={{position:'absolute',top:'50%',right:'2%',transform:'translateY(-50%)',zIndex:10}}>
-        <PlayerChip name="Est"
-          cards={(G.hands[3]||[]).filter(c=>c&&c.id).length}
+      <div style={{position:'absolute',top:'45%',right:'2%',transform:'translateY(-50%)',zIndex:10}}>
+        <PlayerChip name="Est" cards={(G.hands[3]||[]).filter(c=>c&&c.id).length}
           active={G.curPlayer===3&&!isDone} dealer={G.dealer===3} team={1}/>
       </div>
 
-      {/* ── ZONE DE PLI — boîte fixe centrée ── */}
-      {/* Positionnée en haut du tapis pour ne jamais chevaucher l'éventail */}
-      <div style={{
-        position:'absolute',
-        top:'13%', left:'50%', transform:'translateX(-50%)',
-        width:ZW, height:ZH,
-        zIndex:12,
-      }}>
-        {/* Les 4 emplacements de cartes */}
-        {[0,1,2,3].map(p => (
-          <div key={p} style={{
-            position:'absolute',
-            ...cardPos[p],
-            zIndex: 1,
-          }}>
-            {trickMap[p]
-              ? <CardView card={trickMap[p]} W={CW} H={CH}/>
-              : <Slot W={CW} H={CH}/>
-            }
-          </div>
-        ))}
-
-        {/* Label gagnant au centre */}
-        {isDone && G.pendingWin !== null && (
-          <div style={{
-            position:'absolute',
-            top:'50%', left:'50%', transform:'translate(-50%,-50%)',
-            background:'rgba(0,0,0,.75)',borderRadius:10,
-            padding:'6px 16px',fontSize:13,color:'#f1c40f',fontWeight:'bold',
-            backdropFilter:'blur(4px)',border:'1px solid rgba(241,196,15,.4)',
-            whiteSpace:'nowrap', zIndex:2,
-          }}>
-            {PNAME[G.pendingWin]} remporte ✓
-          </div>
-        )}
-
-        {/* Dernier pli info si pli vide */}
-        {!G.trick.length && G.ltWin !== null && (
-          <div style={{
-            position:'absolute',top:'50%',left:'50%',
-            transform:'translate(-50%,-50%)',
-            opacity:.3,fontSize:10,textAlign:'center',
-            pointerEvents:'none', zIndex:1,
-          }}>
-            {PNAME[G.ltWin]} — +1 pli
-          </div>
-        )}
-      </div>
-
-      {/* ── LABEL VOUS ── */}
-      <div style={{
-        position:'absolute',bottom:'23%',left:'50%',
-        transform:'translateX(-50%)',zIndex:10,whiteSpace:'nowrap',
-      }}>
-        <div style={{
-          background: G.curPlayer===0&&!isDone?'rgba(46,204,113,.2)':'rgba(0,0,0,.45)',
-          borderRadius:20,padding:'4px 14px',fontSize:11,
-          border: G.curPlayer===0&&!isDone?'1px solid rgba(46,204,113,.7)':'1px solid rgba(255,255,255,.1)',
-          color: G.curPlayer===0&&!isDone?'#2ecc71':'rgba(255,255,255,.7)',
-          fontWeight: G.curPlayer===0&&!isDone?'bold':'normal',
+      {/* ── LES 4 CARTES DU PLI ──
+          Chaque carte est positionnée INDÉPENDAMMENT sur la TABLE.
+          On utilise displayTrick en phase TRICK_DONE pour garantir
+          que les 4 cartes sont toujours visibles. */}
+      {[0,1,2,3].map(p=>(
+        <div key={p} style={{
+          position:'absolute',
+          zIndex:30,
+          ...CARD_POS[p],
         }}>
-          {isDone
-            ? `⏳ ${PNAME[G.pendingWin]} remporte…`
-            : G.curPlayer===0
-              ? `🎯 Jouez une carte${G.takerTeam===0?' (vous avez pris)':''}`
-              : `${PNAME[G.curPlayer]} joue…`}
+          {trickMap[p]
+            ? <CardView card={trickMap[p]} W={PC_W} H={PC_H}/>
+            : <div style={{width:PC_W,height:PC_H,borderRadius:6,
+                border:'1px dashed rgba(255,255,255,.12)',
+                background:'rgba(0,0,0,.08)'}}/>
+          }
+        </div>
+      ))}
+
+      {/* Label gagnant pli */}
+      {isDone&&G.pendingWin!==null&&(
+        <div style={{position:'absolute',top:'42%',left:'50%',
+          transform:'translate(-50%,-50%)',zIndex:40,
+          background:'rgba(0,0,0,.8)',borderRadius:10,
+          padding:'6px 18px',fontSize:13,color:'#f1c40f',fontWeight:'bold',
+          border:'1px solid rgba(241,196,15,.5)',whiteSpace:'nowrap'}}>
+          {PNAME[G.pendingWin]} remporte ✓
+        </div>
+      )}
+      {!shownTrick.length&&G.ltWin!==null&&(
+        <div style={{position:'absolute',top:'42%',left:'50%',
+          transform:'translate(-50%,-50%)',zIndex:20,
+          opacity:.3,fontSize:10,textAlign:'center',pointerEvents:'none'}}>
+          {PNAME[G.ltWin]} — +1 pli
+        </div>
+      )}
+
+      {/* Label joueur */}
+      <div style={{position:'absolute',bottom:'23%',left:'50%',
+        transform:'translateX(-50%)',zIndex:20,whiteSpace:'nowrap'}}>
+        <div style={{
+          background:G.curPlayer===0&&!isDone?'rgba(46,204,113,.2)':'rgba(0,0,0,.5)',
+          borderRadius:20,padding:'4px 14px',fontSize:11,
+          border:G.curPlayer===0&&!isDone?'1px solid rgba(46,204,113,.7)':'1px solid rgba(255,255,255,.1)',
+          color:G.curPlayer===0&&!isDone?'#2ecc71':'rgba(255,255,255,.7)',
+          fontWeight:G.curPlayer===0&&!isDone?'bold':'normal'}}>
+          {isDone?`⏳ ${PNAME[G.pendingWin]} remporte…`
+            :G.curPlayer===0?`🎯 Jouez${G.takerTeam===0?' (vous avez pris)':''}`
+            :`${PNAME[G.curPlayer]} joue…`}
         </div>
       </div>
 
-      {/* ── ÉVENTAIL — bas de l'écran ── */}
+      {/* Éventail */}
       <div style={{position:'absolute',bottom:0,left:0,right:0,zIndex:8}}>
         <FanHand hand={hand0} legalIDs={legalIDs} onPlay={humanPlay}
           trump={G.trump} cw={62} ch={88} pv={340}/>
@@ -643,14 +583,6 @@ export default function Belota(){
   );
 }
 
-// Emplacement vide
-function Slot({W,H}){
-  return <div style={{width:W,height:H,borderRadius:6,
-    border:'1px dashed rgba(255,255,255,.12)',
-    background:'rgba(0,0,0,.1)'}}/>;
-}
-
-// Style bouton
 function BS(bg){
   return{background:bg,color:'white',border:'none',borderRadius:22,
     padding:'8px 18px',fontSize:13,cursor:'pointer',fontWeight:'bold',
