@@ -73,18 +73,19 @@ function trickWinner(trick,trump){
 }
 function legalMoves(hand,trick,trump,player){
   const h=hand.filter(c=>c&&c.id);
-  if(!trick.length)return h;
-  const lead=trick[0].c.s;
+  const safeTrick=trick.filter(t=>t&&t.c&&t.c.s);
+  if(!safeTrick.length)return h;
+  const lead=safeTrick[0].c.s;
   const tc=h.filter(c=>c.s===trump),lc=h.filter(c=>c.s===lead);
   if(lead===trump){
     if(!tc.length)return h;
-    const bt=trick.filter(t=>t.c.s===trump).reduce((b,t)=>TS[t.c.r]>TS[b.c.r]?t:b);
+    const bt=safeTrick.filter(t=>t.c.s===trump).reduce((b,t)=>TS[t.c.r]>TS[b.c.r]?t:b);
     const hi=tc.filter(c=>TS[c.r]>TS[bt.c.r]);return hi.length?hi:tc;
   }
   if(lc.length)return lc;if(!tc.length)return h;
-  const win=trickWinner(trick,trump);
+  const win=trickWinner(safeTrick,trump);
   if(win===(player+2)%4)return h;
-  const pt=trick.filter(t=>t.c.s===trump);
+  const pt=safeTrick.filter(t=>t.c.s===trump);
   if(pt.length){const bt=pt.reduce((b,t)=>TS[t.c.r]>TS[b.c.r]?t:b);const hi=tc.filter(c=>TS[c.r]>TS[bt.c.r]);if(hi.length)return hi;}
   return tc;
 }
@@ -101,7 +102,10 @@ function aiPickSuit(hand,ex){
 }
 function aiPickCard(hand,trick,trump,player){
   const moves=legalMoves(hand,trick,trump,player);
-  if(!moves.length)return hand.filter(c=>c&&c.id)[0];
+  if(!moves.length){
+    const fallback=hand.filter(c=>c&&c.id);
+    return fallback.length?fallback[0]:null;
+  }
   const partner=(player+2)%4;
   if(!trick.length){
     const jT=moves.find(c=>c.s===trump&&c.r==='J');if(jT)return jT;
@@ -216,7 +220,7 @@ function FanCard({card,angle,isLegal,zIdx,cw,ch,pv,onClick}){
         transform:`rotate(${angle}deg) translateY(${lift}px)`,
         zIndex:isLegal?zIdx+20:zIdx,transition:'transform .12s',
         cursor:isLegal?'pointer':'default',
-        pointerEvents:'auto'}}>
+        >}}>
       <CardView card={card} isLegal={isLegal} W={cw} H={ch} onClick={onClick}/>
     </div>
   );
@@ -229,7 +233,7 @@ function FanHand({hand,legalIDs,onPlay,trump,cw=62,ch=88,pv=340}){
   const step=n>1?spread/(n-1):0,start=-spread/2;
   const fh=Math.min(ch+160, ch+Math.round((1-Math.cos(spread/2*Math.PI/180))*(pv+ch))+10);
   return(
-    <div style={{position:'relative',height:Math.max(fh,ch+10),width:'100%',pointerEvents:'none'}}>
+    <div style={{position:'relative',height:Math.max(fh,ch+10),width:'100%'}}>
       {sorted.map((card,i)=>(
         <FanCard key={card.id} card={card} angle={start+i*step}
           isLegal={ids.has(card.id)} zIdx={i+1}
@@ -308,7 +312,9 @@ export default function Belota(){
       setG(prev=>{
         if(prev.phase!=='PLAYING'||prev.curPlayer===0)return prev;
         const p=prev.curPlayer,hand=prev.hands[p].filter(c=>c&&c.id);
-        return applyPlayCard(prev,p,aiPickCard(hand,prev.trick,prev.trump,p));
+        const card=aiPickCard(hand,prev.trick,prev.trump,p);
+        if(!card)return prev; // sécurité: main vide inattendue
+        return applyPlayCard(prev,p,card);
       });
     },AI_DELAY);
     return()=>clearTimeout(t);
@@ -333,10 +339,12 @@ export default function Belota(){
     });
   }
   function humanPlay(card){
-    if(G.phase!=='PLAYING'||G.curPlayer!==0)return;
+    if(G.phase!=='PLAYING'||G.curPlayer!==0||!card||!card.id)return;
     const hand=G.hands[0].filter(c=>c&&c.id);
-    if(!legalMoves(hand,G.trick,G.trump,0).some(c=>c.id===card.id))return;
-    setG(prev=>applyPlayCard(prev,0,card));
+    try{
+      if(!legalMoves(hand,G.trick,G.trump,0).some(c=>c.id===card.id))return;
+      setG(prev=>applyPlayCard(prev,0,card));
+    }catch(e){console.error('humanPlay error',e);}
   }
 
   // Portrait overlay
@@ -568,7 +576,7 @@ export default function Belota(){
       </div>
 
       {/* Éventail */}
-      <div style={{position:'absolute',bottom:0,left:0,right:0,zIndex:8,pointerEvents:'none'}}>
+      <div style={{position:'absolute',bottom:0,left:0,right:0,zIndex:8}}>
         <FanHand hand={hand0} legalIDs={legalIDs} onPlay={humanPlay}
           trump={G.trump} cw={62} ch={88} pv={280}/>
       </div>
