@@ -24,17 +24,8 @@ const nextP   = p => (p+1)%4;
 
 const AI_DELAY=1500, TRICK_PAUSE=2500, BID_DELAY=900;
 
-// Taille cartes du pli — fixée une seule fois ici
+// Taille cartes du pli
 const PC_W=58, PC_H=82;
-
-// Positions des 4 cartes sur la TABLE (% de l'écran)
-// Calculées pour être bien espacées et jamais cachées
-const CARD_POS = {
-  2: { top:'10%',   left:'50%',  transform:'translateX(-50%)' },  // Nord
-  1: { top:'35%',   left:'16%',  transform:'translateY(-50%)' },  // Ouest
-  3: { top:'35%',   left:'72%',  transform:'translateY(-50%)' },  // Est
-  0: { top:'52%',   left:'50%',  transform:'translateX(-50%)' },  // Vous
-};
 
 // ─── TRI ─────────────────────────────────────────────────────────────────────
 function sortHand(hand, trump) {
@@ -130,8 +121,6 @@ function initRound(scores,dealer){
     trump:null,bidRound:1,bidIdx:fp,bidCount:0,taker:null,takerTeam:null,
     trick:[],done:[],curPlayer:fp,scores:sc,announce:'',
     belB:[0,0],belH:null,belP:[0,0,0,0],roundResult:null,ltWin:null,pendingWin:null,
-    // displayTrick stocke les 4 cartes pendant la pause — séparé de trick
-    displayTrick:[],
   };
 }
 
@@ -145,27 +134,18 @@ function applyPlayCard(G,player,card){
     if(bp[player]===2){ann='Rebelote !';bb=[...bb];bb[teamOf(player)]+=20;}
   }
   if(newTrick.length<4){
-    return{...G,hands:newHands,trick:newTrick,displayTrick:newTrick,curPlayer:nextP(player),announce:ann,belB:bb,belP:bp};
+    return{...G,hands:newHands,trick:newTrick,curPlayer:nextP(player),announce:ann,belB:bb,belP:bp};
   }
-  // Pli complet : on stocke les 4 cartes dans displayTrick
-  // et on vide trick → la résolution lit displayTrick
+  // Pli complet — trick GARDE les 4 cartes jusqu'à la fin de la pause
+  // Elles restent visibles pendant TRICK_PAUSE ms
   const win=trickWinner(newTrick,G.trump);
-  return{
-    ...G,
-    hands:newHands,
-    trick:[],            // vide tout de suite pour que la 4e carte ne soit pas dans le flux
-    displayTrick:newTrick, // les 4 cartes à afficher
-    phase:'TRICK_DONE',
-    pendingWin:win,
-    announce:ann,belB:bb,belP:bp,
-  };
+  return{...G,hands:newHands,trick:newTrick,phase:'TRICK_DONE',pendingWin:win,announce:ann,belB:bb,belP:bp};
 }
 
 function resolveTrick(G){
   const win=G.pendingWin;
-  const cards=G.displayTrick.map(t=>t.c);
-  const nd=[...G.done,{winner:win,cards}];
-  const base={...G,trick:[],displayTrick:[],done:nd,phase:'PLAYING',pendingWin:null,ltWin:win,announce:''};
+  const nd=[...G.done,{winner:win,cards:G.trick.map(t=>t.c)}];
+  const base={...G,trick:[],done:nd,phase:'PLAYING',pendingWin:null,ltWin:win,announce:''};
   return nd.length===8?calcResult(base):{...base,curPlayer:win};
 }
 
@@ -374,9 +354,8 @@ export default function Belota(){
     fontFamily:'Georgia,serif',color:'white',userSelect:'none',overflow:'hidden'};
 
   const isDone=G.phase==='TRICK_DONE';
-  // On affiche toujours displayTrick pendant la pause, trick sinon
-  const shownTrick = isDone ? G.displayTrick : G.trick;
-  const trickMap=Object.fromEntries(shownTrick.map(t=>[t.p,t.c]));
+  // trick contient toujours les cartes visibles (0 à 4)
+  const trickMap=Object.fromEntries(G.trick.map(t=>[t.p,t.c]));
   const hand0=(G.hands[0]||[]).filter(c=>c&&c.id);
   const legalIDs=(G.phase==='PLAYING'&&G.curPlayer===0)
     ?new Set(legalMoves(hand0,G.trick,G.trump,0).map(c=>c.id)):new Set();
@@ -522,43 +501,39 @@ export default function Belota(){
           active={G.curPlayer===3&&!isDone} dealer={G.dealer===3} team={1}/>
       </div>
 
-      {/* ── LES 4 CARTES DU PLI ──
-          Chaque carte est positionnée INDÉPENDAMMENT sur la TABLE.
-          On utilise displayTrick en phase TRICK_DONE pour garantir
-          que les 4 cartes sont toujours visibles. */}
-      {[0,1,2,3].map(p=>(
-        <div key={p} style={{
-          position:'absolute',
-          zIndex:30,
-          ...CARD_POS[p],
-        }}>
-          {trickMap[p]
-            ? <CardView card={trickMap[p]} W={PC_W} H={PC_H}/>
-            : <div style={{width:PC_W,height:PC_H,borderRadius:6,
-                border:'1px dashed rgba(255,255,255,.12)',
-                background:'rgba(0,0,0,.08)'}}/>
-          }
+      {/* ── GRILLE DU PLI : CSS grid 3×3 centrée — positions 100% garanties ── */}
+      <div style={{
+        position:'absolute',
+        top:'10%',
+        left:'50%',
+        transform:'translateX(-50%)',
+        zIndex:30,
+        display:'grid',
+        gridTemplateColumns:`${PC_W}px 48px ${PC_W}px`,
+        gridTemplateRows:`${PC_H}px 24px ${PC_H}px`,
+        gap:'6px',
+        alignItems:'center',
+        justifyItems:'center',
+      }}>
+        {/* Rang 1: [vide] [Nord=p2] [vide] */}
+        <div/>
+        <div>{trickMap[2]?<CardView card={trickMap[2]} W={PC_W} H={PC_H}/>:<Slot W={PC_W} H={PC_H}/>}</div>
+        <div/>
+        {/* Rang 2: [Ouest=p1] [info] [Est=p3] */}
+        <div>{trickMap[1]?<CardView card={trickMap[1]} W={PC_W} H={PC_H}/>:<Slot W={PC_W} H={PC_H}/>}</div>
+        <div style={{textAlign:'center',fontSize:9,color:isDone?'#f1c40f':'rgba(255,255,255,.3)'}}>
+          {isDone&&G.pendingWin!==null
+            ? <span style={{background:'rgba(0,0,0,.7)',borderRadius:4,padding:'2px 5px'}}>{PNAME[G.pendingWin]}✓</span>
+            : G.ltWin!==null&&!G.trick.length
+              ? <span style={{opacity:.35}}>{PNAME[G.ltWin]}</span>
+              : null}
         </div>
-      ))}
-
-      {/* Label gagnant pli */}
-      {isDone&&G.pendingWin!==null&&(
-        <div style={{position:'absolute',top:'42%',left:'50%',
-          transform:'translate(-50%,-50%)',zIndex:40,
-          background:'rgba(0,0,0,.8)',borderRadius:10,
-          padding:'6px 18px',fontSize:13,color:'#f1c40f',fontWeight:'bold',
-          border:'1px solid rgba(241,196,15,.5)',whiteSpace:'nowrap'}}>
-          {PNAME[G.pendingWin]} remporte ✓
-        </div>
-      )}
-      {!shownTrick.length&&G.ltWin!==null&&(
-        <div style={{position:'absolute',top:'42%',left:'50%',
-          transform:'translate(-50%,-50%)',zIndex:20,
-          opacity:.3,fontSize:10,textAlign:'center',pointerEvents:'none'}}>
-          {PNAME[G.ltWin]} — +1 pli
-        </div>
-      )}
-
+        <div>{trickMap[3]?<CardView card={trickMap[3]} W={PC_W} H={PC_H}/>:<Slot W={PC_W} H={PC_H}/>}</div>
+        {/* Rang 3: [vide] [Vous=p0] [vide] */}
+        <div/>
+        <div>{trickMap[0]?<CardView card={trickMap[0]} W={PC_W} H={PC_H}/>:<Slot W={PC_W} H={PC_H}/>}</div>
+        <div/>
+      </div>
       {/* Label joueur */}
       <div style={{position:'absolute',bottom:'23%',left:'50%',
         transform:'translateX(-50%)',zIndex:20,whiteSpace:'nowrap'}}>
