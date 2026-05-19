@@ -1,6 +1,34 @@
 // BELOTA — Table plein écran style belote authentique
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Component } from "react";
+// ─── ERROR BOUNDARY ─────────────────────────────────────────────────────────
+import { Component } from "react";
+class ErrorBoundary extends Component {
+  constructor(props){ super(props); this.state={error:null}; }
+  static getDerivedStateFromError(e){ return{error:e}; }
+  render(){
+    if(this.state.error){
+      return(
+        <div style={{background:'#1a1a2e',color:'white',padding:24,fontFamily:'monospace',
+          minHeight:'100dvh',display:'flex',flexDirection:'column',gap:12}}>
+          <div style={{fontSize:18,fontWeight:'bold',color:'#e74c3c'}}>💥 Erreur détectée</div>
+          <div style={{fontSize:13,color:'#f1c40f'}}>{this.state.error.message}</div>
+          <pre style={{fontSize:10,opacity:.7,whiteSpace:'pre-wrap'}}>
+            {this.state.error.stack?.slice(0,600)}
+          </pre>
+          <button onClick={()=>this.setState({error:null})}
+            style={{background:'#27ae60',color:'white',border:'none',borderRadius:8,
+              padding:'10px 20px',fontSize:14,cursor:'pointer',width:200}}>
+            Réessayer
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+
 
 const SUITS      = ['♠','♥','♦','♣'];
 const RED_S      = s => s==='♥'||s==='♦';
@@ -62,6 +90,7 @@ function completeHands(hands,flip,rest,taker){
 
 // ─── RÈGLES ──────────────────────────────────────────────────────────────────
 function trickWinner(trick,trump){
+  if(!trick||!trick.length||!trick[0]||!trick[0].c)return 0;
   const lead=trick[0].c.s;let best=trick[0];
   for(const t of trick.slice(1)){
     const b=best.c,c=t.c;
@@ -219,8 +248,7 @@ function FanCard({card,angle,isLegal,zIdx,cw,ch,pv,onClick}){
         width:cw,height:ch,transformOrigin:`50% ${ch+pv}px`,
         transform:`rotate(${angle}deg) translateY(${lift}px)`,
         zIndex:isLegal?zIdx+20:zIdx,transition:'transform .12s',
-        cursor:isLegal?'pointer':'default',
-        >}}>
+        cursor:isLegal?'pointer':'default'}}>
       <CardView card={card} isLegal={isLegal} W={cw} H={ch} onClick={onClick}/>
     </div>
   );
@@ -263,7 +291,7 @@ function PlayerChip({name,cards,active,dealer,team}){
 }
 
 // ─── PRINCIPAL ───────────────────────────────────────────────────────────────
-export default function Belota(){
+function BelotaGame(){
   const[G,setG]=useState(()=>initRound());
   const tRef=useRef(null);
   const[isLs,setIsLs]=useState(()=>typeof window!=='undefined'&&window.innerWidth>window.innerHeight);
@@ -366,10 +394,14 @@ export default function Belota(){
 
   const isDone=G.phase==='TRICK_DONE';
   // trick contient toujours les cartes visibles (0 à 4)
-  const trickMap=Object.fromEntries(G.trick.map(t=>[t.p,t.c]));
+  const trickMap=Object.fromEntries((G.trick||[]).filter(t=>t&&t.c).map(t=>[t.p,t.c]));
   const hand0=(G.hands[0]||[]).filter(c=>c&&c.id);
-  const legalIDs=(G.phase==='PLAYING'&&G.curPlayer===0)
-    ?new Set(legalMoves(hand0,G.trick,G.trump,0).map(c=>c.id)):new Set();
+  let legalIDs=new Set();
+  try{
+    if(G.phase==='PLAYING'&&G.curPlayer===0&&G.trump&&hand0.length){
+      legalIDs=new Set(legalMoves(hand0,G.trick||[],G.trump,0).map(c=>c&&c.id).filter(Boolean));
+    }
+  }catch(e){console.error('legalMoves render error',e);}
   const t0=G.done.filter(d=>teamOf(d.winner)===0).length;
   const t1=G.done.filter(d=>teamOf(d.winner)===1).length;
   const ac=G.trump&&RED_S(G.trump)?'#ff9090':'white';
@@ -588,4 +620,12 @@ function BS(bg){
   return{background:bg,color:'white',border:'none',borderRadius:22,
     padding:'8px 18px',fontSize:13,cursor:'pointer',fontWeight:'bold',
     boxShadow:'0 3px 8px rgba(0,0,0,.4)'};
+}
+
+export default function Belota(){
+  return <ErrorBoundary><BelotaInner/></ErrorBoundary>;
+}
+
+function BelotaInner(){
+  return <ErrorBoundary><BelotaGame/></ErrorBoundary>;
 }
