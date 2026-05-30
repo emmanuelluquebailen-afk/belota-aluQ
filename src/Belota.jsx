@@ -198,17 +198,21 @@ function Crd({card,fd,ok,W=54,H=76,onClick}){
 
 // ── Main : ligne horizontale (pas de rotation → tap précis sur iPhone) ────────
 function Hand({hand,okIds,onPlay,trump}){
-  const ids=okIds||new Set();
+  // okIds=null → mode "affichage seul", pas de grisage
+  // okIds=Set → mode jeu, cartes non dans le Set grisées
+  const hasOkIds = okIds !== null && okIds !== undefined;
+  const ids = hasOkIds ? okIds : new Set();
   const sorted=sortH(hand,trump);
   const n=sorted.length;
   if(!n)return null;
-  // Chevauchement : chaque carte décalée de STEP px
   const STEP=Math.min(HW-4, Math.floor((340)/Math.max(n-1,1)));
   const totalW=HW+(n-1)*STEP;
   return(
     <div style={{position:'relative',height:HH+20,width:totalW,margin:'0 auto'}}>
       {sorted.map((card,i)=>{
-        const ok=ids.has(card.id);
+        // Si pas de okIds : ok=undefined (pas de grisage)
+        // Si okIds défini : ok=true/false
+        const ok = hasOkIds ? ids.has(card.id) : undefined;
         return(
           <div key={card.id}
             onClick={ok?()=>onPlay(card):undefined}
@@ -399,27 +403,29 @@ function App(){
 
         {/* Boutons — petits, centrés en bas */}
         {myTurnBid&&(
-          <div style={{position:'absolute',bottom:'28%',left:'50%',
-            transform:'translateX(-50%)',zIndex:20,display:'flex',gap:10,alignItems:'center'}}>
+          <div style={{position:'absolute',bottom:'26%',left:'50%',
+            transform:'translateX(-50%)',zIndex:20,display:'flex',gap:8,alignItems:'center'}}>
             {G.br===1?(<>
-              <button onClick={()=>bid(G.flip.s)} style={bidBtn('#2e7d32')}>
-                <span style={{fontSize:20}}>{G.flip.s}</span> Prendre
+              {/* Tour 1 : symbole de la couleur retournée + Passer */}
+              <button onClick={()=>bid(G.flip.s)} style={suitBtn(RED(G.flip?.s)?'rgba(140,20,20,.9)':'rgba(20,50,20,.9)',true)}>
+                {G.flip.s}
               </button>
-              <button onClick={()=>bid(null)} style={bidBtn('rgba(80,80,80,.9)')}>Passer</button>
+              <button onClick={()=>bid(null)} style={passBtn()}>Passer</button>
             </>):(<>
+              {/* Tour 2 : 3 autres couleurs + Passer */}
               {SUITS.filter(s=>s!==G.flip?.s).map(s=>(
-                <button key={s} onClick={()=>bid(s)} style={bidBtn(RED(s)?'rgba(120,20,20,.9)':'rgba(20,40,80,.9)')}>
-                  <span style={{fontSize:20}}>{s}</span>
+                <button key={s} onClick={()=>bid(s)} style={suitBtn(RED(s)?'rgba(140,20,20,.9)':'rgba(20,40,80,.9)',false)}>
+                  {s}
                 </button>
               ))}
-              <button onClick={()=>bid(null)} style={bidBtn('rgba(80,80,80,.9)')}>Passer</button>
+              <button onClick={()=>bid(null)} style={passBtn()}>Passer</button>
             </>)}
           </div>
         )}
 
-        {/* Main en bas */}
+        {/* Main en bas — pas de okIds = pas de grisage */}
         <div style={{position:'absolute',bottom:10,left:0,right:0,zIndex:6,textAlign:'center'}}>
-          <Hand hand={hand0} trump={null}/>
+          <Hand hand={hand0} trump={null} okIds={null}/>
         </div>
       </div>
     );
@@ -555,10 +561,28 @@ function Btn({children,onClick,bg}){
     </button>
   );
 }
-function bidBtn(bg){
-  return{background:bg,color:'white',border:'2px solid rgba(255,255,255,.3)',
-    borderRadius:28,padding:'10px 20px',fontSize:14,cursor:'pointer',fontWeight:'bold',
-    boxShadow:'0 4px 12px rgba(0,0,0,.5)',display:'flex',alignItems:'center',gap:6};
+function suitBtn(bg, big){
+  return{
+    background:bg, color:'white',
+    border:'1px solid rgba(255,255,255,.35)',
+    borderRadius:big?'50%':'50%',
+    width:big?64:52, height:big?64:52,
+    fontSize:big?28:22,
+    display:'flex',alignItems:'center',justifyContent:'center',
+    cursor:'pointer',fontWeight:'bold',
+    boxShadow:'0 3px 10px rgba(0,0,0,.5)',
+    flexShrink:0,
+  };
+}
+function passBtn(){
+  return{
+    background:'rgba(50,50,50,.75)',color:'rgba(255,255,255,.8)',
+    border:'1px solid rgba(255,255,255,.2)',
+    borderRadius:20, padding:'8px 18px',
+    fontSize:13, cursor:'pointer',fontWeight:'normal',
+    boxShadow:'0 2px 8px rgba(0,0,0,.4)',
+    letterSpacing:'.3px',
+  };
 }
 
 export default function Belota(){
