@@ -120,7 +120,7 @@ function init(scores,dealer){
   const{hands,flip,rest}=deal(fp);
   return{phase:'BID',hands,flip,rest,dealer:dl,fp,trump:null,
     br:1,bi:fp,bc:0,taker:null,tt:null,
-    trick:[],done:[],cur:fp,scores:sc,ann:'',
+    trick:[],displayTrick:[],done:[],cur:fp,scores:sc,ann:'',
     bB:[0,0],bH:null,bP:[0,0,0,0],result:null,lw:null,pw:null};
 }
 function doPlay(G,player,card){
@@ -132,15 +132,16 @@ function doPlay(G,player,card){
     if(bp[player]===1)ann='Belote !';
     if(bp[player]===2){ann='Rebelote !';bb=[...bb];bb[team(player)]+=20;}
   }
-  if(nt.length<4)return{...G,hands:nh,trick:nt,cur:nxt(player),ann,bB:bb,bP:bp};
+  if(nt.length<4)return{...G,hands:nh,trick:nt,displayTrick:nt,cur:nxt(player),ann,bB:bb,bP:bp};
   const win=tWin(nt,G.trump);
-  // PAUSE : trick garde les 4 cartes
-  return{...G,hands:nh,trick:nt,phase:'PAUSE',pw:win,ann,bB:bb,bP:bp};
+  // PAUSE : trick ET displayTrick gardent les 4 cartes
+  return{...G,hands:nh,trick:nt,displayTrick:nt,phase:'PAUSE',pw:win,ann,bB:bb,bP:bp};
 }
 function resolve(G){
   const win=G.pw;
-  const nd=[...G.done,{winner:win,cards:G.trick.map(t=>t.c)}];
-  const base={...G,trick:[],done:nd,phase:'PLAY',pw:null,lw:win,ann:''};
+  const cards=(G.trick.length>0?G.trick:G.displayTrick).map(t=>t.c);
+  const nd=[...G.done,{winner:win,cards}];
+  const base={...G,trick:[],displayTrick:[],done:nd,phase:'PLAY',pw:null,lw:win,ann:''};
   return nd.length===8?calcR(base):{...base,cur:win};
 }
 function calcR(G){
@@ -317,10 +318,14 @@ function App(){
   const hand0=(G.hands[0]||[]).filter(c=>c&&c.id);
   const isPause=G.phase==='PAUSE';
   // trickMap : pendant PAUSE on garde trick avec 4 cartes
-  const trickMap=Object.fromEntries((G.trick||[]).filter(t=>t&&t.c).map(t=>[t.p,t.c]));
-  let okIds=new Set();
-  if(G.phase==='PLAY'&&G.cur===0&&G.trump){
-    try{okIds=new Set(legal(hand0,G.trick,G.trump,0).map(c=>c.id));}catch(e){}
+  // displayTrick : les cartes à afficher (reste visible pendant PAUSE)
+  const shownTrick = (G.displayTrick&&G.displayTrick.length>0) ? G.displayTrick : (G.trick||[]);
+  const trickMap=Object.fromEntries(shownTrick.filter(t=>t&&t.c).map(t=>[t.p,t.c]));
+  // okIds : null = pas de grisage, Set = grisage actif
+  // On ne grise QUE quand c'est le tour du joueur humain
+  let okIds = null;
+  if(G.phase==='PLAY' && G.cur===0 && G.trump){
+    try{ okIds=new Set(legal(hand0,G.trick,G.trump,0).map(c=>c.id)); }catch(e){}
   }
   const t0=G.done.filter(d=>team(d.winner)===0).length;
   const t1=G.done.filter(d=>team(d.winner)===1).length;
