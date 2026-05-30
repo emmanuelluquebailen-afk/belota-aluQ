@@ -38,7 +38,7 @@ const nxt=p=>(p+1)%4;
 const AI=1300, PAUSE=2500, BD=900;
 
 // Taille cartes du pli — grandes et visibles
-const PW=54, PH=76;
+const PW=46, PH=64;
 // Taille cartes de la main
 const HW=68, HH=98;
 
@@ -488,40 +488,40 @@ function App(){
           Positionnées DIRECTEMENT sur TABLE, z-index 9999
           Aucun conteneur intermédiaire ne peut les cacher                        */}
 
-      {/* === 4 CARTES DU PLI ===
-          Positions px absolues sur TABLE pour iPhone landscape (375-414px haut)
-          Carte 54×76px — aucun chevauchement garanti                          */}
-
-      {/* Nord (2) — top:32 → occupe 32-108px */}
-      <div style={{position:'absolute',top:32,left:'50%',transform:'translateX(-50%)',zIndex:9999}}>
-        {trickMap[2]?<Crd card={trickMap[2]} W={PW} H={PH}/>:<Ghost/>}
-      </div>
-
-      {/* Ouest (1) — top:110 → occupe 110-186px */}
-      <div style={{position:'absolute',top:110,left:'18%',zIndex:9999}}>
-        {trickMap[1]?<Crd card={trickMap[1]} W={PW} H={PH}/>:<Ghost/>}
-      </div>
-
-      {/* Est (3) — top:110 → occupe 110-186px */}
-      <div style={{position:'absolute',top:110,right:'18%',zIndex:9999}}>
-        {trickMap[3]?<Crd card={trickMap[3]} W={PW} H={PH}/>:<Ghost/>}
-      </div>
-
-      {/* Vous (0) — bottom:152 → sur 390px: top=162-238px (main à partir de 262px) */}
-      <div style={{position:'absolute',bottom:152,left:'50%',transform:'translateX(-50%)',zIndex:9999}}>
-        {trickMap[0]?<Crd card={trickMap[0]} W={PW} H={PH}/>:<Ghost/>}
-      </div>
-
-      {/* Badge gagnant — apparaît 900ms APRÈS les 4 cartes */}
-      {G.trickDone&&G.showWinner&&G.pw!==null&&(
-        <div style={{position:'absolute',top:118,left:'50%',transform:'translateX(-50%)',
-          zIndex:10000,background:'rgba(0,0,0,.85)',borderRadius:8,
-          padding:'5px 14px',fontSize:12,color:'#ffd54f',fontWeight:'bold',
-          border:'1px solid rgba(255,213,79,.5)',whiteSpace:'nowrap',pointerEvents:'none',
-          boxShadow:'0 0 16px rgba(255,213,79,.3)'}}>
-          {PN[G.pw]} remporte ✓
+      {/* === ZONE DE PLI : grille centrée, fond visible ===
+          44×62px par carte — zone top:28 → bottom:140
+          Hauteur zone = ~222px, grille = 3×64+2×8 = 208px → OK */}
+      <div style={{
+        position:'absolute',
+        top:28, left:'12%', right:'12%', bottom:140,
+        zIndex:500,
+        display:'flex',
+        flexDirection:'column',
+        alignItems:'center',
+        justifyContent:'space-between',
+        padding:'6px 0',
+      }}>
+        {/* Ligne 1 : Nord */}
+        <div style={{display:'flex',justifyContent:'center',width:'100%'}}>
+          {trickMap[2]?<Crd card={trickMap[2]} W={PW} H={PH}/>:<Ghost/>}
         </div>
-      )}
+
+        {/* Ligne 2 : Ouest — Centre (badge/info) — Est */}
+        <div style={{display:'flex',justifyContent:'space-between',
+          alignItems:'center',width:'100%',paddingLeft:8,paddingRight:8}}>
+          {trickMap[1]?<Crd card={trickMap[1]} W={PW} H={PH}/>:<Ghost/>}
+          <div style={{fontSize:10,color:isPause&&G.showWinner?'#ffd54f':'rgba(255,255,255,.3)',
+            textAlign:'center',fontWeight:'bold',minWidth:60}}>
+            {isPause&&G.showWinner?`${PN[G.pw]}✓`:''}
+          </div>
+          {trickMap[3]?<Crd card={trickMap[3]} W={PW} H={PH}/>:<Ghost/>}
+        </div>
+
+        {/* Ligne 3 : Vous */}
+        <div style={{display:'flex',justifyContent:'center',width:'100%'}}>
+          {trickMap[0]?<Crd card={trickMap[0]} W={PW} H={PH}/>:<Ghost/>}
+        </div>
+      </div>
 
       {/* Pastille tour — petite, en bas */}
       <div style={{position:'absolute',bottom:125,left:'50%',transform:'translateX(-50%)',
@@ -573,7 +573,7 @@ function PL({name,n,active,dealer,style={}}){
 
 // Emplacement vide (invisible)
 function Ghost(){
-  return <div style={{width:PW,height:PH,borderRadius:6}}/>;
+  return <div style={{width:PW,height:PH,borderRadius:6,opacity:0}}/>;
 }
 
 function Btn({children,onClick,bg}){
