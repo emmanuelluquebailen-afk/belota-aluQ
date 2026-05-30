@@ -1,0 +1,18 @@
+{
+  "name": "Belota",
+  "short_name": "Belota",
+  "description": "Jeu de belote aluQ",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#0b2411",
+  "theme_color": "#1f5d2b",
+  "icons": [
+    {
+      "src": "/belota-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
