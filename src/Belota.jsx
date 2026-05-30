@@ -121,7 +121,8 @@ function init(scores,dealer){
   return{phase:'BID',hands,flip,rest,dealer:dl,fp,trump:null,
     br:1,bi:fp,bc:0,taker:null,tt:null,
     trick:[],displayTrick:[],done:[],cur:fp,scores:sc,ann:'',
-    bB:[0,0],bH:null,bP:[0,0,0,0],result:null,lw:null,pw:null};
+    bB:[0,0],bH:null,bP:[0,0,0,0],result:null,lw:null,pw:null,
+    showWinner:false};
 }
 function doPlay(G,player,card){
   const nh=G.hands.map((h,i)=>i===player?h.filter(c=>c&&c.id&&c.id!==card.id):h.filter(c=>c&&c.id));
@@ -135,13 +136,13 @@ function doPlay(G,player,card){
   if(nt.length<4)return{...G,hands:nh,trick:nt,displayTrick:nt,cur:nxt(player),ann,bB:bb,bP:bp};
   const win=tWin(nt,G.trump);
   // PAUSE : trick ET displayTrick gardent les 4 cartes
-  return{...G,hands:nh,trick:nt,displayTrick:nt,phase:'PAUSE',pw:win,ann,bB:bb,bP:bp};
+  return{...G,hands:nh,trick:nt,displayTrick:nt,phase:'PAUSE',pw:win,showWinner:false,ann,bB:bb,bP:bp};
 }
 function resolve(G){
   const win=G.pw;
   const cards=(G.trick.length>0?G.trick:G.displayTrick).map(t=>t.c);
   const nd=[...G.done,{winner:win,cards}];
-  const base={...G,trick:[],displayTrick:[],done:nd,phase:'PLAY',pw:null,lw:win,ann:''};
+  const base={...G,trick:[],displayTrick:[],done:nd,phase:'PLAY',pw:null,showWinner:false,lw:win,ann:''};
   return nd.length===8?calcR(base):{...base,cur:win};
 }
 function calcR(G){
@@ -242,12 +243,25 @@ function App(){
   useEffect(()=>{const u=()=>setLs(window.innerWidth>window.innerHeight);window.addEventListener('resize',u);return()=>window.removeEventListener('resize',u);},[]);
 
   // Résolution pli après PAUSE
+  // Phase 1 (800ms) : montrer les 4 cartes sans badge
+  // Phase 2 (800ms) : montrer le badge gagnant
+  // Phase 3 : résoudre et passer au pli suivant
   useEffect(()=>{
     if(G.phase!=='PAUSE')return;
     if(timer.current)clearTimeout(timer.current);
-    timer.current=setTimeout(()=>setG(p=>p.phase==='PAUSE'?resolve(p):p),PAUSE);
+    if(!G.showWinner){
+      // Après 900ms, afficher le gagnant
+      timer.current=setTimeout(()=>
+        setG(p=>p.phase==='PAUSE'?{...p,showWinner:true}:p)
+      ,900);
+    } else {
+      // Après 1500ms supplémentaires, résoudre
+      timer.current=setTimeout(()=>
+        setG(p=>p.phase==='PAUSE'?resolve(p):p)
+      ,1500);
+    }
     return()=>{if(timer.current)clearTimeout(timer.current);};
-  },[G.phase,G.pw]);
+  },[G.phase,G.pw,G.showWinner]);
 
   // IA enchères
   useEffect(()=>{
@@ -320,6 +334,13 @@ function App(){
   // trickMap : pendant PAUSE on garde trick avec 4 cartes
   // displayTrick : les cartes à afficher (reste visible pendant PAUSE)
   const shownTrick = (G.displayTrick&&G.displayTrick.length>0) ? G.displayTrick : (G.trick||[]);
+  console.log(
+  "TRICK",
+  shownTrick.map(t => ({
+    p: t.p,
+    card: t.c.r + t.c.s
+  }))
+  );
   const trickMap=Object.fromEntries(shownTrick.filter(t=>t&&t.c).map(t=>[t.p,t.c]));
   // okIds : null = pas de grisage, Set = grisage actif
   // On ne grise QUE quand c'est le tour du joueur humain
@@ -499,12 +520,13 @@ function App(){
         {trickMap[0]?<Crd card={trickMap[0]} W={PW} H={PH}/>:<Ghost/>}
       </div>
 
-      {/* Badge gagnant — centré entre Ouest/Est, ne cache aucune carte */}
-      {isPause&&G.pw!==null&&(
-        <div style={{position:'absolute',top:115,left:'50%',transform:'translateX(-50%)',
-          zIndex:10000,background:'rgba(0,0,0,.82)',borderRadius:8,
-          padding:'4px 12px',fontSize:11,color:'#ffd54f',fontWeight:'bold',
-          border:'1px solid rgba(255,213,79,.4)',whiteSpace:'nowrap',pointerEvents:'none'}}>
+      {/* Badge gagnant — apparaît 900ms APRÈS les 4 cartes */}
+      {isPause&&G.showWinner&&G.pw!==null&&(
+        <div style={{position:'absolute',top:118,left:'50%',transform:'translateX(-50%)',
+          zIndex:10000,background:'rgba(0,0,0,.85)',borderRadius:8,
+          padding:'5px 14px',fontSize:12,color:'#ffd54f',fontWeight:'bold',
+          border:'1px solid rgba(255,213,79,.5)',whiteSpace:'nowrap',pointerEvents:'none',
+          boxShadow:'0 0 16px rgba(255,213,79,.3)'}}>
           {PN[G.pw]} remporte ✓
         </div>
       )}
@@ -515,7 +537,7 @@ function App(){
         {isPause?(
           <div style={{background:'rgba(255,193,7,.2)',border:'1px solid #ffd54f',
             borderRadius:20,padding:'3px 12px',fontSize:11,color:'#ffd54f'}}>
-            ⏳ {PN[G.pw]} remporte…
+            {G.showWinner?`✓ ${PN[G.pw]} remporte`:'⏳ …'}
           </div>
         ):myTurn?(
           <div style={{background:'rgba(27,94,32,.95)',border:'2px solid #66bb6a',
