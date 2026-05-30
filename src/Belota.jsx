@@ -397,47 +397,73 @@ function App(){
           <div style={{fontSize:11,opacity:.7}}>Donneur : {PN[G.dealer]}</div>
         </div>
 
-        {/* Qui parle */}
-        <div style={{position:'absolute',top:'14%',left:'50%',transform:'translateX(-50%)',
-          zIndex:10,textAlign:'center'}}>
-          {!myTurn&&<div style={{background:'rgba(0,0,0,.55)',borderRadius:20,
-            padding:'4px 14px',fontSize:11,opacity:.85,border:'1px solid rgba(255,255,255,.15)'}}>
+        {/* IA qui réfléchit */}
+        {!myTurn&&(
+          <div style={{position:'absolute',top:40,left:'50%',transform:'translateX(-50%)',
+            zIndex:10,background:'rgba(0,0,0,.5)',borderRadius:20,
+            padding:'3px 12px',fontSize:11,opacity:.8}}>
             ⏳ {speaker} réfléchit…
-          </div>}
-        </div>
+          </div>
+        )}
 
-        {/* Carte retournée */}
+        {/* Joueurs */}
+        <PLabel name="Nord" n={(G.hands[2]||[]).length} pos={{top:'8%',left:'50%',transform:'translateX(-50%)'}} active={G.bi===2} dealer={G.dealer===2}/>
+        <PLabel name="Ouest" n={(G.hands[1]||[]).length} pos={{top:'50%',left:'13%',transform:'translateY(-50%)'}} active={G.bi===1} dealer={G.dealer===1}/>
+        <PLabel name="Est" n={(G.hands[3]||[]).length} pos={{top:'50%',right:'13%',transform:'translateY(-50%)'}} active={G.bi===3} dealer={G.dealer===3}/>
+
+        {/* Carte retournée — grande, centrée */}
         <div style={{position:'absolute',top:'50%',left:'50%',
-          transform:'translate(-50%,-65%)',zIndex:5,textAlign:'center'}}>
-          <div style={{fontSize:11,opacity:.7,marginBottom:6}}>Atout proposé</div>
-          <Crd card={G.flip} W={66} H={94}/>
+          transform:'translate(-50%,-68%)',zIndex:5,textAlign:'center'}}>
+          <Crd card={G.flip} W={90} H={128}/>
         </div>
 
-        {/* Joueurs aux positions */}
-        <PLabel name="Nord" n={(G.hands[2]||[]).length} pos={{top:'10%',left:'50%',transform:'translateX(-50%)'}} active={G.bi===2} dealer={G.dealer===2}/>
-        <PLabel name="Ouest" n={(G.hands[1]||[]).length} pos={{top:'50%',left:'4%',transform:'translateY(-50%)'}} active={G.bi===1} dealer={G.dealer===1}/>
-        <PLabel name="Est" n={(G.hands[3]||[]).length} pos={{top:'50%',right:'4%',transform:'translateY(-50%)'}} active={G.bi===3} dealer={G.dealer===3}/>
-
-        {/* Boutons enchères */}
+        {/* Boutons enchères — petits, discrets, bas gauche */}
         {myTurn&&(
-          <div style={{position:'absolute',top:'54%',left:'50%',
-            transform:'translateX(-50%)',zIndex:20,textAlign:'center',
-            background:'rgba(0,0,0,.75)',borderRadius:14,padding:'10px 16px',
-            border:'1px solid rgba(255,255,255,.2)',minWidth:260}}>
-            {G.br===2&&<div style={{fontSize:13,fontWeight:'bold',marginBottom:10,opacity:.8}}>
-              Choisissez l'atout :
-            </div>}
-            <div style={{display:'flex',gap:10,justifyContent:'center',flexWrap:'wrap'}}>
-              {G.br===1?(<>
-                <Btn bg="#388e3c" onClick={()=>bid(G.flip.s)}>✓ Prendre {G.flip.s}</Btn>
-                <Btn bg="#757575" onClick={()=>bid(null)}>Passer</Btn>
-              </>):(<>
+          <div style={{position:'absolute',bottom:'30%',left:'50%',
+            transform:'translateX(-50%)',zIndex:20,
+            display:'flex',gap:8,alignItems:'center'}}>
+            {G.br===1?(
+              // Simple : juste le symbole de l'atout + Passer
+              <>
+                <button onClick={()=>bid(G.flip.s)} style={{
+                  background:'rgba(30,70,30,.95)',color:'white',
+                  border:'2px solid #66bb6a',borderRadius:28,
+                  padding:'10px 22px',fontSize:16,cursor:'pointer',fontWeight:'bold',
+                  boxShadow:'0 4px 12px rgba(0,0,0,.4)',
+                  display:'flex',alignItems:'center',gap:8,
+                }}>
+                  <span style={{fontSize:22,lineHeight:1}}>{G.flip.s}</span>
+                  <span>Prendre</span>
+                </button>
+                <button onClick={()=>bid(null)} style={{
+                  background:'rgba(0,0,0,.6)',color:'white',
+                  border:'1px solid rgba(255,255,255,.3)',borderRadius:28,
+                  padding:'10px 22px',fontSize:14,cursor:'pointer',
+                  boxShadow:'0 4px 12px rgba(0,0,0,.4)',
+                }}>
+                  Passer
+                </button>
+              </>
+            ):(
+              // Tour 2 : boutons pour chaque couleur
+              <>
                 {SUITS.filter(s=>s!==G.flip?.s).map(s=>(
-                  <Btn key={s} bg={RED(s)?'#c62828':'#37474f'} onClick={()=>bid(s)}>{s} {SFR[s]}</Btn>
+                  <button key={s} onClick={()=>bid(s)} style={{
+                    background:RED(s)?'rgba(120,20,20,.9)':'rgba(20,40,80,.9)',
+                    color:'white',border:'2px solid rgba(255,255,255,.4)',
+                    borderRadius:28,padding:'10px 18px',fontSize:18,cursor:'pointer',
+                    boxShadow:'0 4px 12px rgba(0,0,0,.4)',
+                  }}>{s}</button>
                 ))}
-                <Btn bg="#757575" onClick={()=>bid(null)}>Passer</Btn>
-              </>)}
-            </div>
+                <button onClick={()=>bid(null)} style={{
+                  background:'rgba(0,0,0,.6)',color:'white',
+                  border:'1px solid rgba(255,255,255,.3)',borderRadius:28,
+                  padding:'10px 20px',fontSize:14,cursor:'pointer',
+                }}>
+                  Passer
+                </button>
+              </>
+            )}
           </div>
         )}
 
@@ -516,21 +542,17 @@ function App(){
         pos={{top:'8%',left:'50%',transform:'translateX(-50%)'}}
         active={G.cur===2&&!isDone} dealer={G.dealer===2} team0={true}/>
       <PLabel name="Ouest" n={(G.hands[1]||[]).filter(c=>c&&c.id).length}
-        pos={{top:'48%',left:'2%',transform:'translateY(-50%)'}}
+        pos={{top:'48%',left:'12%',transform:'translateY(-50%)'}}
         active={G.cur===1&&!isDone} dealer={G.dealer===1} team0={false}/>
       <PLabel name="Est" n={(G.hands[3]||[]).filter(c=>c&&c.id).length}
-        pos={{top:'48%',right:'2%',transform:'translateY(-50%)'}}
+        pos={{top:'48%',right:'12%',transform:'translateY(-50%)'}}
         active={G.cur===3&&!isDone} dealer={G.dealer===3} team0={false}/>
 
       {/* ── ZONE PLI (grille 3×3 CSS) ── */}
       <div style={{
         position:'absolute',top:'10%',left:'50%',transform:'translateX(-50%)',
         zIndex:50,
-        padding:18,
-        borderRadius:18,
-        background:'rgba(0,0,0,.28)',
-        border:'1px solid rgba(255,255,255,.1)',
-        boxShadow:'0 18px 40px rgba(0,0,0,.55)',
+        padding:10,
         display:'grid',
         gridTemplateColumns:`${PW}px 70px ${PW}px`,
         gridTemplateRows:`${PH}px 35px ${PH}px`,
@@ -553,20 +575,11 @@ function App(){
         <div/><TSlot card={trickMap[0]}/><div/>
       </div>
 
-      {/* ── INDICATEUR PREMIER À JOUER ── */}
-      {G.trick.length===0&&!isDone&&G.phase==='PLAY'&&(
-        <div style={{position:'absolute',top:'53%',left:'50%',transform:'translateX(-50%)',
-          zIndex:11,fontSize:10,opacity:.5,textAlign:'center',whiteSpace:'nowrap'}}>
-          {G.lw!==null?`${PN[G.lw]} entame`:G.cur===0?'Vous entamez':`${PN[G.cur]} entame`}
-        </div>
-      )}
+
 
       {/* ── MAIN JOUEUR + LABEL ── */}
       <div style={{position:'absolute',bottom:0,left:0,right:0,zIndex:8}}>
-        <div style={{textAlign:'center',marginBottom:2,fontSize:10,opacity:.6}}>
-          {myTurn?'Cartes vertes = jouables (tapez pour jouer)':'Votre main'}
-          {G.tteam===0?' — vous avez pris':''}
-        </div>
+
         <Fan hand={hand0} okIds={okIds} onPlay={playCard} trump={G.trump} cw={78} ch={112} pv={220}/>
       </div>
 
@@ -598,11 +611,8 @@ function PLabel({name,n,pos,active,dealer,team0}){
 
 // Carte dans le pli (avec emplacement vide)
 function TSlot({card}){
-  if(!card||!card.s)return(
-    <div style={{width:PW,height:PH,borderRadius:7,
-      border:'1px dashed rgba(255,255,255,.12)',
-      background:'rgba(0,0,0,.15)'}}/>
-  );
+  // Rien quand vide — pas de cases grises
+  if(!card||!card.s)return <div style={{width:PW,height:PH}}/>;
   return <Crd card={card} W={PW} H={PH}/>;
 }
 
