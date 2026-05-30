@@ -122,7 +122,7 @@ function init(scores,dealer){
     br:1,bi:fp,bc:0,taker:null,tt:null,
     trick:[],displayTrick:[],done:[],cur:fp,scores:sc,ann:'',
     bB:[0,0],bH:null,bP:[0,0,0,0],result:null,lw:null,pw:null,
-    showWinner:false};
+    trickDone:false,showWinner:false};
 }
 function doPlay(G,player,card){
   const nh=G.hands.map((h,i)=>i===player?h.filter(c=>c&&c.id&&c.id!==card.id):h.filter(c=>c&&c.id));
@@ -135,14 +135,16 @@ function doPlay(G,player,card){
   }
   if(nt.length<4)return{...G,hands:nh,trick:nt,displayTrick:nt,cur:nxt(player),ann,bB:bb,bP:bp};
   const win=tWin(nt,G.trump);
-  // PAUSE : trick ET displayTrick gardent les 4 cartes
-  return{...G,hands:nh,trick:nt,displayTrick:nt,phase:'PAUSE',pw:win,showWinner:false,ann,bB:bb,bP:bp};
+  // trick garde les 4 cartes — phase reste PLAY mais trickDone=true
+  // L'IA ne joue PAS quand trickDone=true
+  return{...G,hands:nh,trick:nt,displayTrick:nt,
+    trickDone:true,pw:win,showWinner:false,ann,bB:bb,bP:bp};
 }
 function resolve(G){
   const win=G.pw;
   const cards=(G.trick.length>0?G.trick:G.displayTrick).map(t=>t.c);
   const nd=[...G.done,{winner:win,cards}];
-  const base={...G,trick:[],displayTrick:[],done:nd,phase:'PLAY',pw:null,showWinner:false,lw:win,ann:''};
+  const base={...G,trick:[],displayTrick:[],done:nd,phase:'PLAY',pw:null,trickDone:false,showWinner:false,lw:win,ann:''};
   return nd.length===8?calcR(base):{...base,cur:win};
 }
 function calcR(G){
@@ -242,26 +244,23 @@ function App(){
   const[ls,setLs]=useState(()=>typeof window!=='undefined'&&window.innerWidth>window.innerHeight);
   useEffect(()=>{const u=()=>setLs(window.innerWidth>window.innerHeight);window.addEventListener('resize',u);return()=>window.removeEventListener('resize',u);},[]);
 
-  // Résolution pli après PAUSE
-  // Phase 1 (800ms) : montrer les 4 cartes sans badge
-  // Phase 2 (800ms) : montrer le badge gagnant
-  // Phase 3 : résoudre et passer au pli suivant
+  // Résolution pli — trickDone=true
+  // 800ms : 4 cartes visibles → affiche gagnant
+  // 1400ms supplémentaires → résout le pli
   useEffect(()=>{
-    if(G.phase!=='PAUSE')return;
+    if(!G.trickDone)return;
     if(timer.current)clearTimeout(timer.current);
     if(!G.showWinner){
-      // Après 900ms, afficher le gagnant
       timer.current=setTimeout(()=>
-        setG(p=>p.phase==='PAUSE'?{...p,showWinner:true}:p)
-      ,900);
+        setG(p=>p.trickDone?{...p,showWinner:true}:p)
+      ,800);
     } else {
-      // Après 1500ms supplémentaires, résoudre
       timer.current=setTimeout(()=>
-        setG(p=>p.phase==='PAUSE'?resolve(p):p)
-      ,1500);
+        setG(p=>p.trickDone?resolve(p):p)
+      ,1400);
     }
     return()=>{if(timer.current)clearTimeout(timer.current);};
-  },[G.phase,G.pw,G.showWinner]);
+  },[G.trickDone,G.pw,G.showWinner]);
 
   // IA enchères
   useEffect(()=>{
@@ -285,10 +284,10 @@ function App(){
 
   // IA jeu — seulement en PLAY
   useEffect(()=>{
-    if(G.phase!=='PLAY'||G.cur===0)return;
+    if(G.phase!=='PLAY'||G.cur===0||G.trickDone)return;
     const t=setTimeout(()=>{
       setG(prev=>{
-        if(prev.phase!=='PLAY'||prev.cur===0)return prev;
+        if(prev.phase!=='PLAY'||prev.cur===0||prev.trickDone)return prev;
         const p=prev.cur,hand=prev.hands[p].filter(c=>c&&c.id);
         return doPlay(prev,p,aiCard(hand,prev.trick,prev.trump,p));
       });
@@ -310,7 +309,7 @@ function App(){
     });
   }
   function playCard(card){
-    if(G.phase!=='PLAY'||G.cur!==0)return;
+    if(G.phase!=='PLAY'||G.cur!==0||G.trickDone)return;
     const hand=G.hands[0].filter(c=>c&&c.id);
     if(!legal(hand,G.trick,G.trump,0).some(c=>c.id===card.id))return;
     setG(prev=>doPlay(prev,0,card));
@@ -330,7 +329,7 @@ function App(){
     fontFamily:'Georgia,serif',color:'white',overflow:'hidden',userSelect:'none'};
 
   const hand0=(G.hands[0]||[]).filter(c=>c&&c.id);
-  const isPause=G.phase==='PAUSE';
+  const isPause=!!G.trickDone;
   // trickMap : pendant PAUSE on garde trick avec 4 cartes
   // displayTrick : les cartes à afficher (reste visible pendant PAUSE)
   const shownTrick = (G.displayTrick&&G.displayTrick.length>0) ? G.displayTrick : (G.trick||[]);
@@ -514,7 +513,7 @@ function App(){
       </div>
 
       {/* Badge gagnant — apparaît 900ms APRÈS les 4 cartes */}
-      {isPause&&G.showWinner&&G.pw!==null&&(
+      {G.trickDone&&G.showWinner&&G.pw!==null&&(
         <div style={{position:'absolute',top:118,left:'50%',transform:'translateX(-50%)',
           zIndex:10000,background:'rgba(0,0,0,.85)',borderRadius:8,
           padding:'5px 14px',fontSize:12,color:'#ffd54f',fontWeight:'bold',
