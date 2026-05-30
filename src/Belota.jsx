@@ -133,9 +133,7 @@ function doPlay(G,player,card){
     if(bp[player]===1)ann='Belote !';
     if(bp[player]===2){ann='Rebelote !';bb=[...bb];bb[team(player)]+=20;}
   }
-  console.log("TRICK", nt.length, nt);
   if(nt.length<4)return{...G,hands:nh,trick:nt,displayTrick:nt,cur:nxt(player),ann,bB:bb,bP:bp};
-  console.log("4 cartes détectées", nt);
   const win=tWin(nt,G.trump);
   // PAUSE : trick ET displayTrick gardent les 4 cartes
   return{...G,hands:nh,trick:nt,displayTrick:nt,phase:'PAUSE',pw:win,showWinner:false,ann,bB:bb,bP:bp};
@@ -336,13 +334,6 @@ function App(){
   // trickMap : pendant PAUSE on garde trick avec 4 cartes
   // displayTrick : les cartes à afficher (reste visible pendant PAUSE)
   const shownTrick = (G.displayTrick&&G.displayTrick.length>0) ? G.displayTrick : (G.trick||[]);
-  console.log(
-  "TRICK",
-  shownTrick.map(t => ({
-    p: t.p,
-    card: t.c.r + t.c.s
-  }))
-  );
   const trickMap=Object.fromEntries(shownTrick.filter(t=>t&&t.c).map(t=>[t.p,t.c]));
   // okIds : null = pas de grisage, Set = grisage actif
   // On ne grise QUE quand c'est le tour du joueur humain
