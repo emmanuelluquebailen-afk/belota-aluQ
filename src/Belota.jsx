@@ -192,8 +192,8 @@ function Crd({card,fd,ok,W=54,H=76,onClick}){
       border:ok?'3px solid #2ecc71':'2px solid #ccc',
       boxShadow:ok?'0 0 18px rgba(46,204,113,.9)':'0 3px 10px rgba(0,0,0,.5)',
       cursor:ok?'pointer':'default',
-      opacity:ok===false?0.35:1,
-      filter:ok===false?'grayscale(60%)':'none',
+      opacity:(ok===false)?0.35:1,
+      filter:(ok===false)?'grayscale(55%)':'none',
       transition:'opacity .2s, filter .2s'}}>
       <div style={{position:'absolute',top:2,left:3,fontSize:fs,fontWeight:700,color:tc,lineHeight:1.1}}>
         {DIS[card.r]}<br/>{card.s}
@@ -209,7 +209,7 @@ function Crd({card,fd,ok,W=54,H=76,onClick}){
 }
 
 // ── Éventail ──────────────────────────────────────────────────────────────────
-function Fan({hand,okIds,onPlay,trump,cw=60,ch=86,pv=260}){
+function Fan({hand,okIds,onPlay,trump,cw=60,ch=86,pv=260,showGray=true}){
   const ids=okIds||new Set();
   const sorted=sortH(hand,trump);
   const n=sorted.length;if(!n)return<div style={{height:ch+10}}/>;
@@ -227,7 +227,7 @@ function Fan({hand,okIds,onPlay,trump,cw=60,ch=86,pv=260}){
               transform:`rotate(${a}deg) translateY(${ok?-14:0}px)`,
               zIndex:ok?i+20:i,transition:'transform .12s',
               cursor:ok?'pointer':'default',pointerEvents:'auto'}}>
-            <Crd card={card} ok={ok} W={cw} H={ch} onClick={()=>onPlay(card)}/>
+            <Crd card={card} ok={showGray?ok:null} W={cw} H={ch} onClick={()=>onPlay(card)}/>
           </div>
         );
       })}
@@ -323,7 +323,11 @@ function App(){
   );
 
   const TABLE={
-    position:'fixed',inset:0,
+    position:'fixed',
+    top:0,left:0,right:0,bottom:0,
+    // Plein écran iPhone — couvre les bandes blanches
+    margin:0,padding:0,
+    WebkitOverflowScrolling:'touch',
     background:`radial-gradient(circle at 50% 40%,
       #2f7d3a 0%, #1f5d2b 45%, #143b1c 75%, #0b2411 100%)`,
     fontFamily:'Georgia,serif',color:'white',overflow:'hidden',userSelect:'none',
@@ -396,15 +400,10 @@ function App(){
         {/* Qui parle */}
         <div style={{position:'absolute',top:'14%',left:'50%',transform:'translateX(-50%)',
           zIndex:10,textAlign:'center'}}>
-          {myTurn
-            ?<div style={{background:'rgba(46,125,50,.9)',borderRadius:12,padding:'8px 20px',
-                fontSize:14,fontWeight:'bold',border:'2px solid #81c784'}}>
-                🎯 À VOUS DE PARLER
-              </div>
-            :<div style={{background:'rgba(0,0,0,.6)',borderRadius:12,padding:'8px 20px',
-                fontSize:13,opacity:.9}}>
-                ⏳ {speaker} réfléchit…
-              </div>}
+          {!myTurn&&<div style={{background:'rgba(0,0,0,.55)',borderRadius:20,
+            padding:'4px 14px',fontSize:11,opacity:.85,border:'1px solid rgba(255,255,255,.15)'}}>
+            ⏳ {speaker} réfléchit…
+          </div>}
         </div>
 
         {/* Carte retournée */}
@@ -421,13 +420,13 @@ function App(){
 
         {/* Boutons enchères */}
         {myTurn&&(
-          <div style={{position:'absolute',top:'58%',left:'50%',
+          <div style={{position:'absolute',top:'54%',left:'50%',
             transform:'translateX(-50%)',zIndex:20,textAlign:'center',
-            background:'rgba(0,0,0,.8)',borderRadius:14,padding:'14px 20px',
-            border:'2px solid rgba(255,255,255,.2)',minWidth:280}}>
-            <div style={{fontSize:14,fontWeight:'bold',marginBottom:12}}>
-              {G.br===1?`Prendre à ${SFR[G.flip?.s]} ?`:"Choisissez l'atout :"}
-            </div>
+            background:'rgba(0,0,0,.75)',borderRadius:14,padding:'10px 16px',
+            border:'1px solid rgba(255,255,255,.2)',minWidth:260}}>
+            {G.br===2&&<div style={{fontSize:13,fontWeight:'bold',marginBottom:10,opacity:.8}}>
+              Choisissez l'atout :
+            </div>}
             <div style={{display:'flex',gap:10,justifyContent:'center',flexWrap:'wrap'}}>
               {G.br===1?(<>
                 <Btn bg="#388e3c" onClick={()=>bid(G.flip.s)}>✓ Prendre {G.flip.s}</Btn>
@@ -444,7 +443,7 @@ function App(){
 
         {/* Main éventail */}
         <div style={{position:'absolute',bottom:0,left:0,right:0,zIndex:6}}>
-          <Fan hand={hand0} trump={null}/>
+          <Fan hand={hand0} trump={null} showGray={false}/>
         </div>
       </div>
     );
