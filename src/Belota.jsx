@@ -38,7 +38,7 @@ const nxt=p=>(p+1)%4;
 const AI=1300, PAUSE=2500, BD=900;
 
 // Taille cartes du pli — grandes et visibles
-const PW=80, PH=115;
+const PW=54, PH=76;
 // Taille cartes de la main
 const HW=68, HH=98;
 
@@ -394,8 +394,8 @@ function App(){
 
         {/* Carte retournée — grande, centrée */}
         <div style={{position:'absolute',top:'50%',left:'50%',
-          transform:'translate(-50%,-62%)',zIndex:5}}>
-          <Crd card={G.flip} W={90} H={128}/>
+          transform:'translate(-50%,-68%)',zIndex:5}}>
+          <Crd card={G.flip} W={80} H={114}/>
         </div>
 
         {/* IA réfléchit */}
@@ -475,37 +475,42 @@ function App(){
           Positionnées DIRECTEMENT sur TABLE, z-index 9999
           Aucun conteneur intermédiaire ne peut les cacher                        */}
 
-      {/* Nord (joueur 2) — haut centre */}
-      <div style={{position:'absolute',top:70,left:'50%',transform:'translateX(-50%)',zIndex:9999}}>
+      {/* === 4 CARTES DU PLI ===
+          Positions px absolues sur TABLE pour iPhone landscape (375-414px haut)
+          Carte 54×76px — aucun chevauchement garanti                          */}
+
+      {/* Nord (2) — top:32 → occupe 32-108px */}
+      <div style={{position:'absolute',top:32,left:'50%',transform:'translateX(-50%)',zIndex:9999}}>
         {trickMap[2]?<Crd card={trickMap[2]} W={PW} H={PH}/>:<Ghost/>}
       </div>
-      {/* Ouest (joueur 1) — milieu gauche */}
-      <div style={{position:'absolute',top:'50%',left:'28%',transform:'translate(-50%,-50%)',zIndex:9999}}>
+
+      {/* Ouest (1) — top:110 → occupe 110-186px */}
+      <div style={{position:'absolute',top:110,left:'18%',zIndex:9999}}>
         {trickMap[1]?<Crd card={trickMap[1]} W={PW} H={PH}/>:<Ghost/>}
       </div>
-      {/* Est (joueur 3) — milieu droite */}
-      <div style={{position:'absolute',top:'50%',left:'72%',transform:'translate(-50%,-50%)',zIndex:9999}}>
+
+      {/* Est (3) — top:110 → occupe 110-186px */}
+      <div style={{position:'absolute',top:110,right:'18%',zIndex:9999}}>
         {trickMap[3]?<Crd card={trickMap[3]} W={PW} H={PH}/>:<Ghost/>}
       </div>
-      {/* Vous (joueur 0) — juste au-dessus de la main */}
-      <div style={{position:'absolute',bottom:148,left:'50%',transform:'translateX(-50%)',zIndex:9999}}>
+
+      {/* Vous (0) — bottom:152 → sur 390px: top=162-238px (main à partir de 262px) */}
+      <div style={{position:'absolute',bottom:152,left:'50%',transform:'translateX(-50%)',zIndex:9999}}>
         {trickMap[0]?<Crd card={trickMap[0]} W={PW} H={PH}/>:<Ghost/>}
       </div>
 
-      {/* Gagnant du pli */}
+      {/* Badge gagnant — centré entre Ouest/Est, ne cache aucune carte */}
       {isPause&&G.pw!==null&&(
-        <div style={{position:'absolute',top:'50%',left:'50%',
-          transform:'translate(-50%,-50%)',zIndex:9999,
-          background:'rgba(0,0,0,.7)',borderRadius:10,
-          padding:'6px 16px',fontSize:13,color:'#ffd54f',fontWeight:'bold',
-          border:'1px solid rgba(255,213,79,.5)',whiteSpace:'nowrap',
-          pointerEvents:'none'}}>
+        <div style={{position:'absolute',top:115,left:'50%',transform:'translateX(-50%)',
+          zIndex:10000,background:'rgba(0,0,0,.82)',borderRadius:8,
+          padding:'4px 12px',fontSize:11,color:'#ffd54f',fontWeight:'bold',
+          border:'1px solid rgba(255,213,79,.4)',whiteSpace:'nowrap',pointerEvents:'none'}}>
           {PN[G.pw]} remporte ✓
         </div>
       )}
 
       {/* Pastille tour — petite, en bas */}
-      <div style={{position:'absolute',bottom:138,left:'50%',transform:'translateX(-50%)',
+      <div style={{position:'absolute',bottom:125,left:'50%',transform:'translateX(-50%)',
         zIndex:8,whiteSpace:'nowrap'}}>
         {isPause?(
           <div style={{background:'rgba(255,193,7,.2)',border:'1px solid #ffd54f',
