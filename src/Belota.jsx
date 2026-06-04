@@ -24,7 +24,7 @@ const RED=s=>s==='♥'||s==='♦';
 const SFR={'♠':'Pique','♥':'Cœur','♦':'Carreau','♣':'Trèfle'};
 const RANKS=['7','8','9','10','J','Q','K','A'];
 const DIS={'7':'7','8':'8','9':'9','10':'10','J':'V','Q':'D','K':'R','A':'A'};
-const PN=['Sud','Ouest','Nord','Est']; // Aligné sur les standards de cartes (Vous = Sud)
+const PN=['Sud','Ouest','Nord','Est']; 
 const SORD=['♠','♥','♣','♦'];
 const TST={J:8,'9':7,A:6,'10':5,K:4,Q:3,'8':2,'7':1};
 const PST={A:8,'10':7,K:6,Q:5,J:4,'9':3,'8':2,'7':1};
@@ -37,9 +37,9 @@ const cs=(c,t)=>c.s===t?TS[c.r]:NS[c.r];
 const cp=(c,t)=>c.s===t?TP[c.r]:NP[c.r];
 const nxt=p=>(p+1)%4;
 
-// Tailles adaptées au ratio des visuels
-const PW=52, PH=76;  // cartes du pli
-const HW=72, HH=106; // cartes de la main
+// Tailles
+const PW=52, PH=76;  
+const HW=72, HH=106; 
 
 const AI_DELAY=1400;
 const SHOW_TRICK_MS=2500; 
@@ -214,27 +214,29 @@ function calcR(G){
 // ── Vrais Graphismes de Cartes Vectoriels (SVG) Miroir Traditionnels ──────────
 function Crd({card,ok,W=54,H=76,onClick}){
   if(!card||!card.s) return null;
-  const tc=RED(card.s)?'#d63031':'#2d3436';
-  const isFig=['J','Q','K'].includes(card.r);
+  
+  // 💡 FIXÉ : fs est défini de manière globale et sécurisée en tout début de composant
+  const fs = W < 50 ? 8 : W < 65 ? 10 : 11;
+  const tc = RED(card.s) ? '#d63031' : '#2d3436';
+  const isFig = ['J','Q','K'].includes(card.r);
 
-  // Tracés SVG simplifiés de l'iconographie classique pour conserver légèreté et fluidité
   let portraitSvg = null;
   if (isFig) {
-    let coatColor = card.r==='K'?'#e17055':card.r==='Q'?'#fdcb6e':'#0984e3';
+    let coatColor = card.r==='K' ? '#e17055' : card.r==='Q' ? '#fdcb6e' : '#0984e3';
     let sColor = tc;
     portraitSvg = (
       <svg viewBox="0 0 40 60" style={{position:'absolute',inset:'12px 6px',width:'calc(100% - 12px)',height:'calc(100% - 24px)',borderRadius:2,background:'#f5f6fa',border:'1px solid #dfe6e9'}}>
         <g stroke="#2d3436" strokeWidth="0.6" fill="none">
-          {/* Partie Haute du Portrait Miroir */}
+          {/* Partie Haute */}
           <path d="M 10,22 C 10,12 30,12 30,22 L 28,30 L 12,30 Z" fill={coatColor} />
           <circle cx="20" cy="17" r="4" fill="#ffeaa7" />
-          <path d="M 17,14 L 20,11 L 23,14 Z" fill="#fdcb6e" stroke="#2d3436" /> {/* Couronne / Chapeau */}
+          <path d="M 17,14 L 20,11 L 23,14 Z" fill="#fdcb6e" stroke="#2d3436" /> 
           <text x="20" y="27" fontSize="8" textAnchor="middle" fill={sColor} stroke="none" fontWeight="bold">{card.s}</text>
           
-          {/* Ligne de séparation miroir traditionnelle */}
+          {/* Ligne miroir */}
           <line x1="4" y1="30" x2="36" y2="30" stroke="#b2bec3" strokeWidth="0.5" strokeDasharray="2,1" />
           
-          {/* Partie Basse inversée */}
+          {/* Partie Basse */}
           <g transform="rotate(180 20 30)">
             <path d="M 10,22 C 10,12 30,12 30,22 L 28,30 L 12,30 Z" fill={coatColor} />
             <circle cx="20" cy="17" r="4" fill="#ffeaa7" />
@@ -245,7 +247,6 @@ function Crd({card,ok,W=54,H=76,onClick}){
       </svg>
     );
   } else {
-    // Répétitions élégantes des enseignes pour les numériques (7, 8, 9, 10, A)
     const icons = [];
     const maxIcons = card.r === 'A' ? 1 : card.r === '10' ? 4 : 2;
     for(let k=0; k<maxIcons; k++) {
@@ -394,20 +395,19 @@ function App(){
   }
 
   if(!ls)return(
-    <div style={{height:'100dvh',background:'#1e3d22',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',color:'white',fontFamily:'sans-serif',textAlign:'center',gap:16}}>
+    <div style={{height:'100dvh',background:'#1b4d22',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',color:'white',fontFamily:'sans-serif',textAlign:'center',gap:16}}>
       <div style={{fontSize:48}}>📱</div>
       <div style={{fontSize:20,fontWeight:'bold'}}>Retourne ton téléphone</div>
       <div style={{fontSize:14,opacity:.7}}>BELOTA se joue en mode paysage</div>
     </div>
   );
 
-  // 💡 AJUSTEMENT DIRECT : Texture feutrée vert forêt + évitement intelligent des encoches/caméras iPhone
   const TABLE={
     position:'fixed',inset:0,
     paddingLeft: 'max(24px, env(safe-area-inset-left))',
     paddingRight: 'max(24px, env(safe-area-inset-right))',
     background: '#1b4d22',
-    backgroundImage: 'radial-gradient(circle at 50% 50%, #226b30 0%, #143d1c 70%, #0d2b13 100%)',
+    backgroundImage: 'radial-gradient(circle at 50% 50%, #226b30 0%, #143b1c 70%, #0d2b13 100%)',
     boxShadow: 'inset 0 0 100px rgba(0,0,0,0.6)',
     fontFamily:'sans-serif',color:'white',overflow:'hidden',userSelect:'none'
   };
@@ -453,7 +453,7 @@ function App(){
 
   return (
     <div style={TABLE}>
-      {/* HUD Supérieur Épuré */}
+      {/* HUD Supérieur */}
       <div style={{position:'absolute',top:12,left:24,right:24,display:'flex',justifyContent:'space-between',alignItems:'center',zIndex:10,fontSize:13,opacity:0.85}}>
         <div>{G.trump ? <span style={{background:'rgba(0,0,0,0.3)',padding:'4px 10px',borderRadius:12,fontWeight:'bold',color:ac}}>{G.trump} Atout {SFR[G.trump]}</span> : 'Enchères'}</div>
         <div style={{fontWeight:'bold',fontSize:14,letterSpacing:0.5}}>{G.phase==='PLAY'?`Pli ${G.done.length+1} / 8`:'Annonces'}</div>
@@ -462,18 +462,17 @@ function App(){
         </div>
       </div>
 
-      {/* Profils & Emplacements des Joueurs Virtuels */}
+      {/* Profils Joueurs */}
       <PL name="Nord" n={(G.hands[2]||[]).filter(c=>c&&c.id).length} active={G.cur===2&&G.phase==='PLAY'} style={{position:'absolute',top:42,left:'50%',transform:'translateX(-50%)'}}/>
       <PL name="Ouest" n={(G.hands[1]||[]).filter(c=>c&&c.id).length} active={G.cur===1&&G.phase==='PLAY'} style={{position:'absolute',top:'45%',left:16,transform:'translateY(-50%)'}}/>
       <PL name="Est" n={(G.hands[3]||[]).filter(c=>c&&c.id).length} active={G.cur===3&&G.phase==='PLAY'} style={{position:'absolute',top:'45%',right:16,transform:'translateY(-50%)'}}/>
 
-      {/* ZONE CENTRALE : Design calqué sur l'image de référence */}
+      {/* ZONE CENTRALE */}
       {G.phase==='BID' ? (
         <div style={{position:'absolute',top:'46%',left:'50%',transform:'translate(-50%,-50%)',display:'flex',flexDirection:'column',alignItems:'center',gap:16,zIndex:100}}>
           <Crd card={G.flip} W={84} H={120}/>
           
           {G.bi === 0 ? (
-            /* 💡 ENCHÈRES : Boutons horizontaux incurvés comme sur ta capture d'écran */
             <div style={{display:'flex',background:'rgba(0,0,0,0.75)',padding:'6px 10px',borderRadius:30,boxShadow:'0 8px 24px rgba(0,0,0,0.4)',alignItems:'center',gap:8}}>
               {G.br===1 ? (
                 <button onClick={()=>bid(G.flip.s)} style={{background:'#ffffff',color:'#2d3436',border:'none',borderRadius:20,padding:'8px 22px',fontSize:14,fontWeight:'bold',cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
@@ -486,7 +485,7 @@ function App(){
                   </button>
                 ))
               )}
-              <button onClick={()=>bid(null)} style={{background:'rgba(255,255,255,0.15)',color:'#ffffff',border:'none',borderRadius:20,padding:'8px 22px',fontSize:14,fontWeight:'500',cursor:'pointer',transition:'background 0.2s'}}>
+              <button onClick={()=>bid(null)} style={{background:'rgba(255,255,255,0.15)',color:'#ffffff',border:'none',borderRadius:20,padding:'8px 22px',fontSize:14,fontWeight:'500',cursor:'pointer'}}>
                 Passer
               </button>
             </div>
@@ -495,12 +494,11 @@ function App(){
           )}
         </div>
       ) : (
-        /* TAPIS DE JEU : Croix centrale dégagée et alignée */
+        /* TAPIS DE JEU */
         <div style={{position:'absolute',top:'44%',left:'50%',transform:'translate(-50%,-50%)',width:240,height:210,zIndex:90,display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gridTemplateRows:'1fr 1fr 1fr',alignItems:'center',justifyItems:'center',pointerEvents:'none'}}>
           <div/><Slot card={G.snap[2]} label="Nord"/><div/>
           <Slot card={G.snap[1]} label="Ouest"/>
           
-          {/* Cartouche informatif central */}
           <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}>
             <div style={{fontSize:11,color:'#ffd54f',fontWeight:'bold',textAlign:'center'}}>
               {G.waiting&&G.winner!==null?`${PN[G.winner]} ✓`:''}
