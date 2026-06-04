@@ -137,6 +137,8 @@ function init(scores,dealer){
 }
 
 function doPlay(G,player,card){
+  if (G.waiting) return G; // Verrou de sécurité absolu
+  
   const nh=G.hands.map((h,i)=>i===player?h.filter(c=>c&&c.id&&c.id!==card.id):h.filter(c=>c&&c.id));
   const nt=[...(G.trick||[]),{p:player,c:card}];
   const ns=[...G.snap];
@@ -153,14 +155,13 @@ function doPlay(G,player,card){
   }
   
   const win = tWin(nt, G.trump);
-  const frozenSnap = [...ns]; // 💡 Sécurité : On fige le tapis avec ses 4 cartes
   
   return {
     ...G,
     hands: nh,
     trick: nt,
-    snap: frozenSnap,
-    waiting: true, // 💡 On déclenche la pause de fin de pli
+    snap: ns,
+    waiting: true, // Bloque tout le monde visuellement
     winner: win,
     ann,
     bB: bb,
@@ -175,14 +176,14 @@ function resolve(G) {
   return {
     ...G,
     trick: [], 
-    snap: [null, null, null, null], // 💡 Le tapis se vide proprement ICI, après les 2.5s
-    waiting: false,
+    snap: [null, null, null, null], // On vide le tapis uniquement ici !
+    waiting: false,                 // Libère le verrou de jeu
     winner: null,
     done: nd,
     phase: 'PLAY',
     lw: win,
     ann: '',
-    cur: win
+    cur: win                        // Le gagnant prend la main pour le pli suivant
   };
 }
 
@@ -210,19 +211,7 @@ function calcR(G){
 
 // ── Carte ─────────────────────────────────────────────────────────────────────
 function Crd({card,ok,W=54,H=76,onClick}){
-  // 💡 Si la carte n'a pas encore chargé ses données ou est incomplète, on affiche un dos de carte
-  // au lieu de crash ou de retourner "null" (ce qui créait le bug visuel de l'IA)
-  if(!card || !card.s || !card.r) {
-    return (
-      <div style={{
-        width:W,height:H,borderRadius:6,
-        background:'#1a3580',border:'2px solid #2244aa',
-        backgroundImage:'repeating-linear-gradient(45deg,#1a3580,#1a3580 4px,#243fa0 4px,#243fa0 8px)',
-        boxShadow:'0 3px 6px rgba(0,0,0,.3)'
-      }}/>
-    );
-  }
-  
+  if(!card||!card.s) return null;
   const tc=RED(card.s)?'#c0392b':'#111';
   const fs=W<50?8:W<65?10:11, ms=W<50?14:W<65?18:22;
   return(
@@ -328,12 +317,13 @@ function App(){
     return()=>clearTimeout(t);
   },[G.phase,G.bi,G.br]);
 
-  // IA jeu — bloqué si waiting=true
+  // IA jeu — strictement bloqué si waiting=true
   useEffect(() => {
     if (G.phase !== 'PLAY' || G.cur === 0 || G.waiting) return;
     
     const t = setTimeout(() => {
       setG(prev => {
+        // Condition de sécurité critique pour empêcher l'IA de jouer en cachette pendant la pause !
         if (prev.phase !== 'PLAY' || prev.cur === 0 || prev.waiting) return prev;
         const p = prev.cur, hand = prev.hands[p].filter(c => c && c.id);
         return doPlay(prev, p, aiCard(hand, prev.trick || [], prev.trump, p));
@@ -561,6 +551,7 @@ function App(){
 }
 
 // ── Composants utilitaires ────────────────────────────────────────────────────
+// (Inchangés)
 function PL({name,n,active,dealer,style={}}){
   return(
     <div style={{textAlign:'center',...style}}>
