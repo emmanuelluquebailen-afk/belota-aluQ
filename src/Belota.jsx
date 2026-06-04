@@ -120,8 +120,10 @@ function init(scores,dealer){
   const{hands,flip,rest}=deal(fp);
   return {phase: 'BID',hands,flip,rest,dealer: dl,fp,trump: null,taker: null,tt: null,
    br: 1,bi: fp,bc: 0,cur: fp,// 🃏 PLI EN COURS trick: [],
-   // 🔒 SNAPSHOT IMMOBILE DU PLI (IMPORTANT) trickSnapshot: null,
-   // 🧠 contrôle propre du pli trickResolved: false, trickWinner: null, done: [],
+   // 🔒 SNAPSHOT IMMOBILE DU PLI (IMPORTANT)
+ trickSnapshot: null,
+   // 🧠 contrôle propre du pli 
+ trickResolved: false, trickWinner: null, done: [],
   scores: sc, ann: '', bB: [0, 0], bH: null, bP: [0, 0, 0, 0],result: null };
 }
 function doPlay(G,player,card){
