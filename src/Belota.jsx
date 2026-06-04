@@ -7,7 +7,7 @@ class EB extends Component {
     if(this.state.e)return(
       <div style={{background:'#111',color:'white',padding:20,minHeight:'100dvh',
         display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:10}}>
-        <div style={{fontSize:14,color:'#e74c3c',fontWeight:'bold'}}>{this.state.e.message}</div>
+        <div style={{fontSize:14,color:'#e74c3c',fontWeight:'bold'}}>Erreur : {this.state.e.message}</div>
         <button onClick={()=>this.setState({e:null})}
           style={{background:'#27ae60',color:'white',border:'none',borderRadius:8,padding:'8px 20px',cursor:'pointer'}}>
           Relancer
@@ -37,8 +37,8 @@ const cs=(c,t)=>c.s===t?TS[c.r]:NS[c.r];
 const cp=(c,t)=>c.s===t?TP[c.r]:NP[c.r];
 const nxt=p=>(p+1)%4;
 
-// Dimensions traditionnelles Grimaud
-const PW=58, PH=84;  
+// Proportions traditionnelles Grimaud
+const PW=56, PH=82;  
 const HW=76, HH=112; 
 
 const AI_DELAY=1400;
@@ -220,10 +220,10 @@ function Crd({card,ok,W=54,H=76,onClick}){
   const isFig = ['J','Q','K'].includes(card.r);
   const isAs = card.r === 'A';
 
-  let portraitComponent = null;
+  let content = null;
 
   if (isAs) {
-    portraitComponent = (
+    content = (
       <svg viewBox="0 0 50 70" style={{position:'absolute',inset:'10px 4px',width:'calc(100% - 8px)',height:'calc(100% - 20px)'}}>
         <ellipse cx="25" cy="35" rx="16" ry="22" stroke="#d5b87d" strokeWidth="0.8" fill="none" strokeDasharray="3,0.5" />
         <ellipse cx="25" cy="35" rx="14" ry="19" stroke="#d5b87d" strokeWidth="0.4" fill="none" />
@@ -269,7 +269,7 @@ function Crd({card,ok,W=54,H=76,onClick}){
       );
     }
 
-    portraitSvg = (
+    content = (
       <svg viewBox="0 0 40 60" style={{position:'absolute',inset:'14px 6px',width:'calc(100% - 12px)',height:'calc(100% - 24px)',borderRadius:2,background:'#fafafa',border:'1px solid #b2bec3',boxShadow:'inset 0 1px 3px rgba(0,0,0,0.06)'}}>
         {tunicPattern}
         <text x="20" y="27" fontSize="8.5" textAnchor="middle" fill={tc} stroke="none" fontWeight="bold" fontFamily="serif">{card.s}</text>
@@ -323,7 +323,7 @@ function Crd({card,ok,W=54,H=76,onClick}){
       );
     }
     
-    portraitComponent = (
+    content = (
       <div style={{position:'absolute',inset:'14px 6px',display:'flex',alignItems:'center',justifyContent:'center',color:tc,fontSize:13,lineHeight:1}}>
         {pointsGrid}
       </div>
@@ -344,7 +344,8 @@ function Crd({card,ok,W=54,H=76,onClick}){
         {DIS[card.r]}<br/><span style={{fontSize:fs-2.5}}>{card.s}</span>
       </div>
       
-      {portraitComponent || portraitSvg}
+      {/* 💡 FIXÉ ÉLÉGANT : On appelle uniquement content pour le rendu de l'intérieur de la carte */}
+      {content}
 
       {/* Index En-Bas à Droite inversé */}
       <div style={{position:'absolute',bottom:3,right:4,fontSize:fs,fontWeight:'900',color:tc,lineHeight:0.95,transform:'rotate(180deg)',textAlign:'center',fontFamily:'sans-serif'}}>
@@ -384,12 +385,11 @@ function Hand({hand,okIds,onPlay,trump}){
 function Slot({card, playerIndex}){
   if(!card) return null;
   
-  // 💡 DÉCALAGE STRUCTURÉ : Positions ajustées pour calquer le pli entrelacé de l'image de référence
   let offsetStyle = { position: 'absolute', zIndex: 10 };
-  if(playerIndex === 2) offsetStyle = { position: 'absolute', top: '-18px', zIndex: 11 }; // Nord (Légèrement au-dessus)
-  if(playerIndex === 0) offsetStyle = { position: 'absolute', bottom: '-18px', zIndex: 14 }; // Sud (Au premier plan)
-  if(playerIndex === 1) offsetStyle = { position: 'absolute', left: '-22px', zIndex: 12 };  // Ouest (À gauche)
-  if(playerIndex === 3) offsetStyle = { position: 'absolute', right: '-22px', zIndex: 13 }; // Est (À droite)
+  if(playerIndex === 2) offsetStyle = { position: 'absolute', top: '-18px', zIndex: 11 }; 
+  if(playerIndex === 0) offsetStyle = { position: 'absolute', bottom: '-18px', zIndex: 14 }; 
+  if(playerIndex === 1) offsetStyle = { position: 'absolute', left: '-22px', zIndex: 12 };  
+  if(playerIndex === 3) offsetStyle = { position: 'absolute', right: '-22px', zIndex: 13 }; 
 
   return (
     <div style={{...offsetStyle, pointerEvents: 'none'}}>
@@ -527,8 +527,8 @@ function App(){
 
   return (
     <div style={TABLE}>
-      {/* HUD Supérieur : Rappel d'atout façon bouton ovale discret à gauche */}
-      <div style={{position:'absolute',top:16,left:24,right:24,display:'flex',justifyContent:'space-between',alignItems:'center',zIndex:4000,fontSize:13}}>
+      {/* HUD Supérieur */}
+      <div style={{position:'absolute',top:12,left:24,right:24,display:'flex',justifyContent:'space-between',alignItems:'center',zIndex:4000,fontSize:13}}>
         <div style={{display:'flex',gap:12,alignItems:'center'}}>
           {G.trump && (
             <div style={{background:'rgba(0,0,0,0.6)',border:'1px solid rgba(255,255,255,0.1)',padding:'6px 16px',borderRadius:20,fontWeight:'bold',display:'flex',alignItems:'center',gap:6}}>
@@ -548,7 +548,7 @@ function App(){
         </div>
       </div>
 
-      {/* Profils & Noms discrets des Joueurs (Texte + Compteur de cartes résiduel) */}
+      {/* Profils Joueurs */}
       <PL name="Nord" n={(G.hands[2]||[]).filter(c=>c&&c.id).length} active={G.cur===2&&G.phase==='PLAY'&&!G.waiting} style={{position:'absolute',top:44,left:'50%',transform:'translateX(-50%)',zIndex:500}}/>
       <PL name="Ouest" n={(G.hands[1]||[]).filter(c=>c&&c.id).length} active={G.cur===1&&G.phase==='PLAY'&&!G.waiting} style={{position:'absolute',top:'45%',left:20,transform:'translateY(-50%)',zIndex:500}}/>
       <PL name="Est" n={(G.hands[3]||[]).filter(c=>c&&c.id).length} active={G.cur===3&&G.phase==='PLAY'&&!G.waiting} style={{position:'absolute',top:'45%',right:20,transform:'translateY(-50%)',zIndex:500}}/>
@@ -581,9 +581,8 @@ function App(){
           )}
         </div>
       ) : (
-        /* 💎 TAPIS DE JEU RIGIDE (Élevé à top: 38% et height: 160px pour un pli compact et entrelacé) */
+        /* 💎 TAPIS DE JEU RIGIDE */
         <div style={{position:'absolute',top:'38%',left:'50%',transform:'translateX(-50%)',width:220,height:160,zIndex:3000}}>
-          {/* Les slots individuels gèrent eux-mêmes leurs positions superposées */}
           <Slot card={G.snap[2]} playerIndex={2} />
           <Slot card={G.snap[1]} playerIndex={1} />
           <Slot card={G.snap[3]} playerIndex={3} />
@@ -600,7 +599,7 @@ function App(){
         </div>
       )}
 
-      {/* Main Joueur (Sud) — Alignée tout en bas */}
+      {/* Main Joueur (Sud) */}
       <div style={{position:'absolute',bottom:14,left:0,right:0,zIndex:100,textAlign:'center'}}>
         <Hand hand={hand0} okIds={okIds} onPlay={playCard} trump={G.trump}/>
       </div>
@@ -612,7 +611,7 @@ function PL({name,n,active,style={}}){
   return(
     <div style={{textAlign:'center',...style,opacity:active?1:0.65}}>
       <div style={{fontSize:11,fontWeight:active?'bold':'500',color:active?'#ffd54f':'rgba(255,255,255,0.5)',marginBottom:3,textShadow:'0 1px 2px rgba(0,0,0,0.6)'}}>
-        {active?'▼ ':''}{name}
+        {active?'▶ ':''}{name}
       </div>
       <div style={{fontSize:10,color:'rgba(255,255,255,0.4)',background:'rgba(0,0,0,0.2)',padding:'2px 8px',borderRadius:10,display:'inline-block'}}>
         {n} 🂠
