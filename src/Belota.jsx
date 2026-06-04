@@ -42,7 +42,7 @@ const PW=48,PH=68;  // cartes du pli
 const HW=68,HH=98;  // cartes de la main
 
 const AI_DELAY=1400;
-const SHOW_TRICK_MS=2500; // durée d'affichage du pli complet
+const SHOW_TRICK_MS=2500; 
 const BID_DELAY=900;
 
 // ── Tri ───────────────────────────────────────────────────────────────────────
@@ -211,38 +211,60 @@ function calcR(G){
   return{...G,phase:go?'END':'OVER',scores:ns,result:{pts,rp,res,msg,detail},ann:''};
 }
 
-// ── Carte ─────────────────────────────────────────────────────────────────────
+// ── Carte Stylisée : Look Vrai Jeu de Cartes Traditionnel ──────────────────────
 function Crd({card,ok,W=54,H=76,onClick}){
   if(!card||!card.s) return null;
   const tc=RED(card.s)?'#c0392b':'#111';
   const fs=W<50?8:W<65?10:11;
-  
-  // 💡 DESSIN DES FIGURES : On remplace le grand symbole central monotone par un émoji de figure royale
-  let centerSymbol = card.s;
-  let centerFontSize = W<50?14:W<65?18:22;
-  
-  if (card.r === 'J') { centerSymbol = '🤵'; centerFontSize = W<50?18:W<65?24:28; } // Valet (Valet/Jeune homme)
-  if (card.r === 'Q') { centerSymbol = '👸'; centerFontSize = W<50?18:W<65?24:28; } // Dame (Reine)
-  if (card.r === 'K') { centerSymbol = '🤴'; centerFontSize = W<50?18:W<65?24:28; } // Roi (Roi)
+  const isFig=['J','Q','K'].includes(card.r);
+
+  // Génération du visuel de la figurine si c'est une tête
+  let portrait = null;
+  if (isFig) {
+    let character = '⚔️';
+    let bgGradient = 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)';
+    if (card.r === 'J') { character = '💂'; bgGradient = 'linear-gradient(135deg, #e6e9f0 0%, #eef1f5 100%)'; }
+    if (card.r === 'Q') { character = '👸'; bgGradient = 'linear-gradient(135deg, #fdfbf7 0%, #eee5d3 100%)'; }
+    if (card.r === 'K') { character = '🤴'; bgGradient = 'linear-gradient(135deg, #fff1eb 0%, #ace0f9 100%)'; }
+
+    portrait = (
+      <div style={{
+        position:'absolute',inset:'10px 8px',borderRadius:4,
+        background: bgGradient,border:`1px solid ${tc}33`,
+        display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
+        boxShadow:'inset 0 1px 4px rgba(0,0,0,0.1)'
+      }}>
+        <span style={{fontSize:W<65?18:24,filter:'drop-shadow(0 2px 2px rgba(0,0,0,0.2))'}}>{character}</span>
+        <span style={{fontSize:W<65?10:14,color:tc,marginTop:2,opacity:0.8}}>{card.s}</span>
+      </div>
+    );
+  }
 
   return(
     <div onClick={ok?onClick:undefined} style={{
       width:W,height:H,borderRadius:6,position:'relative',overflow:'hidden',
       background:'white',flexShrink:0,
       border:ok?'3px solid #4caf50':'2px solid #ddd',
-      boxShadow:ok?'0 0 14px rgba(76,175,80,.9)':'0 3px 10px rgba(0,0,0,.5)',
+      boxShadow:ok?'0 0 14px rgba(76,175,80,.9)':'0 3px 10px rgba(0,0,0,.4)',
       cursor:ok?'pointer':'default',
       opacity:ok===false?0.38:1,
       filter:ok===false?'grayscale(50%)':'none',
     }}>
-      <div style={{position:'absolute',top:2,left:3,fontSize:fs,fontWeight:700,color:tc,lineHeight:1.1}}>
-        {DIS[card.r]}<br/>{card.s}
+      {/* Index Haut Gauche */}
+      <div style={{position:'absolute',top:2,left:3,fontSize:fs,fontWeight:700,color:tc,lineHeight:1.1,textAlign:'center'}}>
+        {DIS[card.r]}<br/><span style={{fontSize:fs-1}}>{card.s}</span>
       </div>
-      <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:centerFontSize,color:tc}}>
-        {centerSymbol}
-      </div>
-      <div style={{position:'absolute',bottom:2,right:3,fontSize:fs,fontWeight:700,color:tc,lineHeight:1.1,transform:'rotate(180deg)'}}>
-        {DIS[card.r]}<br/>{card.s}
+      
+      {/* Coeur de la carte : Figurine ou Enseigne Numérique */}
+      {isFig ? portrait : (
+        <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:W<65?16:22,color:tc}}>
+          {card.s}
+        </div>
+      )}
+
+      {/* Index Bas Droite inversé */}
+      <div style={{position:'absolute',bottom:2,right:3,fontSize:fs,fontWeight:700,color:tc,lineHeight:1.1,transform:'rotate(180deg)',textAlign:'center'}}>
+        {DIS[card.r]}<br/><span style={{fontSize:fs-1}}>{card.s}</span>
       </div>
     </div>
   );
@@ -373,9 +395,14 @@ function App(){
     </div>
   );
 
-  const TABLE={position:'fixed',inset:0,
+  // 💡 TRÈS IMPORTANT : Ajout de safe-area-inset pour empêcher la caméra / encoche iPhone de cacher le jeu
+  const TABLE={
+    position:'fixed',inset:0,
+    paddingLeft: 'env(safe-area-inset-left, 20px)',
+    paddingRight: 'env(safe-area-inset-right, 20px)',
     background:`radial-gradient(circle at 50% 40%,#2f7d3a 0%,#1f5d2b 45%,#143b1c 75%,#0b2411 100%)`,
-    fontFamily:'Georgia,serif',color:'white',overflow:'hidden',userSelect:'none'};
+    fontFamily:'Georgia,serif',color:'white',overflow:'hidden',userSelect:'none'
+  };
 
   const hand0=(G.hands[0]||[]).filter(c=>c&&c.id);
   const myTurn=G.phase==='PLAY'&&G.cur===0&&!G.waiting;
@@ -524,7 +551,7 @@ function App(){
         <div/><Slot card={G.snap[2]} label="Nord"/><div/>
         <Slot card={G.snap[1]} label="Ouest"/>
         
-        {/* 💡 TEXTE DE FIN DE PLI : Il est maintenant parfaitement centré, en dessous du badge vainqueur, au milieu exact de la table */}
+        {/* TEXTE DE FIN DE PLI : Parfaitement centré au milieu */}
         <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:4}}>
           <div style={{fontSize:11,color:'#ffd54f',fontWeight:'bold',textAlign:'center'}}>
             {G.waiting&&G.winner!==null?`${PN[G.winner]} ✓`:''}
