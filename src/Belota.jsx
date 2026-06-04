@@ -118,11 +118,11 @@ function aiCard(hand,trick,trump,player){
 function init(scores,dealer){
   const sc=scores||[0,0],dl=dealer!==undefined?dealer:3,fp=nxt(dl);
   const{hands,flip,rest}=deal(fp);
-  return{phase:'BID',hands,flip,rest,dealer:dl,fp,trump:null,
-    br:1,bi:fp,bc:0,taker:null,tt:null,
-    trick:[],displayTrick:[],done:[],cur:fp,scores:sc,ann:'',
-    bB:[0,0],bH:null,bP:[0,0,0,0],result:null,lw:null,pw:null,
-    trickDone:false,showWinner:false};
+  return {phase: 'BID',hands,flip,rest,dealer: dl,fp,trump: null,taker: null,tt: null,
+   br: 1,bi: fp,bc: 0,cur: fp,// 🃏 PLI EN COURS trick: [],
+   // 🔒 SNAPSHOT IMMOBILE DU PLI (IMPORTANT) trickSnapshot: null,
+   // 🧠 contrôle propre du pli trickResolved: false, trickWinner: null, done: [],
+  scores: sc, ann: '', bB: [0, 0], bH: null, bP: [0, 0, 0, 0],result: null };
 }
 function doPlay(G,player,card){
   const nh=G.hands.map((h,i)=>i===player?h.filter(c=>c&&c.id&&c.id!==card.id):h.filter(c=>c&&c.id));
@@ -133,18 +133,14 @@ function doPlay(G,player,card){
     if(bp[player]===1)ann='Belote !';
     if(bp[player]===2){ann='Rebelote !';bb=[...bb];bb[team(player)]+=20;}
   }
-  if(nt.length<4)return{...G,hands:nh,trick:nt,displayTrick:nt,cur:nxt(player),ann,bB:bb,bP:bp};
-  const win=tWin(nt,G.trump);
-  // trick garde les 4 cartes — phase reste PLAY mais trickDone=true
-  // L'IA ne joue PAS quand trickDone=true
-  return{...G,hands:nh,trick:nt,displayTrick:nt,
-    trickDone:true,pw:win,showWinner:false,ann,bB:bb,bP:bp};
+  if(nt.length===4) {const win = tWin(nt, G.trump);return{...G,hands:nh,trick:nt TrickResolved: True, trickWinner:win,
+  cur: win}; 
 }
 function resolve(G){
   const win=G.pw;
   const cards=(G.trick.length>0?G.trick:G.displayTrick).map(t=>t.c);
   const nd=[...G.done,{winner:win,cards}];
-  const base={...G,trick:[],displayTrick:[],done:nd,phase:'PLAY',pw:null,trickDone:false,showWinner:false,lw:win,ann:''};
+  const base={...G,trick:[],lw:win,ann:''};
   return nd.length===8?calcR(base):{...base,cur:win};
 }
 function calcR(G){
@@ -332,7 +328,7 @@ function App(){
   const isPause=!!G.trickDone;
   // trickMap : pendant PAUSE on garde trick avec 4 cartes
   // displayTrick : les cartes à afficher (reste visible pendant PAUSE)
-  const shownTrick = (G.displayTrick&&G.displayTrick.length>0) ? G.displayTrick : (G.trick||[]);
+  const shownTrick = G.trickSnapshot || G.trick || [];
   const trickMap=Object.fromEntries(shownTrick.filter(t=>t&&t.c).map(t=>[t.p,t.c]));
   // okIds : null = pas de grisage, Set = grisage actif
   // On ne grise QUE quand c'est le tour du joueur humain
