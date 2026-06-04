@@ -235,53 +235,53 @@ function Crd({card,ok,W=54,H=76,onClick}){
   } else if (isFig) {
     let tunicPattern = null;
     
-    /* 👑 REDESSIN COMPLET DES DESIGN GRIMAUD SÉRIEUX (Lignes fines, chevelures d'époque, sceptres et attributs) */
+    // 🎨 PORTRAITS ET TUNILLES AFFINÉES DU STYLE JEU FRANÇAIS TRADITIONNEL
     if (card.r === 'K') { 
       tunicPattern = (
-        <g stroke="#2d3436" strokeWidth="0.6" fill="none">
-          {/* Manteau rouge brodé d'or */}
-          <path d="M 6,24 C 6,10 34,10 34,24 L 29,30 L 11,30 Z" fill="#d32f2f" />
-          <path d="M 12,24 L 20,30 L 28,24 Z" fill="#f1c40f" opacity="0.4" />
-          {/* Tête fine Grimaud et Chevelure blanche dessinée */}
-          <path d="M 15,16 C 14,22 26,22 25,16 C 25,12 15,12 15,16" fill="#ffffff" />
-          <ellipse cx="20" cy="16" rx="3.5" ry="4.5" fill="#fff3e0" />
-          <path d="M 17,14 C 18,17 22,17 23,14" stroke="#2d3436" strokeWidth="0.4" /> {/* Barbe royale */}
-          {/* Couronne à fleurons traditionnelle française */}
-          <path d="M 16,12 L 18,9 L 20,11 L 22,9 L 24,12 Z" fill="#f1c40f" />
-          {/* Sceptre fleurdelisé */}
-          <line x1="8" y1="28" x2="11" y2="13" stroke="#f1c40f" strokeWidth="1" />
-          <path d="M 11,13 L 9,11 L 11,8 L 13,11 Z" fill="#f1c40f" />
+        <g stroke="#1e272e" strokeWidth="0.5" fill="none">
+          {/* Manteau drapé bicolore traditionnel */}
+          <path d="M 5,23 C 5,8 35,8 35,23 L 30,30 L 10,30 Z" fill="#d32f2f" />
+          <path d="M 11,23 L 20,30 L 29,23 Z" fill="#f1c40f" opacity="0.6" />
+          <path d="M 15,23 L 20,12 L 25,23" fill="#0984e3" opacity="0.5" />
+          {/* Forme du buste et détails fins du visage à barbe */}
+          <path d="M 14,16 C 13,21 27,21 26,16 Z" fill="#fff3e0" />
+          <path d="M 14,13 C 14,8 26,8 26,13 Z" fill="#ffffff" /> {/* Chevelure longue blanche */}
+          <path d="M 16,16 C 17,19 23,19 24,16" stroke="#1e272e" strokeWidth="0.5" /> {/* Ligne fine de barbe */}
+          <path d="M 15,11 L 17,7 L 20,9 L 23,7 L 25,11 Z" fill="#f1c40f" /> {/* Couronne découpée */}
+          {/* Sceptre fleurdelisé d'apparat */}
+          <line x1="8" y1="29" x2="11" y2="11" stroke="#f1c40f" strokeWidth="0.9" />
+          <path d="M 11,11 L 9,9 L 11,6 L 13,9 Z" fill="#f1c40f" />
         </g>
       );
     } else if (card.r === 'Q') { 
       tunicPattern = (
-        <g stroke="#2d3436" strokeWidth="0.6" fill="none">
-          {/* Robe de satin bleu azur et brocarts rouges */}
-          <path d="M 8,25 C 8,11 32,11 32,25 L 28,30 L 12,30 Z" fill="#0984e3" />
-          <path d="M 14,25 L 20,30 L 26,25 Z" fill="#d32f2f" />
-          {/* Visage ovale Grimaud et voile blanc de reine */}
-          <path d="M 14,14 C 13,24 27,24 26,14 Z" fill="#ffffff" opacity="0.9" />
-          <ellipse cx="20" cy="16.5" rx="3.2" ry="4.2" fill="#fff3e0" />
-          <path d="M 17,12 L 20,10 L 23,12 Z" fill="#f1c40f" /> {/* Diadème d'or */}
-          {/* Rose de Grimaud tenue à la main */}
-          <circle cx="29" cy="24" r="2.2" fill="#d32f2f" stroke="none" />
-          <path d="M 29,24 L 27,29" stroke="#2ecc71" strokeWidth="0.5" />
+        <g stroke="#1e272e" strokeWidth="0.5" fill="none">
+          {/* Corsage ajusté et parures à la française */}
+          <path d="M 7,24 C 7,10 33,10 33,24 L 28,30 L 12,30 Z" fill="#0984e3" />
+          <path d="M 13,24 L 20,30 L 27,24 Z" fill="#d32f2f" />
+          {/* Teint pâle, longue coiffe et diadème de la reine */}
+          <path d="M 13,13 C 13,22 27,22 27,13 Z" fill="#ffffff" /> 
+          <ellipse cx="20" cy="15.5" rx="3.5" ry="4" fill="#fff3e0" />
+          <path d="M 16,11 L 20,8 L 24,11 Z" fill="#f1c40f" />
+          {/* Rose classique tenue en main */}
+          <circle cx="28" cy="23" r="2" fill="#d32f2f" stroke="none" />
+          <line x1="28" y1="23" x2="26" y2="28" stroke="#2ecc71" strokeWidth="0.5" />
         </g>
       );
     } else if (card.r === 'J') { 
       tunicPattern = (
-        <g stroke="#2d3436" strokeWidth="0.6" fill="none">
-          {/* Tunique d'armes de garde croisée Or et Bleu */}
-          <path d="M 7,24 L 33,24 L 28,30 L 12,30 Z" fill="#f1c40f" />
-          <path d="M 7,24 C 7,12 20,12 20,24 Z" fill="#d32f2f" />
-          <path d="M 20,24 C 20,12 33,12 33,24 Z" fill="#0984e3" />
-          {/* Visage du jeune garde et cheveux longs bouclés */}
-          <path d="M 14,14 C 13,22 27,22 26,14 Z" fill="#f39c12" opacity="0.3" />
-          <ellipse cx="20" cy="16" rx="3.5" ry="4.5" fill="#fff3e0" />
-          <path d="M 15,12 C 18,9 22,9 25,12 Z" fill="#2d3436" /> {/* Chapeau / Coiffe plate */}
-          {/* Hallebarde / Hache d'armes d'époque */}
-          <line x1="31" y1="30" x2="31" y2="10" stroke="#7f8c8d" strokeWidth="0.8" />
-          <path d="M 31,11 L 34,13 L 31,16 L 29,13 Z" fill="#b2bec3" />
+        <g stroke="#1e272e" strokeWidth="0.5" fill="none">
+          {/* Tunique de garde d'époque et pourpoint croisé */}
+          <path d="M 6,24 L 34,24 L 28,30 L 12,30 Z" fill="#f1c40f" />
+          <path d="M 6,24 C 6,11 20,11 20,24 Z" fill="#d32f2f" />
+          <path d="M 20,24 C 20,11 34,11 34,24 Z" fill="#0984e3" />
+          {/* Visage du valet et coiffe plate d'armes */}
+          <path d="M 14,13 C 13,20 27,20 27,13 Z" fill="#f39c12" opacity="0.2" />
+          <ellipse cx="20" cy="15" rx="3.5" ry="4.2" fill="#fff3e0" />
+          <path d="M 15,11 C 18,8 22,8 25,11 Z" fill="#1e272e" /> 
+          {/* Hallebarde de garnison fine */}
+          <line x1="31" y1="30" x2="31" y2="9" stroke="#555" strokeWidth="0.7" />
+          <path d="M 31,10 L 34,12 L 31,15 L 29,12 Z" fill="#b2bec3" />
         </g>
       );
     }
@@ -572,23 +572,24 @@ function App(){
 
       {/* ZONE CENTRALE */}
       {G.phase==='BID' ? (
-        <div style={{position:'absolute',top:'46%',left:'50%',transform:'translate(-50%,-50%)',display:'flex',flexDirection:'column',alignItems:'center',gap:16,zIndex:2000}}>
+        <div style={{position:'absolute',top:'44%',left:'50%',transform:'translate(-50%,-50%)',display:'flex',flexDirection:'column',alignItems:'center',gap:12,zIndex:2000}}>
           <Crd card={G.flip} W={84} H={120}/>
           
           {G.bi === 0 ? (
-            <div style={{display:'flex',background:'rgba(0,0,0,0.85)',padding:'8px 12px',borderRadius:30,boxShadow:'0 10px 25px rgba(0,0,0,0.5)',alignItems:'center',gap:10}}>
+            /* 💡 BOUTONS D'ENCHÈRES MINIATURISÉS ET SÉCURISÉS : Boîtier affiné, placé bien au-dessus de la main */
+            <div style={{display:'flex',background:'rgba(0,0,0,0.85)',padding:'4px 6px',borderRadius:25,boxShadow:'0 6px 20px rgba(0,0,0,0.5)',alignItems:'center',gap:6}}>
               {G.br===1 ? (
-                <button onClick={()=>bid(G.flip.s)} style={{background:'#ffffff',color:'#2d3436',border:'none',borderRadius:20,padding:'10px 24px',fontSize:14,fontWeight:'bold',cursor:'pointer',display:'flex',alignItems:'center',gap:6,boxShadow:'0 2px 5px rgba(0,0,0,0.2)'}}>
-                  <span style={{color:RED(G.flip.s)?'#d63031':'#2d3436',fontSize:18}}>{G.flip.s}</span> Prendre
+                <button onClick={()=>bid(G.flip.s)} style={{background:'#ffffff',color:'#2d3436',border:'none',borderRadius:18,padding:'6px 16px',fontSize:12,fontWeight:'bold',cursor:'pointer',display:'flex',alignItems:'center',gap:4,boxShadow:'0 1px 3px rgba(0,0,0,0.2)'}}>
+                  <span style={{color:RED(G.flip.s)?'#d63031':'#2d3436',fontSize:14}}>{G.flip.s}</span> Prendre
                 </button>
               ) : (
                 SUITS.filter(s=>s!==G.flip?.s).map(s=>(
-                  <button key={s} onClick={()=>bid(s)} style={{background:'#ffffff',color:'#2d3436',border:'none',borderRadius:20,padding:'8px 16px',fontSize:16,fontWeight:'bold',cursor:'pointer',boxShadow:'0 2px 5px rgba(0,0,0,0.2)'}}>
+                  <button key={s} onClick={()=>bid(s)} style={{background:'#ffffff',color:'#2d3436',border:'none',borderRadius:18,padding:'6px 12px',fontSize:14,fontWeight:'bold',cursor:'pointer',boxShadow:'0 1px 3px rgba(0,0,0,0.2)'}}>
                     <span style={{color:RED(s)?'#d63031':'#2d3436'}}>{s}</span>
                   </button>
                 ))
               )}
-              <button onClick={()=>bid(null)} style={{background:'rgba(255,255,255,0.12)',color:'#ffffff',border:'none',borderRadius:20,padding:'10px 24px',fontSize:14,fontWeight:'500',cursor:'pointer'}}>
+              <button onClick={()=>bid(null)} style={{background:'rgba(255,255,255,0.12)',color:'#ffffff',border:'none',borderRadius:18,padding:'6px 16px',fontSize:12,fontWeight:'500',cursor:'pointer'}}>
                 Passer
               </button>
             </div>
@@ -627,7 +628,7 @@ function PL({name,n,active,style={}}){
   return(
     <div style={{textAlign:'center',...style,opacity:active?1:0.65}}>
       <div style={{fontSize:11,fontWeight:active?'bold':'500',color:active?'#ffd54f':'rgba(255,255,255,0.5)',marginBottom:3,textShadow:'0 1px 2px rgba(0,0,0,0.6)'}}>
-        {active?'▶ ':''}{name}
+        {active?'▼ ':''}{name}
       </div>
       <div style={{fontSize:10,color:'rgba(255,255,255,0.4)',background:'rgba(0,0,0,0.2)',padding:'2px 8px',borderRadius:10,display:'inline-block'}}>
         {n} 🂠
