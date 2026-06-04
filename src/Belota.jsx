@@ -128,11 +128,9 @@ function init(scores,dealer){
   const{hands,flip,rest}=deal(fp);
   return{phase:'BID',hands,flip,rest,dealer:dl,fp,trump:null,
     br:1,bi:fp,bc:0,taker:null,tt:null,
-    // pli courant
     trick:[],
-    // snapshot des 4 cartes — mis à jour à chaque carte jouée
     snap:[null,null,null,null],
-    waiting:false, // true = affichage du pli complet en cours
+    waiting:false, 
     winner:null,
     done:[],cur:fp,scores:sc,ann:'',
     bB:[0,0],bH:null,bP:[0,0,0,0],result:null,lw:null};
@@ -141,7 +139,6 @@ function init(scores,dealer){
 function doPlay(G,player,card){
   const nh=G.hands.map((h,i)=>i===player?h.filter(c=>c&&c.id&&c.id!==card.id):h.filter(c=>c&&c.id));
   const nt=[...(G.trick||[]),{p:player,c:card}];
-  // Met à jour le snapshot
   const ns=[...G.snap];
   ns[player]=card;
   let ann='',bb=[...G.bB],bp=[...G.bP];
@@ -150,20 +147,20 @@ function doPlay(G,player,card){
     if(bp[player]===1)ann='Belote !';
     if(bp[player]===2){ann='Rebelote !';bb=[...bb];bb[team(player)]+=20;}
   }
-  // Remplacer l'ancien bloc de fin de doPlay par celui-ci :
+  
   if (nt.length < 4) {
     return { ...G, hands: nh, trick: nt, snap: ns, cur: nxt(player), ann, bB: bb, bP: bp };
   }
   
-  // 4ème carte jouée : on calcule le gagnant
   const win = tWin(nt, G.trump);
+  const frozenSnap = [...ns]; // 💡 Sécurité : On fige le tapis avec ses 4 cartes
   
   return {
     ...G,
     hands: nh,
-    trick: nt,      // On garde l'historique du pli complet
-    snap: ns,       // ns contient bien les 4 cartes ici !
-    waiting: true,  // Déclenche la pause de 2,5 secondes
+    trick: nt,
+    snap: frozenSnap,
+    waiting: true, // 💡 On déclenche la pause de fin de pli
     winner: win,
     ann,
     bB: bb,
@@ -173,22 +170,20 @@ function doPlay(G,player,card){
 
 function resolve(G) {
   const win = G.winner;
-  // On s'assure de récupérer les cartes du snapshot actuel avant de le vider
-  const nd = [...G.done, { winner: win, cards: G.snap.filter(c => c) }];
+  const nd = [...G.done, { winner: win, cards: G.snap.filter(c => c && c.s) }];
   
-  const base = {
+  return {
     ...G,
     trick: [], 
-    snap: [null, null, null, null], // Prépare le tapis pour le prochain pli
-    waiting: false,                 // Relance le jeu
+    snap: [null, null, null, null], // 💡 Le tapis se vide proprement ICI, après les 2.5s
+    waiting: false,
     winner: null,
     done: nd,
     phase: 'PLAY',
     lw: win,
     ann: '',
-    cur: win                        // Le vainqueur du pli commence le suivant
+    cur: win
   };
-  return nd.length === 8 ? calcR(base) : base;
 }
 
 function calcR(G){
@@ -215,7 +210,19 @@ function calcR(G){
 
 // ── Carte ─────────────────────────────────────────────────────────────────────
 function Crd({card,ok,W=54,H=76,onClick}){
-  if(!card||!card.s)return null;
+  // 💡 Si la carte n'a pas encore chargé ses données ou est incomplète, on affiche un dos de carte
+  // au lieu de crash ou de retourner "null" (ce qui créait le bug visuel de l'IA)
+  if(!card || !card.s || !card.r) {
+    return (
+      <div style={{
+        width:W,height:H,borderRadius:6,
+        background:'#1a3580',border:'2px solid #2244aa',
+        backgroundImage:'repeating-linear-gradient(45deg,#1a3580,#1a3580 4px,#243fa0 4px,#243fa0 8px)',
+        boxShadow:'0 3px 6px rgba(0,0,0,.3)'
+      }}/>
+    );
+  }
+  
   const tc=RED(card.s)?'#c0392b':'#111';
   const fs=W<50?8:W<65?10:11, ms=W<50?14:W<65?18:22;
   return(
@@ -289,19 +296,17 @@ function App(){
   const[ls,setLs]=useState(()=>typeof window!=='undefined'&&window.innerWidth>window.innerHeight);
   useEffect(()=>{const u=()=>setLs(window.innerWidth>window.innerHeight);window.addEventListener('resize',u);return()=>window.removeEventListener('resize',u);},[]);
 
-  // Résolution automatique du pli après SHOW_TRICK_MS
+  // Résolution automatique du pli après SHOW_TRICK_MS (2,5 secondes)
   useEffect(() => {
     if (!G.waiting) return;
-    
     if (timer.current) clearTimeout(timer.current);
     
     timer.current = setTimeout(() => {
-      // Utilisation d'une mise à jour fonctionnelle pour éviter les conflits de render
       setG(p => p.waiting ? resolve(p) : p);
     }, SHOW_TRICK_MS);
     
     return () => { if (timer.current) clearTimeout(timer.current); };
-  }, [G.waiting]); // 💡 On ne dépend UNIQUEMENT que du basculement du mode attente
+  }, [G.waiting]); 
 
   // IA enchères
   useEffect(()=>{
@@ -329,7 +334,6 @@ function App(){
     
     const t = setTimeout(() => {
       setG(prev => {
-        // Double vérification à l'intérieur du timeout pour éviter les chevauchements
         if (prev.phase !== 'PLAY' || prev.cur === 0 || prev.waiting) return prev;
         const p = prev.cur, hand = prev.hands[p].filter(c => c && c.id);
         return doPlay(prev, p, aiCard(hand, prev.trick || [], prev.trump, p));
@@ -337,7 +341,7 @@ function App(){
     }, AI_DELAY);
     
     return () => clearTimeout(t);
-  }, [G.phase, G.cur, G.waiting]); // Très important d'inclure G.waiting ici
+  }, [G.phase, G.cur, G.waiting]); 
 
   function bid(suit){
     if(suit!==null){
@@ -471,9 +475,6 @@ function App(){
   }
 
   // ── JEU ───────────────────────────────────────────────────────────────────────
-  // Le pli est affiché via G.snap[0..3] — mis à jour IMMÉDIATEMENT à chaque carte jouée
-  // snap[p] = carte du joueur p, null si pas encore jouée ce tour
-
   return(
     <div style={TABLE}>
       <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}`}</style>
@@ -508,10 +509,7 @@ function App(){
         active={G.cur===3&&!G.waiting} dealer={G.dealer===3}
         style={{position:'absolute',top:'44%',right:'2%',transform:'translateY(-50%)',zIndex:10}}/>
 
-      {/* ═══════════════════════════════════════════════════════════════════════
-          ZONE DE PLI — 4 slots toujours visibles, disposés en croix
-          Utilise snap[p] qui est mis à jour dès qu'une carte est jouée
-          ═══════════════════════════════════════════════════════════════════════ */}
+      {/* ZONE DE PLI — En croix */}
       <div style={{
         position:'absolute',
         top:30, left:'15%', right:'15%', bottom:140,
@@ -523,15 +521,12 @@ function App(){
         justifyItems:'center',
         pointerEvents:'none',
       }}>
-        {/* Rangée 1 : vide | Nord | vide */}
         <div/><Slot card={G.snap[2]} label="Nord"/><div/>
-        {/* Rangée 2 : Ouest | gagnant | Est */}
         <Slot card={G.snap[1]} label="Ouest"/>
         <div style={{fontSize:10,color:'#ffd54f',fontWeight:'bold',textAlign:'center'}}>
           {G.waiting&&G.winner!==null?`${PN[G.winner]} ✓`:''}
         </div>
         <Slot card={G.snap[3]} label="Est"/>
-        {/* Rangée 3 : vide | Vous | vide */}
         <div/><Slot card={G.snap[0]} label="Vous"/><div/>
       </div>
 
