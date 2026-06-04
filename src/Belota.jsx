@@ -84,7 +84,7 @@ function tWin(trick,trump){
 }
 function legal(hand,trick,trump,player){
   const h=hand.filter(c=>c&&c.id);
-  if(!trick.length)return h;
+  if(!trick||!trick.length)return h;
   const lead=trick[0].c.s;
   const tc=h.filter(c=>c.s===trump),lc=h.filter(c=>c.s===lead);
   if(lead===trump){
@@ -140,7 +140,7 @@ function init(scores,dealer){
 
 function doPlay(G,player,card){
   const nh=G.hands.map((h,i)=>i===player?h.filter(c=>c&&c.id&&c.id!==card.id):h.filter(c=>c&&c.id));
-  const nt=[...G.trick,{p:player,c:card}];
+  const nt=[...(G.trick||[]),{p:player,c:card}];
   // Met à jour le snapshot
   const ns=[...G.snap];
   ns[player]=card;
@@ -283,7 +283,7 @@ function App(){
       setG(prev=>{
         if(prev.phase!=='BID'||prev.bi===0)return prev;
         const p=prev.bi,hand=prev.hands[p].filter(c=>c&&c.id);
-        const take=suit=>({...prev,phase:'PLAY',trump:suit,taker:p,tt:team(p),cur:prev.fp,
+        const take=suit=>({...prev,phase:'PLAY',trump:suit,taker:p,tt:team(p),cur:prev.fp,trick:[],snap:[null,null,null,null],waiting:false,winner:null,
           hands:complete(prev.hands,prev.flip,prev.rest,p),
           bH:prev.hands.map(h=>h.some(c=>c&&c.s===suit&&c.r==='K')&&h.some(c=>c&&c.s===suit&&c.r==='Q'))});
         if(prev.br===1){if(aiTake(hand,prev.flip.s,1))return take(prev.flip.s);}
@@ -303,7 +303,7 @@ function App(){
       setG(prev=>{
         if(prev.phase!=='PLAY'||prev.cur===0||prev.waiting)return prev;
         const p=prev.cur,hand=prev.hands[p].filter(c=>c&&c.id);
-        return doPlay(prev,p,aiCard(hand,prev.trick,prev.trump,p));
+        return doPlay(prev,p,aiCard(hand,prev.trick||[],prev.trump,p));
       });
     },AI_DELAY);
     return()=>clearTimeout(t);
@@ -311,7 +311,7 @@ function App(){
 
   function bid(suit){
     if(suit!==null){
-      setG(prev=>({...prev,phase:'PLAY',trump:suit,taker:0,tt:0,cur:prev.fp,
+      setG(prev=>({...prev,phase:'PLAY',trump:suit,taker:0,tt:0,cur:prev.fp,trick:[],snap:[null,null,null,null],waiting:false,winner:null,
         hands:complete(prev.hands,prev.flip,prev.rest,0),
         bH:prev.hands.map(h=>h.some(c=>c&&c.s===suit&&c.r==='K')&&h.some(c=>c&&c.s===suit&&c.r==='Q'))}));
       return;
@@ -326,7 +326,7 @@ function App(){
   function playCard(card){
     if(G.phase!=='PLAY'||G.cur!==0||G.waiting)return;
     const hand=G.hands[0].filter(c=>c&&c.id);
-    if(!legal(hand,G.trick,G.trump,0).some(c=>c.id===card.id))return;
+    if(!legal(hand,G.trick||[],G.trump,0).some(c=>c.id===card.id))return;
     setG(prev=>doPlay(prev,0,card));
   }
 
@@ -346,7 +346,7 @@ function App(){
   const hand0=(G.hands[0]||[]).filter(c=>c&&c.id);
   const myTurn=G.phase==='PLAY'&&G.cur===0&&!G.waiting;
   let okIds=null;
-  if(myTurn&&G.trump){try{okIds=new Set(legal(hand0,G.trick,G.trump,0).map(c=>c.id));}catch(e){}}
+  if(myTurn&&G.trump){try{okIds=new Set(legal(hand0,G.trick||[],G.trump,0).map(c=>c.id));}catch(e){}}
   const t0=G.done.filter(d=>team(d.winner)===0).length;
   const t1=G.done.filter(d=>team(d.winner)===1).length;
   const ac=G.trump&&RED(G.trump)?'#ffcdd2':'#e8f5e9';
