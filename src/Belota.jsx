@@ -152,16 +152,12 @@ function doPlay(G,player,card){
     if(bp[player]===2){ann='Rebelote !';bb=[...bb];bb[team(player)]+=20;}
   }
   
-  // 💡 SOLUTION DU BUG : On compte le nombre de cartes RÉELLES posées dans le snapshot
   const cartesPosees = ns.filter(c => c !== null).length;
-  
   if (cartesPosees < 4) {
     return { ...G, hands: nh, trick: nt, snap: ns, cur: nxt(player), ann, bB: bb, bP: bp };
   }
   
-  // Si on a bien nos 4 cartes, on calcule le vrai vainqueur
   const win = tWin(nt, G.trump);
-  
   return {
     ...G,
     hands: nh,
@@ -197,7 +193,7 @@ function calcR(G){
   const t0=G.done.filter(d=>team(d.winner)===0).length;
   let pts=[0,0];
   if(t0===8)pts=[250,0];else if(t0===0)pts=[0,250];
-  else for(let i=0;i<8;i++){const d=G.done[i],tm=team(d.winner);pts[tm]+=d.cards.reduce((s,c)=>s+cp(c,G.trump),0);if(i===7)pts[tm]+=10;}
+  else for(let i=0;i<8;i++){const d=G.done[i],tm=team(d.winner);pts[tm]+= d.cards.reduce((s,c)=>s+cp(c,G.trump),0);if(i===7)pts[tm]+=10;}
   const tt=G.tt,ot=1-tt;
   let rp=[0,0],res;
   if(pts[tt]>pts[ot]){res='ok';rp=[...pts];}
@@ -219,7 +215,16 @@ function calcR(G){
 function Crd({card,ok,W=54,H=76,onClick}){
   if(!card||!card.s) return null;
   const tc=RED(card.s)?'#c0392b':'#111';
-  const fs=W<50?8:W<65?10:11, ms=W<50?14:W<65?18:22;
+  const fs=W<50?8:W<65?10:11;
+  
+  // 💡 DESSIN DES FIGURES : On remplace le grand symbole central monotone par un émoji de figure royale
+  let centerSymbol = card.s;
+  let centerFontSize = W<50?14:W<65?18:22;
+  
+  if (card.r === 'J') { centerSymbol = '🤵'; centerFontSize = W<50?18:W<65?24:28; } // Valet (Valet/Jeune homme)
+  if (card.r === 'Q') { centerSymbol = '👸'; centerFontSize = W<50?18:W<65?24:28; } // Dame (Reine)
+  if (card.r === 'K') { centerSymbol = '🤴'; centerFontSize = W<50?18:W<65?24:28; } // Roi (Roi)
+
   return(
     <div onClick={ok?onClick:undefined} style={{
       width:W,height:H,borderRadius:6,position:'relative',overflow:'hidden',
@@ -233,8 +238,8 @@ function Crd({card,ok,W=54,H=76,onClick}){
       <div style={{position:'absolute',top:2,left:3,fontSize:fs,fontWeight:700,color:tc,lineHeight:1.1}}>
         {DIS[card.r]}<br/>{card.s}
       </div>
-      <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:ms,color:tc}}>
-        {card.s}
+      <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:centerFontSize,color:tc}}>
+        {centerSymbol}
       </div>
       <div style={{position:'absolute',bottom:2,right:3,fontSize:fs,fontWeight:700,color:tc,lineHeight:1.1,transform:'rotate(180deg)'}}>
         {DIS[card.r]}<br/>{card.s}
@@ -518,33 +523,22 @@ function App(){
       }}>
         <div/><Slot card={G.snap[2]} label="Nord"/><div/>
         <Slot card={G.snap[1]} label="Ouest"/>
-        <div style={{fontSize:10,color:'#ffd54f',fontWeight:'bold',textAlign:'center'}}>
-          {G.waiting&&G.winner!==null?`${PN[G.winner]} ✓`:''}
+        
+        {/* 💡 TEXTE DE FIN DE PLI : Il est maintenant parfaitement centré, en dessous du badge vainqueur, au milieu exact de la table */}
+        <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:4}}>
+          <div style={{fontSize:11,color:'#ffd54f',fontWeight:'bold',textAlign:'center'}}>
+            {G.waiting&&G.winner!==null?`${PN[G.winner]} ✓`:''}
+          </div>
+          {G.waiting && G.winner !== null && (
+            <div style={{background:'rgba(0,0,0,0.7)',border:'1px solid #ffd54f',borderRadius:12,
+              padding:'2px 8px',fontSize:9,color:'#ffd54f',whiteSpace:'nowrap'}}>
+              remporte ce pli
+            </div>
+          )}
         </div>
+        
         <Slot card={G.snap[3]} label="Est"/>
         <div/><Slot card={G.snap[0]} label="Vous"/><div/>
-      </div>
-
-      {/* Indicateur de tour */}
-      <div style={{position:'absolute',bottom:128,left:'50%',transform:'translateX(-50%)',
-        zIndex:50,whiteSpace:'nowrap'}}>
-        {G.waiting?(
-          <div style={{background:'rgba(0,0,0,.55)',border:'1px solid #ffd54f',
-            borderRadius:20,padding:'3px 12px',fontSize:11,color:'#ffd54f'}}>
-            {G.winner!==null?`${PN[G.winner]} remporte ce pli`:'…'}
-          </div>
-        ):myTurn?(
-          <div style={{background:'rgba(27,94,32,.95)',border:'2px solid #66bb6a',
-            borderRadius:20,padding:'4px 14px',fontSize:12,fontWeight:'bold',
-            animation:'pulse 1.2s infinite'}}>
-            🎯 À vous — jouez une carte
-          </div>
-        ):(
-          <div style={{background:'rgba(0,0,0,.5)',borderRadius:20,
-            padding:'3px 12px',fontSize:11,opacity:.8}}>
-            ▶ {PN[G.cur]} joue…
-          </div>
-        )}
       </div>
 
       {/* Main joueur */}
