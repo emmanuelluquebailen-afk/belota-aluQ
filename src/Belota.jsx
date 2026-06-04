@@ -37,8 +37,8 @@ const cs=(c,t)=>c.s===t?TS[c.r]:NS[c.r];
 const cp=(c,t)=>c.s===t?TP[c.r]:NP[c.r];
 const nxt=p=>(p+1)%4;
 
-// Proportions idéales des cartes traditionnelles
-const PW=56, PH=82;  
+// Dimensions traditionnelles Grimaud
+const PW=58, PH=84;  
 const HW=76, HH=112; 
 
 const AI_DELAY=1400;
@@ -223,68 +223,57 @@ function Crd({card,ok,W=54,H=76,onClick}){
   let portraitComponent = null;
 
   if (isAs) {
-    /* 👑 AS GRIMAUD TRADITIONNEL : Médaillon filigrané baroque gravé d'une couronne d'or */
     portraitComponent = (
       <svg viewBox="0 0 50 70" style={{position:'absolute',inset:'10px 4px',width:'calc(100% - 8px)',height:'calc(100% - 20px)'}}>
-        {/* Arabesques et fioritures du médaillon central */}
         <ellipse cx="25" cy="35" rx="16" ry="22" stroke="#d5b87d" strokeWidth="0.8" fill="none" strokeDasharray="3,0.5" />
         <ellipse cx="25" cy="35" rx="14" ry="19" stroke="#d5b87d" strokeWidth="0.4" fill="none" />
-        {/* Couronne du blason Grimaud */}
         <path d="M 20,22 L 22,19 L 25,21 L 28,19 L 30,22 Z" fill="#d5b87d" opacity="0.8" />
-        {/* Enseigne géante au cœur du médaillon */}
         <text x="25" y="44" fontSize="22" textAnchor="middle" fill={tc} stroke="none" fontWeight="bold">{card.s}</text>
-        {/* Mention historique discrète */}
         <text x="25" y="58" fontSize="4.5" textAnchor="middle" fill="#8d764a" fontWeight="bold" fontFamily="serif" letterSpacing="0.3">GRIMAUD</text>
       </svg>
     );
   } else if (isFig) {
-    /* ⚔️ PORTRAITS MIROIR DES FIGURES : Robes géométriques tricolores, sceptres et haches d'armes d'époque */
     let tunicPattern = null;
-    if (card.r === 'K') { // Roi : Barbe blanche souveraine, manteau pourpre et sceptre d'or fleurdelisé
+    if (card.r === 'K') { 
       tunicPattern = (
         <g stroke="#1e272e" strokeWidth="0.6" fill="none">
           <path d="M 7,24 C 7,9 33,9 33,24 L 29,30 L 11,30 Z" fill="#d32f2f" />
           <path d="M 12,24 L 20,30 L 28,24 Z" fill="#0984e3" />
           <circle cx="20" cy="16" r="4.5" fill="#ffeaa7" />
-          <path d="M 15,12 L 20,8 L 25,12 L 23,14 L 17,14 Z" fill="#f1c40f" /> {/* Couronne royale */}
-          <line x1="9" y1="30" x2="13" y2="15" stroke="#f1c40f" strokeWidth="1.2" /> {/* Sceptre d'or */}
+          <path d="M 15,12 L 20,8 L 25,12 L 23,14 L 17,14 Z" fill="#f1c40f" /> 
+          <line x1="9" y1="30" x2="13" y2="15" stroke="#f1c40f" strokeWidth="1.2" /> 
           <circle cx="13" cy="14" r="1.5" fill="#f1c40f" />
         </g>
       );
-    } else if (card.r === 'Q') { // Dame : Diadème d'or fin, parure bleue et rose rouge traditionnelle
+    } else if (card.r === 'Q') { 
       tunicPattern = (
         <g stroke="#1e272e" strokeWidth="0.6" fill="none">
           <path d="M 9,25 C 9,12 31,12 31,25 L 27,30 L 13,30 Z" fill="#0984e3" />
           <path d="M 14,25 C 14,25 20,23 26,25 L 20,30 Z" fill="#d32f2f" />
           <circle cx="20" cy="17" r="4.2" fill="#ffeaa7" />
-          <path d="M 17,13 C 18,12 22,12 23,13 L 20,15 Z" fill="#f1c40f" /> {/* Diadème délicat */}
-          <circle cx="29" cy="24" r="2" fill="#d32f2f" stroke="none" /> {/* Rose rouge de la Reine */}
+          <path d="M 17,13 C 18,12 22,12 23,13 L 20,15 Z" fill="#f1c40f" /> 
+          <circle cx="29" cy="24" r="2" fill="#d32f2f" stroke="none" /> 
           <line x1="29" y1="24" x2="27" y2="29" stroke="#2ecc71" strokeWidth="0.6" />
         </g>
       );
-    } else if (card.r === 'J') { // Valet : Garde d'armes, tunique rouge/bleu croisée et hallebarde/hache médiévale
+    } else if (card.r === 'J') { 
       tunicPattern = (
         <g stroke="#1e272e" strokeWidth="0.6" fill="none">
           <path d="M 8,24 L 32,24 L 27,30 L 13,30 Z" fill="#f1c40f" />
           <path d="M 8,24 C 8,11 20,11 20,24 Z" fill="#d32f2f" />
           <path d="M 20,24 C 20,11 32,11 32,24 Z" fill="#0984e3" />
           <circle cx="20" cy="16" r="4.5" fill="#ffeaa7" />
-          <path d="M 15,13 C 15,10 25,10 25,13 Z" fill="#2d3436" /> {/* Coiffe historique */}
-          <path d="M 31,30 L 31,14 L 34,18 L 31,21" fill="#b2bec3" stroke="#1e272e" /> {/* Hallebarde de garde */}
+          <path d="M 15,13 C 15,10 25,10 25,13 Z" fill="#2d3436" /> 
+          <path d="M 31,30 L 31,14 L 34,18 L 31,21" fill="#b2bec3" stroke="#1e272e" /> 
         </g>
       );
     }
 
-    portraitComponent = (
+    portraitSvg = (
       <svg viewBox="0 0 40 60" style={{position:'absolute',inset:'14px 6px',width:'calc(100% - 12px)',height:'calc(100% - 24px)',borderRadius:2,background:'#fafafa',border:'1px solid #b2bec3',boxShadow:'inset 0 1px 3px rgba(0,0,0,0.06)'}}>
-        {/* Portrait Supérieur */}
         {tunicPattern}
         <text x="20" y="27" fontSize="8.5" textAnchor="middle" fill={tc} stroke="none" fontWeight="bold" fontFamily="serif">{card.s}</text>
-        
-        {/* Ligne de coupure miroir traditionnelle des maîtres cartiers français */}
         <line x1="1.5" y1="30" x2="38.5" y2="30" stroke="#b2bec3" strokeWidth="0.6" strokeDasharray="3,1.5" />
-        
-        {/* Portrait Inférieur inversé */}
         <g transform="rotate(180 20 30)">
           {tunicPattern}
           <text x="20" y="27" fontSize="8.5" textAnchor="middle" fill={tc} stroke="none" fontWeight="bold" fontFamily="serif">{card.s}</text>
@@ -292,7 +281,6 @@ function Crd({card,ok,W=54,H=76,onClick}){
       </svg>
     );
   } else {
-    /* 7️⃣ CARTES NUMÉRIQUES : Alignement géométrique traditionnel des enseignes de couleur */
     let pointsGrid = null;
     if (card.r === '7') {
       pointsGrid = (
@@ -356,7 +344,7 @@ function Crd({card,ok,W=54,H=76,onClick}){
         {DIS[card.r]}<br/><span style={{fontSize:fs-2.5}}>{card.s}</span>
       </div>
       
-      {portraitComponent}
+      {portraitComponent || portraitSvg}
 
       {/* Index En-Bas à Droite inversé */}
       <div style={{position:'absolute',bottom:3,right:4,fontSize:fs,fontWeight:'900',color:tc,lineHeight:0.95,transform:'rotate(180deg)',textAlign:'center',fontFamily:'sans-serif'}}>
@@ -392,16 +380,20 @@ function Hand({hand,okIds,onPlay,trump}){
   );
 }
 
-function Slot({card,label}){
-  return(
-    <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
-      <div style={{fontSize:10,opacity:0.6,color:'white',fontWeight:'bold'}}>{label}</div>
-      <div style={{width:PW,height:PH,borderRadius:5,
-        background: card?'transparent':'rgba(0,0,0,0.2)',
-        border: card?'none':'1px dashed rgba(255,255,255,0.2)',
-        display:'flex',alignItems:'center',justifyContent:'center'}}>
-        {card?<Crd card={card} W={PW} H={PH}/>:null}
-      </div>
+// ── Emplacement individuel du pli en cascade tridimensionnelle ────────────────
+function Slot({card, playerIndex}){
+  if(!card) return null;
+  
+  // 💡 DÉCALAGE STRUCTURÉ : Positions ajustées pour calquer le pli entrelacé de l'image de référence
+  let offsetStyle = { position: 'absolute', zIndex: 10 };
+  if(playerIndex === 2) offsetStyle = { position: 'absolute', top: '-18px', zIndex: 11 }; // Nord (Légèrement au-dessus)
+  if(playerIndex === 0) offsetStyle = { position: 'absolute', bottom: '-18px', zIndex: 14 }; // Sud (Au premier plan)
+  if(playerIndex === 1) offsetStyle = { position: 'absolute', left: '-22px', zIndex: 12 };  // Ouest (À gauche)
+  if(playerIndex === 3) offsetStyle = { position: 'absolute', right: '-22px', zIndex: 13 }; // Est (À droite)
+
+  return (
+    <div style={{...offsetStyle, pointerEvents: 'none'}}>
+      <Crd card={card} W={PW} H={PH}/>
     </div>
   );
 }
@@ -535,22 +527,32 @@ function App(){
 
   return (
     <div style={TABLE}>
-      {/* HUD Supérieur avec informations sur le preneur */}
-      <div style={{position:'absolute',top:12,left:24,right:24,display:'flex',justifyContent:'space-between',alignItems:'center',zIndex:1000,fontSize:13}}>
-        <div style={{display:'flex',gap:10,alignItems:'center'}}>
-          {G.trump && <span style={{background:'rgba(0,0,0,0.4)',padding:'5px 12px',borderRadius:20,fontWeight:'bold',color:ac}}>{G.trump} Atout {SFR[G.trump]}</span>}
-          {G.taker !== null && <span style={{background:'rgba(241,196,15,0.2)',border:'1px solid #f1c40f',padding:'4px 10px',borderRadius:20,fontSize:11,color:'#ffd54f',fontWeight:'600'}}>Preneur : {PN[G.taker]} 👑</span>}
+      {/* HUD Supérieur : Rappel d'atout façon bouton ovale discret à gauche */}
+      <div style={{position:'absolute',top:16,left:24,right:24,display:'flex',justifyContent:'space-between',alignItems:'center',zIndex:4000,fontSize:13}}>
+        <div style={{display:'flex',gap:12,alignItems:'center'}}>
+          {G.trump && (
+            <div style={{background:'rgba(0,0,0,0.6)',border:'1px solid rgba(255,255,255,0.1)',padding:'6px 16px',borderRadius:20,fontWeight:'bold',display:'flex',alignItems:'center',gap:6}}>
+              <span style={{color:ac,fontWeight:'bold'}}>{SFR[G.trump]}</span>
+              <span style={{color:ac,fontSize:15}}>{G.trump}</span>
+            </div>
+          )}
+          {G.taker !== null && (
+            <div style={{background:'rgba(241,196,15,0.15)',border:'1px solid rgba(241,196,15,0.3)',padding:'5px 12px',borderRadius:20,fontSize:11,color:'#ffd54f',fontWeight:'600'}}>
+              Preneur : {PN[G.taker]}
+            </div>
+          )}
         </div>
-        <div style={{fontWeight:'bold',fontSize:14,letterSpacing:0.5}}>{G.phase==='PLAY'?`Pli ${G.done.length+1} / 8`:'Annonces'}</div>
-        <div style={{background:'rgba(0,0,0,0.4)',padding:'5px 14px',borderRadius:20,fontWeight:'bold'}}>
-          <span style={{color:'#2ecc71'}}>{G.scores[0]}</span><span style={{opacity:0.3,margin:'0 5px'}}>:</span><span style={{color:'#ff7675'}}>{G.scores[1]}</span>
+        <div style={{fontWeight:'700',fontSize:15,letterSpacing:0.5,textShadow:'0 1px 3px rgba(0,0,0,0.4)'}}>{G.phase==='PLAY'?`Pli ${G.done.length+1} / 8`:'Annonces'}</div>
+        <div style={{background:'rgba(0,0,0,0.5)',border:'1px solid rgba(255,255,255,0.1)',padding:'6px 16px',borderRadius:20,fontWeight:'bold',fontFamily:'monospace',fontSize:14}}>
+          <span style={{color:'#2ecc71'}}>{G.scores[0]}</span><span style={{opacity:0.4,margin:'0 4px'}}>:</span><span style={{color:'#ff7675'}}>{G.scores[1]}</span>
         </div>
       </div>
 
-      {/* Profils Joueurs */}
+      {/* Profils & Noms discrets des Joueurs (Texte + Compteur de cartes résiduel) */}
       <PL name="Nord" n={(G.hands[2]||[]).filter(c=>c&&c.id).length} active={G.cur===2&&G.phase==='PLAY'&&!G.waiting} style={{position:'absolute',top:44,left:'50%',transform:'translateX(-50%)',zIndex:500}}/>
-      <PL name="Ouest" n={(G.hands[1]||[]).filter(c=>c&&c.id).length} active={G.cur===1&&G.phase==='PLAY'&&!G.waiting} style={{position:'absolute',top:'44%',left:20,transform:'translateY(-50%)',zIndex:500}}/>
-      <PL name="Est" n={(G.hands[3]||[]).filter(c=>c&&c.id).length} active={G.cur===3&&G.phase==='PLAY'&&!G.waiting} style={{position:'absolute',top:'44%',right:20,transform:'translateY(-50%)',zIndex:500}}/>
+      <PL name="Ouest" n={(G.hands[1]||[]).filter(c=>c&&c.id).length} active={G.cur===1&&G.phase==='PLAY'&&!G.waiting} style={{position:'absolute',top:'45%',left:20,transform:'translateY(-50%)',zIndex:500}}/>
+      <PL name="Est" n={(G.hands[3]||[]).filter(c=>c&&c.id).length} active={G.cur===3&&G.phase==='PLAY'&&!G.waiting} style={{position:'absolute',top:'45%',right:20,transform:'translateY(-50%)',zIndex:500}}/>
+      <div style={{position:'absolute',bottom:132,left:'50%',transform:'translateX(-50%)',fontSize:11,fontWeight:'bold',color:'rgba(255,255,255,0.4)',zIndex:500}}>Sud</div>
 
       {/* ZONE CENTRALE */}
       {G.phase==='BID' ? (
@@ -579,28 +581,26 @@ function App(){
           )}
         </div>
       ) : (
-        /* TAPIS DE JEU RIGIDE (SURVOLE LA MAIN) */
-        <div style={{position:'absolute',top:'43%',left:'50%',transform:'translate(-50%,-50%)',width:250,height:220,zIndex:3000,display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gridTemplateRows:'1fr 1fr 1fr',alignItems:'center',justifyItems:'center',pointerEvents:'none'}}>
-          <div/><Slot card={G.snap[2]} label="Nord"/><div/>
-          <Slot card={G.snap[1]} label="Ouest"/>
+        /* 💎 TAPIS DE JEU RIGIDE (Élevé à top: 38% et height: 160px pour un pli compact et entrelacé) */
+        <div style={{position:'absolute',top:'38%',left:'50%',transform:'translateX(-50%)',width:220,height:160,zIndex:3000}}>
+          {/* Les slots individuels gèrent eux-mêmes leurs positions superposées */}
+          <Slot card={G.snap[2]} playerIndex={2} />
+          <Slot card={G.snap[1]} playerIndex={1} />
+          <Slot card={G.snap[3]} playerIndex={3} />
+          <Slot card={G.snap[0]} playerIndex={0} />
           
-          <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minWidth:80}}>
-            <div style={{fontSize:12,color:'#ffd54f',fontWeight:'bold',textAlign:'center',textShadow:'0 2px 4px rgba(0,0,0,0.8)'}}>
-              {G.waiting&&G.winner!==null?`${PN[G.winner]} ✓`:''}
-            </div>
-            {G.waiting && G.winner !== null && (
-              <div style={{background:'rgba(0,0,0,0.85)',border:'1px solid #ffd54f',borderRadius:12,padding:'4px 12px',fontSize:9,color:'#ffd54f',marginTop:5,boxShadow:'0 6px 12px rgba(0,0,0,0.4)',fontWeight:'bold',letterSpacing:0.2}}>
-                remporte le pli
+          {/* Cartouche informatif central volant */}
+          {G.waiting && G.winner !== null && (
+            <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%, -50%)',zIndex:50,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minWidth:100}}>
+              <div style={{fontSize:12,color:'#ffd54f',fontWeight:'bold',textShadow:'0 2px 4px rgba(0,0,0,0.9)',background:'rgba(0,0,0,0.85)',padding:'4px 14px',borderRadius:14,border:'1px solid #ffd54f',boxShadow:'0 4px 10px rgba(0,0,0,0.45)'}}>
+                {PN[G.winner]} ✓
               </div>
-            )}
-          </div>
-          
-          <Slot card={G.snap[3]} label="Est"/>
-          <div/><Slot card={G.snap[0]} label="Vous"/><div/>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Main Joueur (Sud) */}
+      {/* Main Joueur (Sud) — Alignée tout en bas */}
       <div style={{position:'absolute',bottom:14,left:0,right:0,zIndex:100,textAlign:'center'}}>
         <Hand hand={hand0} okIds={okIds} onPlay={playCard} trump={G.trump}/>
       </div>
@@ -610,11 +610,11 @@ function App(){
 
 function PL({name,n,active,style={}}){
   return(
-    <div style={{textAlign:'center',...style,transition:'transform 0.2s',transform:active?'scale(1.05)':'scale(1)'}}>
+    <div style={{textAlign:'center',...style,opacity:active?1:0.65}}>
       <div style={{fontSize:11,fontWeight:active?'bold':'500',color:active?'#ffd54f':'rgba(255,255,255,0.5)',marginBottom:3,textShadow:'0 1px 2px rgba(0,0,0,0.6)'}}>
-        {active?'▶ ':''}{name}
+        {active?'▼ ':''}{name}
       </div>
-      <div style={{background:active?'rgba(46,204,113,0.2)':'rgba(0,0,0,0.25)',borderRadius:14,padding:'3px 10px',fontSize:10,display:'inline-block',border:active?'1px solid #2ecc71':'1px solid rgba(255,255,255,0.08)'}}>
+      <div style={{fontSize:10,color:'rgba(255,255,255,0.4)',background:'rgba(0,0,0,0.2)',padding:'2px 8px',borderRadius:10,display:'inline-block'}}>
         {n} 🂠
       </div>
     </div>
