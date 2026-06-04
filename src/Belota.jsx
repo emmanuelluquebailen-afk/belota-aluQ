@@ -234,37 +234,54 @@ function Crd({card,ok,W=54,H=76,onClick}){
     );
   } else if (isFig) {
     let tunicPattern = null;
+    
+    /* 👑 REDESSIN COMPLET DES DESIGN GRIMAUD SÉRIEUX (Lignes fines, chevelures d'époque, sceptres et attributs) */
     if (card.r === 'K') { 
       tunicPattern = (
-        <g stroke="#1e272e" strokeWidth="0.6" fill="none">
-          <path d="M 7,24 C 7,9 33,9 33,24 L 29,30 L 11,30 Z" fill="#d32f2f" />
-          <path d="M 12,24 L 20,30 L 28,24 Z" fill="#0984e3" />
-          <circle cx="20" cy="16" r="4.5" fill="#ffeaa7" />
-          <path d="M 15,12 L 20,8 L 25,12 L 23,14 L 17,14 Z" fill="#f1c40f" /> 
-          <line x1="9" y1="30" x2="13" y2="15" stroke="#f1c40f" strokeWidth="1.2" /> 
-          <circle cx="13" cy="14" r="1.5" fill="#f1c40f" />
+        <g stroke="#2d3436" strokeWidth="0.6" fill="none">
+          {/* Manteau rouge brodé d'or */}
+          <path d="M 6,24 C 6,10 34,10 34,24 L 29,30 L 11,30 Z" fill="#d32f2f" />
+          <path d="M 12,24 L 20,30 L 28,24 Z" fill="#f1c40f" opacity="0.4" />
+          {/* Tête fine Grimaud et Chevelure blanche dessinée */}
+          <path d="M 15,16 C 14,22 26,22 25,16 C 25,12 15,12 15,16" fill="#ffffff" />
+          <ellipse cx="20" cy="16" rx="3.5" ry="4.5" fill="#fff3e0" />
+          <path d="M 17,14 C 18,17 22,17 23,14" stroke="#2d3436" strokeWidth="0.4" /> {/* Barbe royale */}
+          {/* Couronne à fleurons traditionnelle française */}
+          <path d="M 16,12 L 18,9 L 20,11 L 22,9 L 24,12 Z" fill="#f1c40f" />
+          {/* Sceptre fleurdelisé */}
+          <line x1="8" y1="28" x2="11" y2="13" stroke="#f1c40f" strokeWidth="1" />
+          <path d="M 11,13 L 9,11 L 11,8 L 13,11 Z" fill="#f1c40f" />
         </g>
       );
     } else if (card.r === 'Q') { 
       tunicPattern = (
-        <g stroke="#1e272e" strokeWidth="0.6" fill="none">
-          <path d="M 9,25 C 9,12 31,12 31,25 L 27,30 L 13,30 Z" fill="#0984e3" />
-          <path d="M 14,25 C 14,25 20,23 26,25 L 20,30 Z" fill="#d32f2f" />
-          <circle cx="20" cy="17" r="4.2" fill="#ffeaa7" />
-          <path d="M 17,13 C 18,12 22,12 23,13 L 20,15 Z" fill="#f1c40f" /> 
-          <circle cx="29" cy="24" r="2" fill="#d32f2f" stroke="none" /> 
-          <line x1="29" y1="24" x2="27" y2="29" stroke="#2ecc71" strokeWidth="0.6" />
+        <g stroke="#2d3436" strokeWidth="0.6" fill="none">
+          {/* Robe de satin bleu azur et brocarts rouges */}
+          <path d="M 8,25 C 8,11 32,11 32,25 L 28,30 L 12,30 Z" fill="#0984e3" />
+          <path d="M 14,25 L 20,30 L 26,25 Z" fill="#d32f2f" />
+          {/* Visage ovale Grimaud et voile blanc de reine */}
+          <path d="M 14,14 C 13,24 27,24 26,14 Z" fill="#ffffff" opacity="0.9" />
+          <ellipse cx="20" cy="16.5" rx="3.2" ry="4.2" fill="#fff3e0" />
+          <path d="M 17,12 L 20,10 L 23,12 Z" fill="#f1c40f" /> {/* Diadème d'or */}
+          {/* Rose de Grimaud tenue à la main */}
+          <circle cx="29" cy="24" r="2.2" fill="#d32f2f" stroke="none" />
+          <path d="M 29,24 L 27,29" stroke="#2ecc71" strokeWidth="0.5" />
         </g>
       );
     } else if (card.r === 'J') { 
       tunicPattern = (
-        <g stroke="#1e272e" strokeWidth="0.6" fill="none">
-          <path d="M 8,24 L 32,24 L 27,30 L 13,30 Z" fill="#f1c40f" />
-          <path d="M 8,24 C 8,11 20,11 20,24 Z" fill="#d32f2f" />
-          <path d="M 20,24 C 20,11 32,11 32,24 Z" fill="#0984e3" />
-          <circle cx="20" cy="16" r="4.5" fill="#ffeaa7" />
-          <path d="M 15,13 C 15,10 25,10 25,13 Z" fill="#2d3436" /> 
-          <path d="M 31,30 L 31,14 L 34,18 L 31,21" fill="#b2bec3" stroke="#1e272e" /> 
+        <g stroke="#2d3436" strokeWidth="0.6" fill="none">
+          {/* Tunique d'armes de garde croisée Or et Bleu */}
+          <path d="M 7,24 L 33,24 L 28,30 L 12,30 Z" fill="#f1c40f" />
+          <path d="M 7,24 C 7,12 20,12 20,24 Z" fill="#d32f2f" />
+          <path d="M 20,24 C 20,12 33,12 33,24 Z" fill="#0984e3" />
+          {/* Visage du jeune garde et cheveux longs bouclés */}
+          <path d="M 14,14 C 13,22 27,22 26,14 Z" fill="#f39c12" opacity="0.3" />
+          <ellipse cx="20" cy="16" rx="3.5" ry="4.5" fill="#fff3e0" />
+          <path d="M 15,12 C 18,9 22,9 25,12 Z" fill="#2d3436" /> {/* Chapeau / Coiffe plate */}
+          {/* Hallebarde / Hache d'armes d'époque */}
+          <line x1="31" y1="30" x2="31" y2="10" stroke="#7f8c8d" strokeWidth="0.8" />
+          <path d="M 31,11 L 34,13 L 31,16 L 29,13 Z" fill="#b2bec3" />
         </g>
       );
     }
@@ -344,7 +361,6 @@ function Crd({card,ok,W=54,H=76,onClick}){
         {DIS[card.r]}<br/><span style={{fontSize:fs-2.5}}>{card.s}</span>
       </div>
       
-      {/* 💡 FIXÉ ÉLÉGANT : On appelle uniquement content pour le rendu de l'intérieur de la carte */}
       {content}
 
       {/* Index En-Bas à Droite inversé */}
