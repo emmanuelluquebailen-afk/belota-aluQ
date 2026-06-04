@@ -137,12 +137,14 @@ function init(scores,dealer){
 }
 
 function doPlay(G,player,card){
-  if (G.waiting) return G; // Verrou de sécurité absolu
+  if (G.waiting) return G;
   
   const nh=G.hands.map((h,i)=>i===player?h.filter(c=>c&&c.id&&c.id!==card.id):h.filter(c=>c&&c.id));
   const nt=[...(G.trick||[]),{p:player,c:card}];
+  
   const ns=[...G.snap];
   ns[player]=card;
+  
   let ann='',bb=[...G.bB],bp=[...G.bP];
   if(G.bH&&G.bH[player]&&card.s===G.trump&&(card.r==='K'||card.r==='Q')){
     bp=[...bp];bp[player]++;
@@ -150,10 +152,14 @@ function doPlay(G,player,card){
     if(bp[player]===2){ann='Rebelote !';bb=[...bb];bb[team(player)]+=20;}
   }
   
-  if (nt.length < 4) {
+  // 💡 SOLUTION DU BUG : On compte le nombre de cartes RÉELLES posées dans le snapshot
+  const cartesPosees = ns.filter(c => c !== null).length;
+  
+  if (cartesPosees < 4) {
     return { ...G, hands: nh, trick: nt, snap: ns, cur: nxt(player), ann, bB: bb, bP: bp };
   }
   
+  // Si on a bien nos 4 cartes, on calcule le vrai vainqueur
   const win = tWin(nt, G.trump);
   
   return {
@@ -161,7 +167,7 @@ function doPlay(G,player,card){
     hands: nh,
     trick: nt,
     snap: ns,
-    waiting: true, // Bloque tout le monde visuellement
+    waiting: true, 
     winner: win,
     ann,
     bB: bb,
@@ -176,14 +182,14 @@ function resolve(G) {
   return {
     ...G,
     trick: [], 
-    snap: [null, null, null, null], // On vide le tapis uniquement ici !
-    waiting: false,                 // Libère le verrou de jeu
+    snap: [null, null, null, null], 
+    waiting: false,                 
     winner: null,
     done: nd,
     phase: 'PLAY',
     lw: win,
     ann: '',
-    cur: win                        // Le gagnant prend la main pour le pli suivant
+    cur: win                        
   };
 }
 
@@ -323,7 +329,6 @@ function App(){
     
     const t = setTimeout(() => {
       setG(prev => {
-        // Condition de sécurité critique pour empêcher l'IA de jouer en cachette pendant la pause !
         if (prev.phase !== 'PLAY' || prev.cur === 0 || prev.waiting) return prev;
         const p = prev.cur, hand = prev.hands[p].filter(c => c && c.id);
         return doPlay(prev, p, aiCard(hand, prev.trick || [], prev.trump, p));
@@ -551,7 +556,6 @@ function App(){
 }
 
 // ── Composants utilitaires ────────────────────────────────────────────────────
-// (Inchangés)
 function PL({name,n,active,dealer,style={}}){
   return(
     <div style={{textAlign:'center',...style}}>
