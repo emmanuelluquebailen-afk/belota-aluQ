@@ -150,22 +150,45 @@ function doPlay(G,player,card){
     if(bp[player]===1)ann='Belote !';
     if(bp[player]===2){ann='Rebelote !';bb=[...bb];bb[team(player)]+=20;}
   }
-  if(nt.length<4){
-    return{...G,hands:nh,trick:nt,snap:ns,cur:nxt(player),ann,bB:bb,bP:bp};
+  // Remplacer l'ancien bloc de fin de doPlay par celui-ci :
+  if (nt.length < 4) {
+    return { ...G, hands: nh, trick: nt, snap: ns, cur: nxt(player), ann, bB: bb, bP: bp };
   }
-  // 4ème carte : waiting=true, on garde snap avec les 4 cartes
-  const win=tWin(nt,G.trump);
-  return{...G,hands:nh,trick:nt,snap:ns,waiting:true,winner:win,ann,bB:bb,bP:bp};
+  
+  // 4ème carte jouée : on calcule le gagnant
+  const win = tWin(nt, G.trump);
+  
+  return {
+    ...G,
+    hands: nh,
+    trick: nt,      // On garde l'historique du pli complet
+    snap: ns,       // ns contient bien les 4 cartes ici !
+    waiting: true,  // Déclenche la pause de 2,5 secondes
+    winner: win,
+    ann,
+    bB: bb,
+    bP: bp
+  };
 }
 
-function resolve(G){
-  const win=G.winner;
-  const nd=[...G.done,{winner:win,cards:G.snap.filter(c=>c)}];
-  const base={...G,
-    trick:[],snap:[null,null,null,null],
-    waiting:false,winner:null,
-    done:nd,phase:'PLAY',lw:win,ann:'',cur:win};
-  return nd.length===8?calcR(base):base;
+function resolve(G) {
+  const win = G.winner;
+  // On s'assure de récupérer les cartes du snapshot actuel avant de le vider
+  const nd = [...G.done, { winner: win, cards: G.snap.filter(c => c) }];
+  
+  const base = {
+    ...G,
+    trick: [], 
+    snap: [null, null, null, null], // Prépare le tapis pour le prochain pli
+    waiting: false,                 // Relance le jeu
+    winner: null,
+    done: nd,
+    phase: 'PLAY',
+    lw: win,
+    ann: '',
+    cur: win                        // Le vainqueur du pli commence le suivant
+  };
+  return nd.length === 8 ? calcR(base) : base;
 }
 
 function calcR(G){
@@ -267,14 +290,18 @@ function App(){
   useEffect(()=>{const u=()=>setLs(window.innerWidth>window.innerHeight);window.addEventListener('resize',u);return()=>window.removeEventListener('resize',u);},[]);
 
   // Résolution automatique du pli après SHOW_TRICK_MS
-  useEffect(()=>{
-    if(!G.waiting)return;
-    if(timer.current)clearTimeout(timer.current);
-    timer.current=setTimeout(()=>{
-      setG(p=>p.waiting?resolve(p):p);
-    },SHOW_TRICK_MS);
-    return()=>{if(timer.current)clearTimeout(timer.current);};
-  },[G.waiting, G.winner]);
+  useEffect(() => {
+    if (!G.waiting) return;
+    
+    if (timer.current) clearTimeout(timer.current);
+    
+    timer.current = setTimeout(() => {
+      // Utilisation d'une mise à jour fonctionnelle pour éviter les conflits de render
+      setG(p => p.waiting ? resolve(p) : p);
+    }, SHOW_TRICK_MS);
+    
+    return () => { if (timer.current) clearTimeout(timer.current); };
+  }, [G.waiting]); // 💡 On ne dépend UNIQUEMENT que du basculement du mode attente
 
   // IA enchères
   useEffect(()=>{
@@ -297,17 +324,20 @@ function App(){
   },[G.phase,G.bi,G.br]);
 
   // IA jeu — bloqué si waiting=true
-  useEffect(()=>{
-    if(G.phase!=='PLAY'||G.cur===0||G.waiting)return;
-    const t=setTimeout(()=>{
-      setG(prev=>{
-        if(prev.phase!=='PLAY'||prev.cur===0||prev.waiting)return prev;
-        const p=prev.cur,hand=prev.hands[p].filter(c=>c&&c.id);
-        return doPlay(prev,p,aiCard(hand,prev.trick||[],prev.trump,p));
+  useEffect(() => {
+    if (G.phase !== 'PLAY' || G.cur === 0 || G.waiting) return;
+    
+    const t = setTimeout(() => {
+      setG(prev => {
+        // Double vérification à l'intérieur du timeout pour éviter les chevauchements
+        if (prev.phase !== 'PLAY' || prev.cur === 0 || prev.waiting) return prev;
+        const p = prev.cur, hand = prev.hands[p].filter(c => c && c.id);
+        return doPlay(prev, p, aiCard(hand, prev.trick || [], prev.trump, p));
       });
-    },AI_DELAY);
-    return()=>clearTimeout(t);
-  },[G.phase,G.cur,G.waiting]);
+    }, AI_DELAY);
+    
+    return () => clearTimeout(t);
+  }, [G.phase, G.cur, G.waiting]); // Très important d'inclure G.waiting ici
 
   function bid(suit){
     if(suit!==null){
