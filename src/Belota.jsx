@@ -135,8 +135,24 @@ function doPlay(G,player,card){
     if(bp[player]===1)ann='Belote !';
     if(bp[player]===2){ann='Rebelote !';bb=[...bb];bb[team(player)]+=20;}
   }
-  if(nt.length===4) {const win = tWin(nt, G.trump);return{...G,hands:nh,trick:nt TrickResolved: True, trickWinner:win,
-  cur: win}; 
+  if (nt.length === 4) {
+  const win = tWin(nt, G.trump);
+  return {
+    ...G,
+    hands: nh,
+    trick: nt,
+    trickDone: true,
+    pw: win,
+    cur: win,
+  };
+}
+
+return {
+  ...G,
+  hands: nh,
+  trick: nt,
+  cur: nxt(player),
+};
 }
 function resolve(G){
   const win=G.pw;
