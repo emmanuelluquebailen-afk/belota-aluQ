@@ -7,7 +7,7 @@ class EB extends Component {
     if(this.state.e)return(
       <div style={{background:'#111',color:'white',padding:20,minHeight:'100dvh',
         display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:10}}>
-        <div style={{fontSize:14,color:'#e74c3c',fontWeight:'bold'}}>Erreur : {this.state.e.message}</div>
+        <div style={{fontSize:14,color:'#e74c3c',fontWeight:'bold'}}>{this.state.e.message}</div>
         <button onClick={()=>this.setState({e:null})}
           style={{background:'#27ae60',color:'white',border:'none',borderRadius:8,padding:'8px 20px',cursor:'pointer'}}>
           Relancer
@@ -18,6 +18,7 @@ class EB extends Component {
   }
 }
 
+// ── Constantes ────────────────────────────────────────────────────────────────
 const SUITS=['♠','♥','♦','♣'];
 const RED=s=>s==='♥'||s==='♦';
 const SFR={'♠':'Pique','♥':'Cœur','♦':'Carreau','♣':'Trèfle'};
@@ -35,13 +36,16 @@ const team=p=>(p===0||p===2)?0:1;
 const cs=(c,t)=>c.s===t?TS[c.r]:NS[c.r];
 const cp=(c,t)=>c.s===t?TP[c.r]:NP[c.r];
 const nxt=p=>(p+1)%4;
-const AI=1300, PAUSE=2500, BD=900;
 
-// Taille cartes du pli — grandes et visibles
-const PW=46, PH=64;
-// Taille cartes de la main
-const HW=68, HH=98;
+// Tailles
+const PW=48,PH=68;  // cartes du pli
+const HW=68,HH=98;  // cartes de la main
 
+const AI_DELAY=1400;
+const SHOW_TRICK_MS=2500; // durée d'affichage du pli complet
+const BID_DELAY=900;
+
+// ── Tri ───────────────────────────────────────────────────────────────────────
 function sortH(hand,trump){
   const safe=(hand||[]).filter(c=>c&&c.s&&c.r);
   if(!safe.length)return[];
@@ -50,6 +54,7 @@ function sortH(hand,trump){
   return[...safe].sort((a,b)=>{const d=ord.indexOf(a.s)-ord.indexOf(b.s);return d!==0?d:str(b)-str(a);});
 }
 
+// ── Deck ──────────────────────────────────────────────────────────────────────
 function mkDeck(){return SUITS.flatMap(s=>RANKS.map(r=>({s,r,id:`${r}${s}`})));}
 function shuf(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=0|Math.random()*(i+1);[b[i],b[j]]=[b[j],b[i]];}return b;}
 function deal(fp){
@@ -66,6 +71,7 @@ function complete(hands,flip,rest,taker){
   return nh.map(h=>h.filter(c=>c&&c.id));
 }
 
+// ── Règles ────────────────────────────────────────────────────────────────────
 function tWin(trick,trump){
   const lead=trick[0].c.s;let best=trick[0];
   for(const t of trick.slice(1)){
@@ -93,6 +99,7 @@ function legal(hand,trick,trump,player){
   return tc;
 }
 
+// ── IA ────────────────────────────────────────────────────────────────────────
 function aiTake(hand,suit,r){
   const tc=hand.filter(c=>c.s===suit);
   return r===1?(tc.some(c=>c.r==='J')||(tc.length>=3&&tc.some(c=>c.r==='9'))||tc.length>=4):(tc.some(c=>c.r==='J')||tc.length>=3);
@@ -115,52 +122,52 @@ function aiCard(hand,trick,trump,player){
   return w===par?mv.reduce((b,c)=>cs(c,trump)<cs(b,trump)?c:b):mv.reduce((b,c)=>cs(c,trump)>cs(b,trump)?c:b);
 }
 
+// ── État ──────────────────────────────────────────────────────────────────────
 function init(scores,dealer){
   const sc=scores||[0,0],dl=dealer!==undefined?dealer:3,fp=nxt(dl);
   const{hands,flip,rest}=deal(fp);
-  return {phase: 'BID',hands,flip,rest,dealer: dl,fp,trump: null,taker: null,tt: null,
-   br: 1,bi: fp,bc: 0,cur: fp,// 🃏 PLI EN COURS trick: [],
-   // 🔒 SNAPSHOT IMMOBILE DU PLI (IMPORTANT)
- trickSnapshot: null,
-   // 🧠 contrôle propre du pli 
- trickResolved: false, trickWinner: null, done: [],
-  scores: sc, ann: '', bB: [0, 0], bH: null, bP: [0, 0, 0, 0],result: null };
+  return{phase:'BID',hands,flip,rest,dealer:dl,fp,trump:null,
+    br:1,bi:fp,bc:0,taker:null,tt:null,
+    // pli courant
+    trick:[],
+    // snapshot des 4 cartes — mis à jour à chaque carte jouée
+    snap:[null,null,null,null],
+    waiting:false, // true = affichage du pli complet en cours
+    winner:null,
+    done:[],cur:fp,scores:sc,ann:'',
+    bB:[0,0],bH:null,bP:[0,0,0,0],result:null,lw:null};
 }
+
 function doPlay(G,player,card){
   const nh=G.hands.map((h,i)=>i===player?h.filter(c=>c&&c.id&&c.id!==card.id):h.filter(c=>c&&c.id));
   const nt=[...G.trick,{p:player,c:card}];
+  // Met à jour le snapshot
+  const ns=[...G.snap];
+  ns[player]=card;
   let ann='',bb=[...G.bB],bp=[...G.bP];
   if(G.bH&&G.bH[player]&&card.s===G.trump&&(card.r==='K'||card.r==='Q')){
     bp=[...bp];bp[player]++;
     if(bp[player]===1)ann='Belote !';
     if(bp[player]===2){ann='Rebelote !';bb=[...bb];bb[team(player)]+=20;}
   }
-  if (nt.length === 4) {
-  const win = tWin(nt, G.trump);
-  return {
-    ...G,
-    hands: nh,
-    trick: nt,
-    trickDone: true,
-    pw: win,
-    cur: win,
-  };
+  if(nt.length<4){
+    return{...G,hands:nh,trick:nt,snap:ns,cur:nxt(player),ann,bB:bb,bP:bp};
+  }
+  // 4ème carte : waiting=true, on garde snap avec les 4 cartes
+  const win=tWin(nt,G.trump);
+  return{...G,hands:nh,trick:nt,snap:ns,waiting:true,winner:win,ann,bB:bb,bP:bp};
 }
 
-return {
-  ...G,
-  hands: nh,
-  trick: nt,
-  cur: nxt(player),
-};
-}
 function resolve(G){
-  const win=G.pw;
-  const cards=(G.trick.length>0?G.trick:G.displayTrick).map(t=>t.c);
-  const nd=[...G.done,{winner:win,cards}];
-  const base={...G,trick:[],lw:win,ann:''};
-  return nd.length===8?calcR(base):{...base,cur:win};
+  const win=G.winner;
+  const nd=[...G.done,{winner:win,cards:G.snap.filter(c=>c)}];
+  const base={...G,
+    trick:[],snap:[null,null,null,null],
+    waiting:false,winner:null,
+    done:nd,phase:'PLAY',lw:win,ann:'',cur:win};
+  return nd.length===8?calcR(base):base;
 }
+
 function calcR(G){
   const t0=G.done.filter(d=>team(d.winner)===0).length;
   let pts=[0,0];
@@ -184,11 +191,8 @@ function calcR(G){
 }
 
 // ── Carte ─────────────────────────────────────────────────────────────────────
-function Crd({card,fd,ok,W=54,H=76,onClick}){
-  if(fd||!card||!card.s)return(
-    <div style={{width:W,height:H,borderRadius:6,background:'#1a3580',border:'2px solid #2244aa',
-      backgroundImage:'repeating-linear-gradient(45deg,#1a3580,#1a3580 4px,#243fa0 4px,#243fa0 8px)'}}/>
-  );
+function Crd({card,ok,W=54,H=76,onClick}){
+  if(!card||!card.s)return null;
   const tc=RED(card.s)?'#c0392b':'#111';
   const fs=W<50?8:W<65?10:11, ms=W<50?14:W<65?18:22;
   return(
@@ -196,7 +200,7 @@ function Crd({card,fd,ok,W=54,H=76,onClick}){
       width:W,height:H,borderRadius:6,position:'relative',overflow:'hidden',
       background:'white',flexShrink:0,
       border:ok?'3px solid #4caf50':'2px solid #ddd',
-      boxShadow:ok?'0 0 16px rgba(76,175,80,.9)':'0 3px 10px rgba(0,0,0,.45)',
+      boxShadow:ok?'0 0 14px rgba(76,175,80,.9)':'0 3px 10px rgba(0,0,0,.5)',
       cursor:ok?'pointer':'default',
       opacity:ok===false?0.38:1,
       filter:ok===false?'grayscale(50%)':'none',
@@ -214,36 +218,24 @@ function Crd({card,fd,ok,W=54,H=76,onClick}){
   );
 }
 
-// ── Main : ligne horizontale (pas de rotation → tap précis sur iPhone) ────────
+// ── Main horizontale ──────────────────────────────────────────────────────────
 function Hand({hand,okIds,onPlay,trump}){
-  // okIds=null → mode "affichage seul", pas de grisage
-  // okIds=Set → mode jeu, cartes non dans le Set grisées
-  const hasOkIds = okIds !== null && okIds !== undefined;
-  const ids = hasOkIds ? okIds : new Set();
+  const ids=okIds||new Set();
+  const hasOk=okIds!==null&&okIds!==undefined;
   const sorted=sortH(hand,trump);
-  const n=sorted.length;
-  if(!n)return null;
-  const STEP=Math.min(HW-4, Math.floor((340)/Math.max(n-1,1)));
+  const n=sorted.length;if(!n)return null;
+  const STEP=Math.min(HW-4,Math.floor(340/Math.max(n-1,1)));
   const totalW=HW+(n-1)*STEP;
   return(
     <div style={{position:'relative',height:HH+20,width:totalW,margin:'0 auto'}}>
       {sorted.map((card,i)=>{
-        // Si pas de okIds : ok=undefined (pas de grisage)
-        // Si okIds défini : ok=true/false
-        const ok = hasOkIds ? ids.has(card.id) : undefined;
+        const ok=hasOk?ids.has(card.id):undefined;
         return(
-          <div key={card.id}
-            onClick={ok?()=>onPlay(card):undefined}
-            style={{
-              position:'absolute',
-              left:i*STEP,
-              bottom:0,
-              width:HW,height:HH,
+          <div key={card.id} onClick={ok?()=>onPlay(card):undefined}
+            style={{position:'absolute',left:i*STEP,bottom:0,width:HW,height:HH,
               zIndex:ok?i+30:i+1,
               transform:ok?'translateY(-12px)':'none',
-              transition:'transform .1s',
-              cursor:ok?'pointer':'default',
-            }}>
+              transition:'transform .1s',cursor:ok?'pointer':'default'}}>
             <Crd card={card} ok={ok} W={HW} H={HH} onClick={()=>onPlay(card)}/>
           </div>
         );
@@ -252,29 +244,37 @@ function Hand({hand,okIds,onPlay,trump}){
   );
 }
 
+// ── Slot pli (emplacement d'une carte) ────────────────────────────────────────
+function Slot({card,label}){
+  return(
+    <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:3}}>
+      <div style={{fontSize:9,opacity:.6,color:'white',height:12,lineHeight:'12px'}}>{label}</div>
+      <div style={{width:PW,height:PH,borderRadius:6,
+        background: card?'transparent':'rgba(255,255,255,.08)',
+        border: card?'none':'1px dashed rgba(255,255,255,.2)',
+        display:'flex',alignItems:'center',justifyContent:'center'}}>
+        {card?<Crd card={card} W={PW} H={PH}/>:null}
+      </div>
+    </div>
+  );
+}
+
+// ── App ───────────────────────────────────────────────────────────────────────
 function App(){
   const[G,setG]=useState(()=>init());
   const timer=useRef(null);
   const[ls,setLs]=useState(()=>typeof window!=='undefined'&&window.innerWidth>window.innerHeight);
   useEffect(()=>{const u=()=>setLs(window.innerWidth>window.innerHeight);window.addEventListener('resize',u);return()=>window.removeEventListener('resize',u);},[]);
 
-  // Résolution pli — trickDone=true
-  // 800ms : 4 cartes visibles → affiche gagnant
-  // 1400ms supplémentaires → résout le pli
+  // Résolution automatique du pli après SHOW_TRICK_MS
   useEffect(()=>{
-    if(!G.trickDone)return;
+    if(!G.waiting)return;
     if(timer.current)clearTimeout(timer.current);
-    if(!G.showWinner){
-      timer.current=setTimeout(()=>
-        setG(p=>p.trickDone?{...p,showWinner:true}:p)
-      ,800);
-    } else {
-      timer.current=setTimeout(()=>
-        setG(p=>p.trickDone?resolve(p):p)
-      ,1400);
-    }
+    timer.current=setTimeout(()=>{
+      setG(p=>p.waiting?resolve(p):p);
+    },SHOW_TRICK_MS);
     return()=>{if(timer.current)clearTimeout(timer.current);};
-  },[G.trickDone,G.pw,G.showWinner]);
+  },[G.waiting, G.winner]);
 
   // IA enchères
   useEffect(()=>{
@@ -292,22 +292,22 @@ function App(){
         if(nc>=4){if(prev.br===1)return{...prev,br:2,bi:prev.fp,bc:0};const nd=deal(prev.fp);return{...prev,...nd,br:1,bi:prev.fp,bc:0,trump:null};}
         return{...prev,bi:nxt(prev.bi),bc:nc};
       });
-    },BD);
+    },BID_DELAY);
     return()=>clearTimeout(t);
   },[G.phase,G.bi,G.br]);
 
-  // IA jeu — seulement en PLAY
+  // IA jeu — bloqué si waiting=true
   useEffect(()=>{
-    if(G.phase!=='PLAY'||G.cur===0||G.trickDone)return;
+    if(G.phase!=='PLAY'||G.cur===0||G.waiting)return;
     const t=setTimeout(()=>{
       setG(prev=>{
-        if(prev.phase!=='PLAY'||prev.cur===0||prev.trickDone)return prev;
+        if(prev.phase!=='PLAY'||prev.cur===0||prev.waiting)return prev;
         const p=prev.cur,hand=prev.hands[p].filter(c=>c&&c.id);
         return doPlay(prev,p,aiCard(hand,prev.trick,prev.trump,p));
       });
-    },AI);
+    },AI_DELAY);
     return()=>clearTimeout(t);
-  },[G.phase,G.cur,G.trick.length]);
+  },[G.phase,G.cur,G.waiting]);
 
   function bid(suit){
     if(suit!==null){
@@ -322,8 +322,9 @@ function App(){
       return{...prev,bi:nxt(prev.bi),bc:nc};
     });
   }
+
   function playCard(card){
-    if(G.phase!=='PLAY'||G.cur!==0||G.trickDone)return;
+    if(G.phase!=='PLAY'||G.cur!==0||G.waiting)return;
     const hand=G.hands[0].filter(c=>c&&c.id);
     if(!legal(hand,G.trick,G.trump,0).some(c=>c.id===card.id))return;
     setG(prev=>doPlay(prev,0,card));
@@ -339,25 +340,16 @@ function App(){
   );
 
   const TABLE={position:'fixed',inset:0,
-    background:`radial-gradient(circle at 50% 40%, #2f7d3a 0%, #1f5d2b 45%, #143b1c 75%, #0b2411 100%)`,
+    background:`radial-gradient(circle at 50% 40%,#2f7d3a 0%,#1f5d2b 45%,#143b1c 75%,#0b2411 100%)`,
     fontFamily:'Georgia,serif',color:'white',overflow:'hidden',userSelect:'none'};
 
   const hand0=(G.hands[0]||[]).filter(c=>c&&c.id);
-  const isPause=!!G.trickDone;
-  // trickMap : pendant PAUSE on garde trick avec 4 cartes
-  // displayTrick : les cartes à afficher (reste visible pendant PAUSE)
-  const shownTrick = G.trickSnapshot || G.trick || [];
-  const trickMap=Object.fromEntries(shownTrick.filter(t=>t&&t.c).map(t=>[t.p,t.c]));
-  // okIds : null = pas de grisage, Set = grisage actif
-  // On ne grise QUE quand c'est le tour du joueur humain
-  let okIds = null;
-  if(G.phase==='PLAY' && G.cur===0 && G.trump){
-    try{ okIds=new Set(legal(hand0,G.trick,G.trump,0).map(c=>c.id)); }catch(e){}
-  }
+  const myTurn=G.phase==='PLAY'&&G.cur===0&&!G.waiting;
+  let okIds=null;
+  if(myTurn&&G.trump){try{okIds=new Set(legal(hand0,G.trick,G.trump,0).map(c=>c.id));}catch(e){}}
   const t0=G.done.filter(d=>team(d.winner)===0).length;
   const t1=G.done.filter(d=>team(d.winner)===1).length;
   const ac=G.trump&&RED(G.trump)?'#ffcdd2':'#e8f5e9';
-  const myTurn=G.phase==='PLAY'&&G.cur===0;
 
   // ── FIN ──────────────────────────────────────────────────────────────────────
   if(G.phase==='OVER'||G.phase==='END'){
@@ -398,10 +390,8 @@ function App(){
     const myTurnBid=G.bi===0;
     return(
       <div style={TABLE}>
-        {/* Barre top */}
-        <div style={{position:'absolute',top:0,left:0,right:0,height:30,
-          background:'rgba(0,0,0,.5)',display:'flex',justifyContent:'space-between',
-          alignItems:'center',padding:'0 14px',zIndex:10}}>
+        <div style={{position:'absolute',top:0,left:0,right:0,height:30,background:'rgba(0,0,0,.5)',
+          display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0 14px',zIndex:10}}>
           <div style={{fontWeight:'bold',fontSize:12}}>🃏 BELOTA</div>
           <div style={{fontSize:11}}>
             <span style={{color:'#4caf50',fontWeight:'bold'}}>{G.scores[0]}</span>
@@ -410,41 +400,30 @@ function App(){
           </div>
           <div style={{fontSize:10,opacity:.7}}>Don: {PN[G.dealer]}</div>
         </div>
-
-        {/* Joueurs */}
         <PL name="Nord" n={(G.hands[2]||[]).length} active={G.bi===2} dealer={G.dealer===2}
           style={{position:'absolute',top:38,left:'50%',transform:'translateX(-50%)',zIndex:5}}/>
         <PL name="Ouest" n={(G.hands[1]||[]).length} active={G.bi===1} dealer={G.dealer===1}
           style={{position:'absolute',top:'45%',left:'14%',transform:'translateY(-50%)',zIndex:5}}/>
         <PL name="Est" n={(G.hands[3]||[]).length} active={G.bi===3} dealer={G.dealer===3}
           style={{position:'absolute',top:'45%',right:'14%',transform:'translateY(-50%)',zIndex:5}}/>
-
-        {/* Carte retournée — grande, centrée */}
-        <div style={{position:'absolute',top:'50%',left:'50%',
-          transform:'translate(-50%,-68%)',zIndex:5}}>
+        <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-68%)',zIndex:5}}>
           <Crd card={G.flip} W={80} H={114}/>
         </div>
-
-        {/* IA réfléchit */}
         {!myTurnBid&&(
           <div style={{position:'absolute',bottom:'34%',left:'50%',transform:'translateX(-50%)',
             zIndex:10,background:'rgba(0,0,0,.55)',borderRadius:20,padding:'4px 14px',fontSize:11}}>
             ⏳ {PN[G.bi]} réfléchit…
           </div>
         )}
-
-        {/* Boutons — petits, centrés en bas */}
         {myTurnBid&&(
-          <div style={{position:'absolute',bottom:'26%',left:'50%',
-            transform:'translateX(-50%)',zIndex:20,display:'flex',gap:8,alignItems:'center'}}>
+          <div style={{position:'absolute',bottom:'28%',left:'50%',
+            transform:'translateX(-50%)',zIndex:20,display:'flex',gap:10,alignItems:'center'}}>
             {G.br===1?(<>
-              {/* Tour 1 : symbole de la couleur retournée + Passer */}
               <button onClick={()=>bid(G.flip.s)} style={suitBtn(RED(G.flip?.s)?'rgba(140,20,20,.9)':'rgba(20,50,20,.9)',true)}>
                 {G.flip.s}
               </button>
               <button onClick={()=>bid(null)} style={passBtn()}>Passer</button>
             </>):(<>
-              {/* Tour 2 : 3 autres couleurs + Passer */}
               {SUITS.filter(s=>s!==G.flip?.s).map(s=>(
                 <button key={s} onClick={()=>bid(s)} style={suitBtn(RED(s)?'rgba(140,20,20,.9)':'rgba(20,40,80,.9)',false)}>
                   {s}
@@ -454,8 +433,6 @@ function App(){
             </>)}
           </div>
         )}
-
-        {/* Main en bas — pas de okIds = pas de grisage */}
         <div style={{position:'absolute',bottom:10,left:0,right:0,zIndex:6,textAlign:'center'}}>
           <Hand hand={hand0} trump={null} okIds={null}/>
         </div>
@@ -464,9 +441,12 @@ function App(){
   }
 
   // ── JEU ───────────────────────────────────────────────────────────────────────
+  // Le pli est affiché via G.snap[0..3] — mis à jour IMMÉDIATEMENT à chaque carte jouée
+  // snap[p] = carte du joueur p, null si pas encore jouée ce tour
+
   return(
     <div style={TABLE}>
-      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.7}}`}</style>
+      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}`}</style>
 
       {/* Barre top */}
       <div style={{position:'absolute',top:0,left:0,right:0,height:28,
@@ -476,7 +456,7 @@ function App(){
           <span style={{color:ac,fontWeight:'bold'}}>{G.trump} {G.trump?SFR[G.trump]:''}</span>
           <span style={{opacity:.5,fontSize:9}}> {G.tt===0?'V+N':'Adv.'}</span>
         </div>
-        <div style={{fontSize:12,color:isPause?'#ffd54f':'rgba(255,255,255,.85)',fontWeight:'bold'}}>
+        <div style={{fontSize:12,color:G.waiting?'#ffd54f':'rgba(255,255,255,.85)',fontWeight:'bold'}}>
           {G.ann||`Pli ${G.done.length+1}/8`}
         </div>
         <div style={{fontSize:11}}>
@@ -487,69 +467,57 @@ function App(){
         </div>
       </div>
 
-      {/* Joueurs */}
+      {/* Labels joueurs */}
       <PL name="Nord" n={(G.hands[2]||[]).filter(c=>c&&c.id).length}
-        active={G.cur===2&&!isPause} dealer={G.dealer===2}
+        active={G.cur===2&&!G.waiting} dealer={G.dealer===2}
         style={{position:'absolute',top:32,left:'50%',transform:'translateX(-50%)',zIndex:10}}/>
       <PL name="Ouest" n={(G.hands[1]||[]).filter(c=>c&&c.id).length}
-        active={G.cur===1&&!isPause} dealer={G.dealer===1}
-        style={{position:'absolute',top:'46%',left:'12%',transform:'translateY(-50%)',zIndex:10}}/>
+        active={G.cur===1&&!G.waiting} dealer={G.dealer===1}
+        style={{position:'absolute',top:'44%',left:'2%',transform:'translateY(-50%)',zIndex:10}}/>
       <PL name="Est" n={(G.hands[3]||[]).filter(c=>c&&c.id).length}
-        active={G.cur===3&&!isPause} dealer={G.dealer===3}
-        style={{position:'absolute',top:'46%',right:'12%',transform:'translateY(-50%)',zIndex:10}}/>
+        active={G.cur===3&&!G.waiting} dealer={G.dealer===3}
+        style={{position:'absolute',top:'44%',right:'2%',transform:'translateY(-50%)',zIndex:10}}/>
 
-      {/* ── 4 CARTES DU PLI ──────────────────────────────────────────────────────
-          Positionnées DIRECTEMENT sur TABLE, z-index 9999
-          Aucun conteneur intermédiaire ne peut les cacher                        */}
-
-      {/* === ZONE DE PLI : grille centrée, fond visible ===
-          44×62px par carte — zone top:28 → bottom:140
-          Hauteur zone = ~222px, grille = 3×64+2×8 = 208px → OK */}
+      {/* ═══════════════════════════════════════════════════════════════════════
+          ZONE DE PLI — 4 slots toujours visibles, disposés en croix
+          Utilise snap[p] qui est mis à jour dès qu'une carte est jouée
+          ═══════════════════════════════════════════════════════════════════════ */}
       <div style={{
         position:'absolute',
-        top:28, left:'12%', right:'12%', bottom:140,
-        zIndex:500,
-        display:'flex',
-        flexDirection:'column',
+        top:30, left:'15%', right:'15%', bottom:140,
+        zIndex:100,
+        display:'grid',
+        gridTemplateColumns:'1fr 1fr 1fr',
+        gridTemplateRows:'1fr 1fr 1fr',
         alignItems:'center',
-        justifyContent:'space-between',
-        padding:'6px 0',
+        justifyItems:'center',
+        pointerEvents:'none',
       }}>
-        {/* Ligne 1 : Nord */}
-        <div style={{display:'flex',justifyContent:'center',width:'100%'}}>
-          {trickMap[2]?<Crd card={trickMap[2]} W={PW} H={PH}/>:<Ghost/>}
+        {/* Rangée 1 : vide | Nord | vide */}
+        <div/><Slot card={G.snap[2]} label="Nord"/><div/>
+        {/* Rangée 2 : Ouest | gagnant | Est */}
+        <Slot card={G.snap[1]} label="Ouest"/>
+        <div style={{fontSize:10,color:'#ffd54f',fontWeight:'bold',textAlign:'center'}}>
+          {G.waiting&&G.winner!==null?`${PN[G.winner]} ✓`:''}
         </div>
-
-        {/* Ligne 2 : Ouest — Centre (badge/info) — Est */}
-        <div style={{display:'flex',justifyContent:'space-between',
-          alignItems:'center',width:'100%',paddingLeft:8,paddingRight:8}}>
-          {trickMap[1]?<Crd card={trickMap[1]} W={PW} H={PH}/>:<Ghost/>}
-          <div style={{fontSize:10,color:isPause&&G.showWinner?'#ffd54f':'rgba(255,255,255,.3)',
-            textAlign:'center',fontWeight:'bold',minWidth:60}}>
-            {isPause&&G.showWinner?`${PN[G.pw]}✓`:''}
-          </div>
-          {trickMap[3]?<Crd card={trickMap[3]} W={PW} H={PH}/>:<Ghost/>}
-        </div>
-
-        {/* Ligne 3 : Vous */}
-        <div style={{display:'flex',justifyContent:'center',width:'100%'}}>
-          {trickMap[0]?<Crd card={trickMap[0]} W={PW} H={PH}/>:<Ghost/>}
-        </div>
+        <Slot card={G.snap[3]} label="Est"/>
+        {/* Rangée 3 : vide | Vous | vide */}
+        <div/><Slot card={G.snap[0]} label="Vous"/><div/>
       </div>
 
-      {/* Pastille tour — petite, en bas */}
-      <div style={{position:'absolute',bottom:125,left:'50%',transform:'translateX(-50%)',
-        zIndex:8,whiteSpace:'nowrap'}}>
-        {isPause?(
-          <div style={{background:'rgba(255,193,7,.2)',border:'1px solid #ffd54f',
+      {/* Indicateur de tour */}
+      <div style={{position:'absolute',bottom:128,left:'50%',transform:'translateX(-50%)',
+        zIndex:50,whiteSpace:'nowrap'}}>
+        {G.waiting?(
+          <div style={{background:'rgba(0,0,0,.55)',border:'1px solid #ffd54f',
             borderRadius:20,padding:'3px 12px',fontSize:11,color:'#ffd54f'}}>
-            {G.showWinner?`✓ ${PN[G.pw]} remporte`:'⏳ …'}
+            {G.winner!==null?`${PN[G.winner]} remporte ce pli`:'…'}
           </div>
         ):myTurn?(
           <div style={{background:'rgba(27,94,32,.95)',border:'2px solid #66bb6a',
             borderRadius:20,padding:'4px 14px',fontSize:12,fontWeight:'bold',
             animation:'pulse 1.2s infinite'}}>
-            🎯 À vous — tapez une carte
+            🎯 À vous — jouez une carte
           </div>
         ):(
           <div style={{background:'rgba(0,0,0,.5)',borderRadius:20,
@@ -567,27 +535,21 @@ function App(){
   );
 }
 
-// Label joueur
+// ── Composants utilitaires ────────────────────────────────────────────────────
 function PL({name,n,active,dealer,style={}}){
   return(
     <div style={{textAlign:'center',...style}}>
       <div style={{fontSize:active?12:10,fontWeight:active?'bold':'normal',
-        color:active?'#ffd54f':'rgba(255,255,255,.75)',
-        textShadow:'0 1px 4px rgba(0,0,0,.9)',marginBottom:2}}>
+        color:active?'#ffd54f':'rgba(255,255,255,.75)',textShadow:'0 1px 4px rgba(0,0,0,.9)',marginBottom:2}}>
         {active?'▼ ':''}{name}{dealer?' 🔴':''}
       </div>
       <div style={{background:active?'rgba(46,125,50,.7)':'rgba(0,0,0,.45)',
         borderRadius:20,padding:'2px 10px',fontSize:11,display:'inline-block',
-        border:'1px solid rgba(255,255,255,.2)',transition:'all .2s'}}>
+        border:'1px solid rgba(255,255,255,.2)'}}>
         {n}🂠
       </div>
     </div>
   );
-}
-
-// Emplacement vide (invisible)
-function Ghost(){
-  return <div style={{width:PW,height:PH,borderRadius:6,opacity:0}}/>;
 }
 
 function Btn({children,onClick,bg}){
@@ -599,28 +561,16 @@ function Btn({children,onClick,bg}){
     </button>
   );
 }
-function suitBtn(bg, big){
-  return{
-    background:bg, color:'white',
-    border:'1px solid rgba(255,255,255,.35)',
-    borderRadius:big?'50%':'50%',
-    width:big?64:52, height:big?64:52,
-    fontSize:big?28:22,
+function suitBtn(bg,big){
+  return{background:bg,color:'white',border:'1px solid rgba(255,255,255,.35)',
+    borderRadius:'50%',width:big?64:52,height:big?64:52,fontSize:big?28:22,
     display:'flex',alignItems:'center',justifyContent:'center',
-    cursor:'pointer',fontWeight:'bold',
-    boxShadow:'0 3px 10px rgba(0,0,0,.5)',
-    flexShrink:0,
-  };
+    cursor:'pointer',fontWeight:'bold',boxShadow:'0 3px 10px rgba(0,0,0,.5)',flexShrink:0};
 }
 function passBtn(){
-  return{
-    background:'rgba(50,50,50,.75)',color:'rgba(255,255,255,.8)',
-    border:'1px solid rgba(255,255,255,.2)',
-    borderRadius:20, padding:'8px 18px',
-    fontSize:13, cursor:'pointer',fontWeight:'normal',
-    boxShadow:'0 2px 8px rgba(0,0,0,.4)',
-    letterSpacing:'.3px',
-  };
+  return{background:'rgba(50,50,50,.75)',color:'rgba(255,255,255,.8)',
+    border:'1px solid rgba(255,255,255,.2)',borderRadius:20,padding:'8px 18px',
+    fontSize:13,cursor:'pointer',fontWeight:'normal',boxShadow:'0 2px 8px rgba(0,0,0,.4)'};
 }
 
 export default function Belota(){
