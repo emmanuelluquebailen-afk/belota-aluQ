@@ -7,7 +7,7 @@ class EB extends Component {
     if(this.state.e)return(
       <div style={{background:'#111',color:'white',padding:20,minHeight:'100dvh',
         display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:10}}>
-        <div style={{fontSize:14,color:'#e74c3c',fontWeight:'bold'}}>Erreur : {this.state.e.message}</div>
+        <div style={{fontSize:14,color:'#e74c3c',fontWeight:'bold'}}>{this.state.e.message}</div>
         <button onClick={()=>this.setState({e:null})}
           style={{background:'#27ae60',color:'white',border:'none',borderRadius:8,padding:'8px 20px',cursor:'pointer'}}>
           Relancer
@@ -18,14 +18,13 @@ class EB extends Component {
   }
 }
 
-// ── Constantes ────────────────────────────────────────────────────────────────
 const SUITS=['♠','♥','♦','♣'];
 const RED=s=>s==='♥'||s==='♦';
 const SFR={'♠':'Pique','♥':'Cœur','♦':'Carreau','♣':'Trèfle'};
 const RANKS=['7','8','9','10','J','Q','K','A'];
 const DIS={'7':'7','8':'8','9':'9','10':'10','J':'V','Q':'D','K':'R','A':'A'};
-const PN=['Sud','Ouest','Nord','Est']; 
-const SORD=['♠','♥','♣','♦'];
+const PN=['Vous','Ouest','Nord','Est'];
+const SORD=['♥','♠','♣','♦'];  // ordre : Cœur Pique Trèfle Carreau
 const TST={J:8,'9':7,A:6,'10':5,K:4,Q:3,'8':2,'7':1};
 const PST={A:8,'10':7,K:6,Q:5,J:4,'9':3,'8':2,'7':1};
 const TS={J:7,'9':6,A:5,'10':4,K:3,Q:2,'8':1,'7':0};
@@ -37,13 +36,9 @@ const cs=(c,t)=>c.s===t?TS[c.r]:NS[c.r];
 const cp=(c,t)=>c.s===t?TP[c.r]:NP[c.r];
 const nxt=p=>(p+1)%4;
 
-// Proportions traditionnelles Grimaud
-const PW=56, PH=82;  
-const HW=76, HH=112; 
-
-const AI_DELAY=1400;
-const SHOW_TRICK_MS=2500; 
-const BID_DELAY=900;
+const PW=54,PH=78;   // cartes du pli
+const HW=72,HH=104;  // cartes de la main
+const AI_DELAY=1300, SHOW_TRICK_MS=2500, BID_DELAY=900;
 
 // ── Tri ───────────────────────────────────────────────────────────────────────
 function sortH(hand,trump){
@@ -99,101 +94,51 @@ function legal(hand,trick,trump,player){
   return tc;
 }
 
-// ── IA ────────────────────────────────────────────────────────────────────────
-function aiTake(hand,suit,r){
-  const tc=hand.filter(c=>c.s===suit);
-  return r===1?(tc.some(c=>c.r==='J')||(tc.length>=3&&tc.some(c=>c.r==='9'))||tc.length>=4):(tc.some(c=>c.r==='J')||tc.length>=3);
-}
-function aiSuit(hand,ex){
-  let best=null,bv=-1;
-  for(const s of SUITS){if(s===ex)continue;const v=hand.filter(c=>c.s===s).reduce((a,c)=>a+TS[c.r],0)+hand.filter(c=>c.s===s).length*2;if(v>bv){bv=v;best=s;}}
-  return best;
-}
+function aiTake(hand,suit,r){const tc=hand.filter(c=>c.s===suit);return r===1?(tc.some(c=>c.r==='J')||(tc.length>=3&&tc.some(c=>c.r==='9'))||tc.length>=4):(tc.some(c=>c.r==='J')||tc.length>=3);}
+function aiSuit(hand,ex){let best=null,bv=-1;for(const s of SUITS){if(s===ex)continue;const v=hand.filter(c=>c.s===s).reduce((a,c)=>a+TS[c.r],0)+hand.filter(c=>c.s===s).length*2;if(v>bv){bv=v;best=s;}}return best;}
 function aiCard(hand,trick,trump,player){
-  const mv=legal(hand,trick,trump,player);if(!mv.length)return hand[0];
+  const mv=legal(hand,trick||[],trump,player);if(!mv.length)return hand[0];
   const par=(player+2)%4;
-  if(!trick.length){
-    const j=mv.find(c=>c.s===trump&&c.r==='J');if(j)return j;
-    const nt=mv.filter(c=>c.s!==trump);
-    if(nt.length)return nt.reduce((b,c)=>cs(c,trump)>cs(b,trump)?c:b);
-    return mv.reduce((b,c)=>cs(c,trump)<cs(b,trump)?c:b);
-  }
+  if(!trick||!trick.length){const j=mv.find(c=>c.s===trump&&c.r==='J');if(j)return j;const nt=mv.filter(c=>c.s!==trump);if(nt.length)return nt.reduce((b,c)=>cs(c,trump)>cs(b,trump)?c:b);return mv.reduce((b,c)=>cs(c,trump)<cs(b,trump)?c:b);}
   const w=tWin(trick,trump);
   return w===par?mv.reduce((b,c)=>cs(c,trump)<cs(b,trump)?c:b):mv.reduce((b,c)=>cs(c,trump)>cs(b,trump)?c:b);
 }
 
-// ── État ──────────────────────────────────────────────────────────────────────
 function init(scores,dealer){
   const sc=scores||[0,0],dl=dealer!==undefined?dealer:3,fp=nxt(dl);
   const{hands,flip,rest}=deal(fp);
   return{phase:'BID',hands,flip,rest,dealer:dl,fp,trump:null,
     br:1,bi:fp,bc:0,taker:null,tt:null,
-    trick:[],
-    snap:[null,null,null,null],
-    waiting:false, 
-    winner:null,
+    trick:[],snap:[null,null,null,null],waiting:false,winner:null,
     done:[],cur:fp,scores:sc,ann:'',
     bB:[0,0],bH:null,bP:[0,0,0,0],result:null,lw:null};
 }
-
 function doPlay(G,player,card){
-  if (G.waiting) return G;
-  
+  if(G.waiting)return G;
   const nh=G.hands.map((h,i)=>i===player?h.filter(c=>c&&c.id&&c.id!==card.id):h.filter(c=>c&&c.id));
   const nt=[...(G.trick||[]),{p:player,c:card}];
-  
-  const ns=[...G.snap];
-  ns[player]=card;
-  
+  const ns=[...G.snap];ns[player]=card;
   let ann='',bb=[...G.bB],bp=[...G.bP];
   if(G.bH&&G.bH[player]&&card.s===G.trump&&(card.r==='K'||card.r==='Q')){
     bp=[...bp];bp[player]++;
     if(bp[player]===1)ann='Belote !';
     if(bp[player]===2){ann='Rebelote !';bb=[...bb];bb[team(player)]+=20;}
   }
-  
-  const cartesPosees = ns.filter(c => c !== null).length;
-  if (cartesPosees < 4) {
-    return { ...G, hands: nh, trick: nt, snap: ns, cur: nxt(player), ann, bB: bb, bP: bp };
-  }
-  
-  const win = tWin(nt, G.trump);
-  return {
-    ...G,
-    hands: nh,
-    trick: nt,
-    snap: ns,
-    waiting: true, 
-    winner: win,
-    ann,
-    bB: bb,
-    bP: bp
-  };
+  if(ns.filter(c=>c!==null).length<4)return{...G,hands:nh,trick:nt,snap:ns,cur:nxt(player),ann,bB:bb,bP:bp};
+  const win=tWin(nt,G.trump);
+  return{...G,hands:nh,trick:nt,snap:ns,waiting:true,winner:win,ann,bB:bb,bP:bp};
 }
-
-function resolve(G) {
-  const win = G.winner;
-  const nd = [...G.done, { winner: win, cards: G.snap.filter(c => c && c.s) }];
-  
-  return {
-    ...G,
-    trick: [], 
-    snap: [null, null, null, null], 
-    waiting: false,                 
-    winner: null,
-    done: nd,
-    phase: 'PLAY',
-    lw: win,
-    ann: '',
-    cur: win                        
-  };
+function resolve(G){
+  const win=G.winner;
+  const nd=[...G.done,{winner:win,cards:G.snap.filter(c=>c&&c.s)}];
+  const base={...G,trick:[],snap:[null,null,null,null],waiting:false,winner:null,done:nd,phase:'PLAY',lw:win,ann:'',cur:win};
+  return nd.length===8?calcR(base):base;
 }
-
 function calcR(G){
   const t0=G.done.filter(d=>team(d.winner)===0).length;
   let pts=[0,0];
   if(t0===8)pts=[250,0];else if(t0===0)pts=[0,250];
-  else for(let i=0;i<8;i++){const d=G.done[i],tm=team(d.winner);pts[tm]+= d.cards.reduce((s,c)=>s+cp(c,G.trump),0);if(i===7)pts[tm]+=10;}
+  else for(let i=0;i<8;i++){const d=G.done[i],tm=team(d.winner);pts[tm]+=d.cards.reduce((s,c)=>s+cp(c,G.trump),0);if(i===7)pts[tm]+=10;}
   const tt=G.tt,ot=1-tt;
   let rp=[0,0],res;
   if(pts[tt]>pts[ot]){res='ok';rp=[...pts];}
@@ -202,193 +147,248 @@ function calcR(G){
   rp=[rp[0]+G.bB[0],rp[1]+G.bB[1]];
   const ns=[G.scores[0]+rp[0],G.scores[1]+rp[1]];
   const go=ns[0]>=1000||ns[1]>=1000;
-  const tn=G.taker===0?'Vous gagnez la':G.taker===2?'Nord gagne la':G.taker===1?'Ouest gagne la':'Est gagne la';
   const ttn=tt===0?'Vous+Nord':'Ouest+Est',dtn=tt===0?'Ouest+Est':'Vous+Nord';
   let msg,detail;
-  if(res==='ok'){msg=`✅ Enchère réussie !`;detail=`${ttn} ${pts[tt]} pts | ${dtn} ${pts[ot]} pts`;}
+  if(res==='ok'){msg=`✅ ${ttn} réussit !`;detail=`${ttn} ${pts[tt]} pts | ${dtn} ${pts[ot]} pts`;}
   else if(res==='litige'){msg=`🟡 Litige — ${dtn} prend 162`;detail=`${pts[0]}-${pts[1]}`;}
   else{msg=`❌ CHUTE ! ${dtn} prend 162`;detail=`${ttn} ${pts[tt]} pts | ${dtn} ${pts[ot]} pts`;}
   return{...G,phase:go?'END':'OVER',scores:ns,result:{pts,rp,res,msg,detail},ann:''};
 }
 
-// ── 🎴 GRAPHISMES DES CARTES TRADITIONNELLES GRIMAUD FRANÇAISES ──
-function Crd({card,ok,W=54,H=76,onClick}){
-  if(!card||!card.s) return null;
-  
-  const fs = W < 50 ? 9 : W < 65 ? 11 : 13;
-  const tc = RED(card.s) ? '#d32f2f' : '#1e272e';
-  const isFig = ['J','Q','K'].includes(card.r);
-  const isAs = card.r === 'A';
+// ══════════════════════════════════════════════════════════════════════════════
+// 🃏  CARTES FRANÇAISES — design propre et lisible
+// ══════════════════════════════════════════════════════════════════════════════
 
-  let content = null;
+// Positions pip standard (% zone centrale x, y)
+// Colonnes à 28% et 72%, lignes équiréparties
+const PIPS_DEF = {
+  '7':  [[28,15],[72,15],[28,38],[72,38],[50,50],[28,73],[72,73]],
+  '8':  [[28,13],[72,13],[28,35],[72,35],[28,65],[72,65],[28,87],[72,87]],
+  '9':  [[28,13],[72,13],[28,34],[72,34],[50,50],[28,66],[72,66],[28,87],[72,87]],
+  '10': [[28,12],[72,12],[50,26],[28,39],[72,39],[28,61],[72,61],[50,74],[28,88],[72,88]],
+};
 
-  if (isAs) {
-    content = (
-      <svg viewBox="0 0 50 70" style={{position:'absolute',inset:'10px 4px',width:'calc(100% - 8px)',height:'calc(100% - 20px)'}}>
-        <ellipse cx="25" cy="35" rx="16" ry="22" stroke="#d5b87d" strokeWidth="0.8" fill="none" strokeDasharray="3,0.5" />
-        <ellipse cx="25" cy="35" rx="14" ry="19" stroke="#d5b87d" strokeWidth="0.4" fill="none" />
-        <path d="M 20,22 L 22,19 L 25,21 L 28,19 L 30,22 Z" fill="#d5b87d" opacity="0.8" />
-        <text x="25" y="44" fontSize="22" textAnchor="middle" fill={tc} stroke="none" fontWeight="bold">{card.s}</text>
-        <text x="25" y="58" fontSize="4.5" textAnchor="middle" fill="#8d764a" fontWeight="bold" fontFamily="serif" letterSpacing="0.3">GRIMAUD</text>
-      </svg>
-    );
-  } else if (isFig) {
-    let tunicPattern = null;
-    
-    // 🎨 PORTRAITS ET TUNILLES AFFINÉES DU STYLE JEU FRANÇAIS TRADITIONNEL
-    if (card.r === 'K') { 
-      tunicPattern = (
-        <g stroke="#1e272e" strokeWidth="0.5" fill="none">
-          {/* Manteau drapé bicolore traditionnel */}
-          <path d="M 5,23 C 5,8 35,8 35,23 L 30,30 L 10,30 Z" fill="#d32f2f" />
-          <path d="M 11,23 L 20,30 L 29,23 Z" fill="#f1c40f" opacity="0.6" />
-          <path d="M 15,23 L 20,12 L 25,23" fill="#0984e3" opacity="0.5" />
-          {/* Forme du buste et détails fins du visage à barbe */}
-          <path d="M 14,16 C 13,21 27,21 26,16 Z" fill="#fff3e0" />
-          <path d="M 14,13 C 14,8 26,8 26,13 Z" fill="#ffffff" /> {/* Chevelure longue blanche */}
-          <path d="M 16,16 C 17,19 23,19 24,16" stroke="#1e272e" strokeWidth="0.5" /> {/* Ligne fine de barbe */}
-          <path d="M 15,11 L 17,7 L 20,9 L 23,7 L 25,11 Z" fill="#f1c40f" /> {/* Couronne découpée */}
-          {/* Sceptre fleurdelisé d'apparat */}
-          <line x1="8" y1="29" x2="11" y2="11" stroke="#f1c40f" strokeWidth="0.9" />
-          <path d="M 11,11 L 9,9 L 11,6 L 13,9 Z" fill="#f1c40f" />
-        </g>
-      );
-    } else if (card.r === 'Q') { 
-      tunicPattern = (
-        <g stroke="#1e272e" strokeWidth="0.5" fill="none">
-          {/* Corsage ajusté et parures à la française */}
-          <path d="M 7,24 C 7,10 33,10 33,24 L 28,30 L 12,30 Z" fill="#0984e3" />
-          <path d="M 13,24 L 20,30 L 27,24 Z" fill="#d32f2f" />
-          {/* Teint pâle, longue coiffe et diadème de la reine */}
-          <path d="M 13,13 C 13,22 27,22 27,13 Z" fill="#ffffff" /> 
-          <ellipse cx="20" cy="15.5" rx="3.5" ry="4" fill="#fff3e0" />
-          <path d="M 16,11 L 20,8 L 24,11 Z" fill="#f1c40f" />
-          {/* Rose classique tenue en main */}
-          <circle cx="28" cy="23" r="2" fill="#d32f2f" stroke="none" />
-          <line x1="28" y1="23" x2="26" y2="28" stroke="#2ecc71" strokeWidth="0.5" />
-        </g>
-      );
-    } else if (card.r === 'J') { 
-      tunicPattern = (
-        <g stroke="#1e272e" strokeWidth="0.5" fill="none">
-          {/* Tunique de garde d'époque et pourpoint croisé */}
-          <path d="M 6,24 L 34,24 L 28,30 L 12,30 Z" fill="#f1c40f" />
-          <path d="M 6,24 C 6,11 20,11 20,24 Z" fill="#d32f2f" />
-          <path d="M 20,24 C 20,11 34,11 34,24 Z" fill="#0984e3" />
-          {/* Visage du valet et coiffe plate d'armes */}
-          <path d="M 14,13 C 13,20 27,20 27,13 Z" fill="#f39c12" opacity="0.2" />
-          <ellipse cx="20" cy="15" rx="3.5" ry="4.2" fill="#fff3e0" />
-          <path d="M 15,11 C 18,8 22,8 25,11 Z" fill="#1e272e" /> 
-          {/* Hallebarde de garnison fine */}
-          <line x1="31" y1="30" x2="31" y2="9" stroke="#555" strokeWidth="0.7" />
-          <path d="M 31,10 L 34,12 L 31,15 L 29,12 Z" fill="#b2bec3" />
-        </g>
-      );
-    }
+// Couleurs officielles
+const COL_SUIT = s => RED(s) ? '#C0392B' : '#1a1a1a';
 
-    content = (
-      <svg viewBox="0 0 40 60" style={{position:'absolute',inset:'14px 6px',width:'calc(100% - 12px)',height:'calc(100% - 24px)',borderRadius:2,background:'#fafafa',border:'1px solid #b2bec3',boxShadow:'inset 0 1px 3px rgba(0,0,0,0.06)'}}>
-        {tunicPattern}
-        <text x="20" y="27" fontSize="8.5" textAnchor="middle" fill={tc} stroke="none" fontWeight="bold" fontFamily="serif">{card.s}</text>
-        <line x1="1.5" y1="30" x2="38.5" y2="30" stroke="#b2bec3" strokeWidth="0.6" strokeDasharray="3,1.5" />
-        <g transform="rotate(180 20 30)">
-          {tunicPattern}
-          <text x="20" y="27" fontSize="8.5" textAnchor="middle" fill={tc} stroke="none" fontWeight="bold" fontFamily="serif">{card.s}</text>
-        </g>
-      </svg>
-    );
-  } else {
-    let pointsGrid = null;
-    if (card.r === '7') {
-      pointsGrid = (
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'6px 12px',justifyItems:'center'}}>
-          <span>{card.s}</span><span>{card.s}</span>
-          <span style={{gridColumn:'span 2',fontSize:15}}>{card.s}</span>
-          <span>{card.s}</span><span>{card.s}</span>
-          <span>{card.s}</span><span>{card.s}</span>
-        </div>
-      );
-    } else if (card.r === '8') {
-      pointsGrid = (
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'6px 14px',justifyItems:'center'}}>
-          <span>{card.s}</span><span>{card.s}</span>
-          <span>{card.s}</span><span>{card.s}</span>
-          <span>{card.s}</span><span>{card.s}</span>
-          <span>{card.s}</span><span>{card.s}</span>
-        </div>
-      );
-    } else if (card.r === '9') {
-      pointsGrid = (
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'4px 14px',justifyItems:'center'}}>
-          <span>{card.s}</span><span>{card.s}</span>
-          <span>{card.s}</span><span>{card.s}</span>
-          <span style={{gridColumn:'span 2',fontSize:13,margin:'-2px 0'}}>{card.s}</span>
-          <span>{card.s}</span><span>{card.s}</span>
-          <span>{card.s}</span><span>{card.s}</span>
-        </div>
-      );
-    } else if (card.r === '10') {
-      pointsGrid = (
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'3px 14px',justifyItems:'center'}}>
-          <span>{card.s}</span><span>{card.s}</span>
-          <span style={{gridColumn:'span 2',fontSize:11,margin:'-3px 0'}}>{card.s}</span>
-          <span>{card.s}</span><span>{card.s}</span>
-          <span>{card.s}</span><span>{card.s}</span>
-          <span style={{gridColumn:'span 2',fontSize:11,margin:'-3px 0'}}>{card.s}</span>
-          <span>{card.s}</span><span>{card.s}</span>
-        </div>
-      );
-    }
-    
-    content = (
-      <div style={{position:'absolute',inset:'14px 6px',display:'flex',alignItems:'center',justifyContent:'center',color:tc,fontSize:13,lineHeight:1}}>
-        {pointsGrid}
-      </div>
-    );
-  }
+// ── Pips ──────────────────────────────────────────────────────────────────────
+function PipCard({suit,rank,W,H}){
+  const pips=PIPS_DEF[rank];
+  if(!pips)return null;
+  const col=COL_SUIT(suit);
+  const fs=W<50?9:W<65?11:14;
+  const mTop=H*0.20, mBot=H*0.20, mSide=W*0.12;
+  const zW=W-mSide*2, zH=H-mTop-mBot;
+  return(
+    <div style={{position:'absolute',inset:0,overflow:'hidden',pointerEvents:'none'}}>
+      {pips.map(([px,py],i)=>{
+        const x=mSide+zW*px/100;
+        const y=mTop+zH*py/100;
+        const inv=py>55;
+        return(
+          <div key={i} style={{
+            position:'absolute',
+            left:x,top:y,
+            fontSize:fs,color:col,lineHeight:1,
+            transform:`translate(-50%,-50%)${inv?' rotate(180deg)':''}`,
+            userSelect:'none',
+          }}>{suit}</div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Figure — design épuré style carte française ──────────────────────────────
+// Grandes lettres serif, suit, miroir haut/bas — propre et lisible
+function FaceCard({suit,rank,W,H}){
+  const col=COL_SUIT(suit);
+  const isRed=RED(suit);
+  // Couleurs de fond du médaillon central
+  const bgTop=isRed?'#fff8f8':'#f8f8ff';
+  const bgBot=isRed?'#fef0f0':'#f0f0fe';
+  const rankLetter=DIS[rank]; // V, D ou R
+  // Taille de la lettre centrale proportionnelle à la carte
+  const bigFs=Math.round(H*0.28);
+  const suitFs=Math.round(H*0.16);
+  const borderCol=isRed?'#e8a0a0':'#a0a0e8';
 
   return(
-    <div onClick={ok?onClick:undefined} style={{
-      width:W,height:H,borderRadius:5,position:'relative',overflow:'hidden',
-      background:'#ffffff',flexShrink:0,
-      border:ok?'2.5px solid #2ecc71':'1px solid #b2bec3',
-      boxShadow:ok?'0 0 14px rgba(46,204,113,0.9)':'0 3px 8px rgba(0,0,0,0.35)',
-      cursor:ok?'pointer':'default',
-      opacity:ok===false?0.45:1,
+    <div style={{
+      position:'absolute',
+      top:H*0.13, left:W*0.1,
+      width:W*0.8, height:H*0.74,
+      borderRadius:3,
+      border:`1px solid ${borderCol}`,
+      overflow:'hidden',
+      display:'flex',flexDirection:'column',
     }}>
-      {/* Index En-Haut à Gauche */}
-      <div style={{position:'absolute',top:3,left:4,fontSize:fs,fontWeight:'900',color:tc,lineHeight:0.95,textAlign:'center',fontFamily:'sans-serif'}}>
-        {DIS[card.r]}<br/><span style={{fontSize:fs-2.5}}>{card.s}</span>
+      {/* Moitié haute */}
+      <div style={{
+        flex:1,
+        background:bgTop,
+        display:'flex',flexDirection:'column',
+        alignItems:'center',justifyContent:'center',
+        borderBottom:`0.5px solid ${borderCol}`,
+        gap:1,
+      }}>
+        <div style={{
+          fontSize:bigFs,
+          fontWeight:900,
+          color:col,
+          fontFamily:'"Georgia","Times New Roman",serif',
+          lineHeight:1,
+          letterSpacing:-1,
+        }}>{rankLetter}</div>
+        <div style={{fontSize:suitFs,color:col,lineHeight:1}}>{suit}</div>
       </div>
-      
-      {content}
-
-      {/* Index En-Bas à Droite inversé */}
-      <div style={{position:'absolute',bottom:3,right:4,fontSize:fs,fontWeight:'900',color:tc,lineHeight:0.95,transform:'rotate(180deg)',textAlign:'center',fontFamily:'sans-serif'}}>
-        {DIS[card.r]}<br/><span style={{fontSize:fs-2.5}}>{card.s}</span>
+      {/* Moitié basse (miroir inversé) */}
+      <div style={{
+        flex:1,
+        background:bgBot,
+        display:'flex',flexDirection:'column',
+        alignItems:'center',justifyContent:'center',
+        gap:1,
+        transform:'rotate(180deg)',
+      }}>
+        <div style={{
+          fontSize:bigFs,
+          fontWeight:900,
+          color:col,
+          fontFamily:'"Georgia","Times New Roman",serif',
+          lineHeight:1,
+          letterSpacing:-1,
+        }}>{rankLetter}</div>
+        <div style={{fontSize:suitFs,color:col,lineHeight:1}}>{suit}</div>
       </div>
     </div>
   );
 }
 
-// ── Main horizontale du joueur ────────────────────────────────────────────────
+// ── As ────────────────────────────────────────────────────────────────────────
+function AceCard({suit,W,H}){
+  const col=COL_SUIT(suit);
+  const fs=Math.round(W*0.52);
+  return(
+    <div style={{
+      position:'absolute',inset:0,
+      display:'flex',alignItems:'center',justifyContent:'center',
+      pointerEvents:'none',
+    }}>
+      <div style={{position:'relative',display:'flex',alignItems:'center',justifyContent:'center'}}>
+        {/* Deux cercles décoratifs concentriques */}
+        {[0.72,0.95].map((r,i)=>(
+          <div key={i} style={{
+            position:'absolute',
+            width:W*r,height:W*r,
+            borderRadius:'50%',
+            border:`${i===0?1.5:0.7}px solid ${col}`,
+            opacity:i===0?0.18:0.08,
+          }}/>
+        ))}
+        <span style={{
+          fontSize:fs,color:col,lineHeight:1,
+          position:'relative',zIndex:1,
+          filter:'drop-shadow(0 1px 2px rgba(0,0,0,.1))',
+        }}>{suit}</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Composant Carte ───────────────────────────────────────────────────────────
+function Crd({card,ok,W=54,H=76,onClick}){
+  if(!card||!card.s)return null;
+  const isRed=RED(card.s);
+  const col=COL_SUIT(card.s);
+  // Taille de l'index coin proportionnelle
+  const idxRank=W<46?8:W<58?10:12;
+  const idxSuit=W<46?7:W<58?9:11;
+  const isFace=['J','Q','K'].includes(card.r);
+
+  return(
+    <div onClick={ok?onClick:undefined} style={{
+      width:W, height:H,
+      borderRadius:Math.max(3,Math.round(W*0.07)),
+      position:'relative',
+      background:'#ffffff',
+      flexShrink:0,
+      border: ok
+        ? `2.5px solid #27ae60`
+        : `1.5px solid ${isRed?'#e8c8c8':'#c8c8e8'}`,
+      boxShadow: ok
+        ? '0 0 0 2px rgba(39,174,96,.35), 0 4px 16px rgba(0,0,0,.5)'
+        : '0 2px 8px rgba(0,0,0,.38), 0 1px 3px rgba(0,0,0,.2)',
+      cursor: ok?'pointer':'default',
+      opacity: ok===false ? 0.42 : 1,
+      filter: ok===false ? 'grayscale(40%)' : 'none',
+      overflow:'hidden',
+    }}>
+      {/* ── Index haut-gauche ── */}
+      <div style={{
+        position:'absolute',top:2,left:W<50?2:3,
+        display:'flex',flexDirection:'column',alignItems:'center',
+        zIndex:5,lineHeight:1,
+      }}>
+        <span style={{
+          fontSize:idxRank,fontWeight:900,color:col,
+          fontFamily:'"Georgia","Times New Roman",serif',
+          lineHeight:1,display:'block',
+        }}>{DIS[card.r]}</span>
+        <span style={{fontSize:idxSuit,color:col,lineHeight:1,display:'block'}}>
+          {card.s}
+        </span>
+      </div>
+
+      {/* ── Contenu central ── */}
+      {card.r==='A'   && <AceCard suit={card.s} W={W} H={H}/>}
+      {isFace         && <FaceCard suit={card.s} rank={card.r} W={W} H={H}/>}
+      {PIPS_DEF[card.r] && <PipCard suit={card.s} rank={card.r} W={W} H={H}/>}
+
+      {/* ── Index bas-droite (inversé) ── */}
+      <div style={{
+        position:'absolute',bottom:2,right:W<50?2:3,
+        display:'flex',flexDirection:'column',alignItems:'center',
+        transform:'rotate(180deg)',
+        zIndex:5,lineHeight:1,
+      }}>
+        <span style={{
+          fontSize:idxRank,fontWeight:900,color:col,
+          fontFamily:'"Georgia","Times New Roman",serif',
+          lineHeight:1,display:'block',
+        }}>{DIS[card.r]}</span>
+        <span style={{fontSize:idxSuit,color:col,lineHeight:1,display:'block'}}>
+          {card.s}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+
+
+// ── Main horizontale ──────────────────────────────────────────────────────────
 function Hand({hand,okIds,onPlay,trump}){
   const ids=okIds||new Set();
   const hasOk=okIds!==null&&okIds!==undefined;
   const sorted=sortH(hand,trump);
   const n=sorted.length;if(!n)return null;
-  const STEP=Math.min(HW-12,Math.floor(360/Math.max(n-1,1)));
+  const STEP=Math.min(HW-8,Math.floor(350/Math.max(n-1,1)));
   const totalW=HW+(n-1)*STEP;
   return(
-    <div style={{position:'relative',height:HH+20,width:totalW,margin:'0 auto'}}>
+    <div style={{position:'relative',height:HH+16,width:totalW,margin:'0 auto'}}>
       {sorted.map((card,i)=>{
         const ok=hasOk?ids.has(card.id):undefined;
         return(
           <div key={card.id} onClick={ok?()=>onPlay(card):undefined}
-            style={{position:'absolute',left:i*STEP,bottom:0,width:HW,height:HH,
+            style={{
+              position:'absolute',left:i*STEP,bottom:0,
+              width:HW,height:HH,
               zIndex:ok?i+30:i+1,
               transform:ok?'translateY(-14px)':'none',
-              transition:'transform .15s ease-out',cursor:ok?'pointer':'default'}}>
+              transition:'transform .12s ease-out',
+              cursor:ok?'pointer':'default',
+            }}>
             <Crd card={card} ok={ok} W={HW} H={HH} onClick={()=>onPlay(card)}/>
           </div>
         );
@@ -397,40 +397,19 @@ function Hand({hand,okIds,onPlay,trump}){
   );
 }
 
-// ── Emplacement individuel du pli en cascade tridimensionnelle ────────────────
-function Slot({card, playerIndex}){
-  if(!card) return null;
-  
-  let offsetStyle = { position: 'absolute', zIndex: 10 };
-  if(playerIndex === 2) offsetStyle = { position: 'absolute', top: '-18px', zIndex: 11 }; 
-  if(playerIndex === 0) offsetStyle = { position: 'absolute', bottom: '-18px', zIndex: 14 }; 
-  if(playerIndex === 1) offsetStyle = { position: 'absolute', left: '-22px', zIndex: 12 };  
-  if(playerIndex === 3) offsetStyle = { position: 'absolute', right: '-22px', zIndex: 13 }; 
-
-  return (
-    <div style={{...offsetStyle, pointerEvents: 'none'}}>
-      <Crd card={card} W={PW} H={PH}/>
-    </div>
-  );
-}
-
-// ── App Principale ────────────────────────────────────────────────────────────
+// ── App ───────────────────────────────────────────────────────────────────────
 function App(){
   const[G,setG]=useState(()=>init());
   const timer=useRef(null);
   const[ls,setLs]=useState(()=>typeof window!=='undefined'&&window.innerWidth>window.innerHeight);
   useEffect(()=>{const u=()=>setLs(window.innerWidth>window.innerHeight);window.addEventListener('resize',u);return()=>window.removeEventListener('resize',u);},[]);
 
-  useEffect(() => {
-    if (!G.waiting) return;
-    if (timer.current) clearTimeout(timer.current);
-    
-    timer.current = setTimeout(() => {
-      setG(p => p.waiting ? resolve(p) : p);
-    }, SHOW_TRICK_MS);
-    
-    return () => { if (timer.current) clearTimeout(timer.current); };
-  }, [G.waiting]); 
+  useEffect(()=>{
+    if(!G.waiting)return;
+    if(timer.current)clearTimeout(timer.current);
+    timer.current=setTimeout(()=>setG(p=>p.waiting?resolve(p):p),SHOW_TRICK_MS);
+    return()=>{if(timer.current)clearTimeout(timer.current);};
+  },[G.waiting,G.winner]);
 
   useEffect(()=>{
     if(G.phase!=='BID'||G.bi===0)return;
@@ -438,7 +417,8 @@ function App(){
       setG(prev=>{
         if(prev.phase!=='BID'||prev.bi===0)return prev;
         const p=prev.bi,hand=prev.hands[p].filter(c=>c&&c.id);
-        const take=suit=>({...prev,phase:'PLAY',trump:suit,taker:p,tt:team(p),cur:prev.fp,trick:[],snap:[null,null,null,null],waiting:false,winner:null,
+        const take=suit=>({...prev,phase:'PLAY',trump:suit,taker:p,tt:team(p),cur:prev.fp,
+          trick:[],snap:[null,null,null,null],waiting:false,winner:null,
           hands:complete(prev.hands,prev.flip,prev.rest,p),
           bH:prev.hands.map(h=>h.some(c=>c&&c.s===suit&&c.r==='K')&&h.some(c=>c&&c.s===suit&&c.r==='Q'))});
         if(prev.br===1){if(aiTake(hand,prev.flip.s,1))return take(prev.flip.s);}
@@ -451,21 +431,22 @@ function App(){
     return()=>clearTimeout(t);
   },[G.phase,G.bi,G.br]);
 
-  useEffect(() => {
-    if (G.phase !== 'PLAY' || G.cur === 0 || G.waiting) return;
-    const t = setTimeout(() => {
-      setG(prev => {
-        if (prev.phase !== 'PLAY' || prev.cur === 0 || prev.waiting) return prev;
-        const p = prev.cur, hand = prev.hands[p].filter(c => c && c.id);
-        return doPlay(prev, p, aiCard(hand, prev.trick || [], prev.trump, p));
+  useEffect(()=>{
+    if(G.phase!=='PLAY'||G.cur===0||G.waiting)return;
+    const t=setTimeout(()=>{
+      setG(prev=>{
+        if(prev.phase!=='PLAY'||prev.cur===0||prev.waiting)return prev;
+        const p=prev.cur,hand=prev.hands[p].filter(c=>c&&c.id);
+        return doPlay(prev,p,aiCard(hand,prev.trick||[],prev.trump,p));
       });
-    }, AI_DELAY);
-    return () => clearTimeout(t);
-  }, [G.phase, G.cur, G.waiting]); 
+    },AI_DELAY);
+    return()=>clearTimeout(t);
+  },[G.phase,G.cur,G.waiting]);
 
   function bid(suit){
     if(suit!==null){
-      setG(prev=>({...prev,phase:'PLAY',trump:suit,taker:0,tt:0,cur:prev.fp,trick:[],snap:[null,null,null,null],waiting:false,winner:null,
+      setG(prev=>({...prev,phase:'PLAY',trump:suit,taker:0,tt:0,cur:prev.fp,
+        trick:[],snap:[null,null,null,null],waiting:false,winner:null,
         hands:complete(prev.hands,prev.flip,prev.rest,0),
         bH:prev.hands.map(h=>h.some(c=>c&&c.s===suit&&c.r==='K')&&h.some(c=>c&&c.s===suit&&c.r==='Q'))}));
       return;
@@ -476,7 +457,6 @@ function App(){
       return{...prev,bi:nxt(prev.bi),bc:nc};
     });
   }
-
   function playCard(card){
     if(G.phase!=='PLAY'||G.cur!==0||G.waiting)return;
     const hand=G.hands[0].filter(c=>c&&c.id);
@@ -485,22 +465,17 @@ function App(){
   }
 
   if(!ls)return(
-    <div style={{height:'100dvh',background:'#1b4d22',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',color:'white',fontFamily:'sans-serif',textAlign:'center',gap:16}}>
+    <div style={{height:'100dvh',background:'#1b4d22',display:'flex',flexDirection:'column',
+      alignItems:'center',justifyContent:'center',color:'white',fontFamily:'Georgia,serif',textAlign:'center',gap:16}}>
       <div style={{fontSize:48}}>📱</div>
       <div style={{fontSize:20,fontWeight:'bold'}}>Retourne ton téléphone</div>
       <div style={{fontSize:14,opacity:.7}}>BELOTA se joue en mode paysage</div>
     </div>
   );
 
-  const TABLE={
-    position:'fixed',inset:0,
-    paddingLeft: 'max(28px, env(safe-area-inset-left))',
-    paddingRight: 'max(28px, env(safe-area-inset-right))',
-    background: '#1b4d22',
-    backgroundImage: 'radial-gradient(circle at 50% 45%, #226b30 0%, #133c1b 75%, #0a2410 100%)',
-    boxShadow: 'inset 0 0 120px rgba(0,0,0,0.65)',
-    fontFamily:'sans-serif',color:'white',overflow:'hidden',userSelect:'none'
-  };
+  const TABLE={position:'fixed',inset:0,
+    background:'radial-gradient(ellipse at 50% 40%,#2e7d32 0%,#1b5e20 50%,#0d3b12 100%)',
+    fontFamily:'Georgia,serif',color:'white',overflow:'hidden',userSelect:'none'};
 
   const hand0=(G.hands[0]||[]).filter(c=>c&&c.id);
   const myTurn=G.phase==='PLAY'&&G.cur===0&&!G.waiting;
@@ -508,139 +483,252 @@ function App(){
   if(myTurn&&G.trump){try{okIds=new Set(legal(hand0,G.trick||[],G.trump,0).map(c=>c.id));}catch(e){}}
   const t0=G.done.filter(d=>team(d.winner)===0).length;
   const t1=G.done.filter(d=>team(d.winner)===1).length;
-  const ac=G.trump&&RED(G.trump)?'#ff7675':'#74b9ff';
+  const ac=G.trump&&RED(G.trump)?'#ff8a80':'#80cbc4';
 
   if(G.phase==='OVER'||G.phase==='END'){
     const r=G.result,nd=nxt(G.dealer);
     return(
-      <div style={{...TABLE,display:'flex',alignItems:'center',justifyContent:'center',zIndex:5000}}>
-        <div style={{background:'rgba(12,24,15,0.96)',borderRadius:16,padding:28,maxWidth:420,width:'90%',textAlign:'center',border:'1px solid rgba(255,255,255,0.15)',boxShadow:'0 12px 36px rgba(0,0,0,0.6)'}}>
-          <div style={{fontSize:18,fontWeight:'bold',marginBottom:14,letterSpacing:0.5}}>
-            {G.phase==='END'?'🏆 PARTIE TERMINÉE !':'✓ FIN DE MANCHE'}
+      <div style={{...TABLE,display:'flex',alignItems:'center',justifyContent:'center'}}>
+        <div style={{background:'rgba(0,0,0,.85)',borderRadius:16,padding:26,maxWidth:440,
+          width:'90%',textAlign:'center',border:'1px solid rgba(255,255,255,.15)'}}>
+          <div style={{fontSize:17,fontWeight:'bold',marginBottom:14}}>
+            {G.phase==='END'?'🏆 Partie terminée !':'✓ Fin de manche'}
           </div>
           {r&&<>
-            <div style={{fontSize:15,fontWeight:'600',color:'#ffd54f',marginBottom:6}}>{r.msg}</div>
-            <div style={{fontSize:12,opacity:0.6,marginBottom:16}}>{r.detail}</div>
-            <div style={{display:'flex',justifyContent:'center',gap:40,marginBottom:16}}>
-              <div><div style={{fontSize:11,opacity:0.5}}>Sud + Nord</div>
-                <div style={{color:'#2ecc71',fontWeight:'bold',fontSize:24}}>+{r.rp[0]}</div></div>
-              <div><div style={{fontSize:11,opacity:0.5}}>Ouest + Est</div>
-                <div style={{color:'#ff7675',fontWeight:'bold',fontSize:24}}>+{r.rp[1]}</div></div>
+            <div style={{fontSize:15,fontWeight:'bold',color:'#ffd54f',marginBottom:5}}>{r.msg}</div>
+            <div style={{fontSize:11,opacity:.65,marginBottom:14}}>{r.detail}</div>
+            <div style={{display:'flex',justifyContent:'center',gap:36,marginBottom:14}}>
+              <div><div style={{fontSize:10,opacity:.55}}>Vous+Nord</div><div style={{color:'#4caf50',fontWeight:'bold',fontSize:22}}>+{r.rp[0]}</div></div>
+              <div><div style={{fontSize:10,opacity:.55}}>Ouest+Est</div><div style={{color:'#ef5350',fontWeight:'bold',fontSize:22}}>+{r.rp[1]}</div></div>
             </div>
-            <div style={{fontSize:18,fontWeight:'bold',background:'rgba(255,255,255,0.05)',padding:'8px 12px',borderRadius:8,marginBottom:20}}>
-              <span style={{color:'#2ecc71'}}>Vous {G.scores[0]}</span>
-              <span style={{opacity:0.2,margin:'0 10px'}}>—</span>
-              <span style={{color:'#ff7675'}}>Adv. {G.scores[1]}</span>
+            <div style={{fontSize:17,fontWeight:'bold',marginBottom:18}}>
+              <span style={{color:'#4caf50'}}>Vous+Nord {G.scores[0]}</span>
+              <span style={{opacity:.3}}> — </span>
+              <span style={{color:'#ef5350'}}>Adv. {G.scores[1]}</span>
             </div>
           </>}
           {G.phase==='END'
-            ?<><Btn bg="#2ecc71" onClick={()=>setG(init())}>Nouvelle partie</Btn></>
-            :<Btn bg="#0984e3" onClick={()=>setG(init(G.scores,nd))}>Manche suivante</Btn>}
+            ?<><div style={{fontSize:14,marginBottom:12}}>{G.scores[0]>=1000?'🎉 Vous gagnez !':'😔 Les adversaires gagnent.'}</div>
+              <Btn bg="#388e3c" onClick={()=>setG(init())}>Nouvelle partie</Btn></>
+            :<Btn bg="#1976d2" onClick={()=>setG(init(G.scores,nd))}>Manche suivante → Don: {PN[nd]}</Btn>}
         </div>
       </div>
     );
   }
 
-  return (
-    <div style={TABLE}>
-      {/* HUD Supérieur */}
-      <div style={{position:'absolute',top:12,left:24,right:24,display:'flex',justifyContent:'space-between',alignItems:'center',zIndex:4000,fontSize:13}}>
-        <div style={{display:'flex',gap:12,alignItems:'center'}}>
-          {G.trump && (
-            <div style={{background:'rgba(0,0,0,0.6)',border:'1px solid rgba(255,255,255,0.1)',padding:'6px 16px',borderRadius:20,fontWeight:'bold',display:'flex',alignItems:'center',gap:6}}>
-              <span style={{color:ac,fontWeight:'bold'}}>{SFR[G.trump]}</span>
-              <span style={{color:ac,fontSize:15}}>{G.trump}</span>
-            </div>
-          )}
-          {G.taker !== null && (
-            <div style={{background:'rgba(241,196,15,0.15)',border:'1px solid rgba(241,196,15,0.3)',padding:'5px 12px',borderRadius:20,fontSize:11,color:'#ffd54f',fontWeight:'600'}}>
-              Preneur : {PN[G.taker]}
-            </div>
-          )}
+  // ── ENCHÈRES
+  if(G.phase==='BID'){
+    const mb=G.bi===0;
+    return(
+      <div style={TABLE}>
+        <div style={{position:'absolute',top:0,left:0,right:0,height:30,background:'rgba(0,0,0,.55)',
+          display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0 14px',zIndex:10}}>
+          <div style={{fontWeight:'bold',fontSize:12}}>🃏 BELOTA</div>
+          <div style={{fontSize:11}}>
+            <span style={{color:'#4caf50',fontWeight:'bold'}}>{G.scores[0]}</span>
+            <span style={{opacity:.4}}> — </span>
+            <span style={{color:'#ef5350',fontWeight:'bold'}}>{G.scores[1]}</span>
+          </div>
+          <div style={{fontSize:10,opacity:.7}}>Don: {PN[G.dealer]}</div>
         </div>
-        <div style={{fontWeight:'700',fontSize:15,letterSpacing:0.5,textShadow:'0 1px 3px rgba(0,0,0,0.4)'}}>{G.phase==='PLAY'?`Pli ${G.done.length+1} / 8`:'Annonces'}</div>
-        <div style={{background:'rgba(0,0,0,0.5)',border:'1px solid rgba(255,255,255,0.1)',padding:'6px 16px',borderRadius:20,fontWeight:'bold',fontFamily:'monospace',fontSize:14}}>
-          <span style={{color:'#2ecc71'}}>{G.scores[0]}</span><span style={{opacity:0.4,margin:'0 4px'}}>:</span><span style={{color:'#ff7675'}}>{G.scores[1]}</span>
+        <PL name="Nord" n={(G.hands[2]||[]).length} active={G.bi===2} dealer={G.dealer===2}
+          style={{position:'absolute',top:38,left:'50%',transform:'translateX(-50%)',zIndex:5}}/>
+        <PL name="Ouest" n={(G.hands[1]||[]).length} active={G.bi===1} dealer={G.dealer===1}
+          style={{position:'absolute',top:'46%',left:'12%',transform:'translateY(-50%)',zIndex:5}}/>
+        <PL name="Est" n={(G.hands[3]||[]).length} active={G.bi===3} dealer={G.dealer===3}
+          style={{position:'absolute',top:'46%',right:'12%',transform:'translateY(-50%)',zIndex:5}}/>
+        {/* Carte retournée centrée */}
+        <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-68%)',zIndex:5}}>
+          <Crd card={G.flip} W={82} H={118}/>
+        </div>
+        {!mb&&(
+          <div style={{position:'absolute',bottom:'32%',left:'50%',transform:'translateX(-50%)',
+            zIndex:10,background:'rgba(0,0,0,.55)',borderRadius:20,padding:'4px 14px',fontSize:11}}>
+            ⏳ {PN[G.bi]} réfléchit…
+          </div>
+        )}
+        {mb&&(
+          <div style={{position:'absolute',bottom:'28%',left:'50%',
+            transform:'translateX(-50%)',zIndex:20,display:'flex',gap:10,alignItems:'center'}}>
+            {G.br===1?(<>
+              <button onClick={()=>bid(G.flip.s)} style={suitBtn(RED(G.flip?.s)?'rgba(150,20,20,.92)':'rgba(15,45,15,.92)',true)}>
+                {G.flip.s}
+              </button>
+              <button onClick={()=>bid(null)} style={passBtn()}>Passer</button>
+            </>):(<>
+              {SUITS.filter(s=>s!==G.flip?.s).map(s=>(
+                <button key={s} onClick={()=>bid(s)} style={suitBtn(RED(s)?'rgba(150,20,20,.92)':'rgba(15,35,80,.92)',false)}>
+                  {s}
+                </button>
+              ))}
+              <button onClick={()=>bid(null)} style={passBtn()}>Passer</button>
+            </>)}
+          </div>
+        )}
+        <div style={{position:'absolute',bottom:8,left:0,right:0,zIndex:6,textAlign:'center'}}>
+          <Hand hand={hand0} trump={null} okIds={null}/>
+        </div>
+      </div>
+    );
+  }
+
+  // ── JEU
+  // Cartes du pli en cascade superposée (style vrai jeu de belote)
+  return(
+    <div style={TABLE}>
+      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}`}</style>
+
+      {/* Barre top */}
+      <div style={{position:'absolute',top:0,left:0,right:0,height:28,
+        background:'rgba(0,0,0,.6)',display:'flex',justifyContent:'space-between',
+        alignItems:'center',padding:'0 12px',zIndex:10}}>
+        <div style={{fontSize:11}}>
+          <span style={{color:ac,fontWeight:'bold'}}>{G.trump} {G.trump?SFR[G.trump]:''}</span>
+          <span style={{opacity:.5,fontSize:9}}> {G.tt===0?'V+N':'Adv.'}</span>
+        </div>
+        <div style={{fontSize:12,color:G.waiting?'#ffd54f':'rgba(255,255,255,.9)',fontWeight:'bold'}}>
+          {G.ann||`Pli ${G.done.length+1}/8`}
+        </div>
+        <div style={{fontSize:11}}>
+          <span style={{color:'#4caf50',fontWeight:'bold'}}>{G.scores[0]}</span>
+          <span style={{opacity:.4}}> — </span>
+          <span style={{color:'#ef5350',fontWeight:'bold'}}>{G.scores[1]}</span>
+          <span style={{opacity:.35,fontSize:9}}> {t0}-{t1}</span>
         </div>
       </div>
 
-      {/* Profils Joueurs */}
-      <PL name="Nord" n={(G.hands[2]||[]).filter(c=>c&&c.id).length} active={G.cur===2&&G.phase==='PLAY'&&!G.waiting} style={{position:'absolute',top:44,left:'50%',transform:'translateX(-50%)',zIndex:500}}/>
-      <PL name="Ouest" n={(G.hands[1]||[]).filter(c=>c&&c.id).length} active={G.cur===1&&G.phase==='PLAY'&&!G.waiting} style={{position:'absolute',top:'45%',left:20,transform:'translateY(-50%)',zIndex:500}}/>
-      <PL name="Est" n={(G.hands[3]||[]).filter(c=>c&&c.id).length} active={G.cur===3&&G.phase==='PLAY'&&!G.waiting} style={{position:'absolute',top:'45%',right:20,transform:'translateY(-50%)',zIndex:500}}/>
-      <div style={{position:'absolute',bottom:132,left:'50%',transform:'translateX(-50%)',fontSize:11,fontWeight:'bold',color:'rgba(255,255,255,0.4)',zIndex:500}}>Sud</div>
+      {/* Labels joueurs */}
+      <PL name="Nord" n={(G.hands[2]||[]).filter(c=>c&&c.id).length}
+        active={G.cur===2&&!G.waiting} dealer={G.dealer===2}
+        style={{position:'absolute',top:32,left:'50%',transform:'translateX(-50%)',zIndex:10}}/>
+      <PL name="Ouest" n={(G.hands[1]||[]).filter(c=>c&&c.id).length}
+        active={G.cur===1&&!G.waiting} dealer={G.dealer===1}
+        style={{position:'absolute',top:'44%',left:'2%',transform:'translateY(-50%)',zIndex:10}}/>
+      <PL name="Est" n={(G.hands[3]||[]).filter(c=>c&&c.id).length}
+        active={G.cur===3&&!G.waiting} dealer={G.dealer===3}
+        style={{position:'absolute',top:'44%',right:'2%',transform:'translateY(-50%)',zIndex:10}}/>
 
-      {/* ZONE CENTRALE */}
-      {G.phase==='BID' ? (
-        <div style={{position:'absolute',top:'44%',left:'50%',transform:'translate(-50%,-50%)',display:'flex',flexDirection:'column',alignItems:'center',gap:12,zIndex:2000}}>
-          <Crd card={G.flip} W={84} H={120}/>
-          
-          {G.bi === 0 ? (
-            /* 💡 BOUTONS D'ENCHÈRES MINIATURISÉS ET SÉCURISÉS : Boîtier affiné, placé bien au-dessus de la main */
-            <div style={{display:'flex',background:'rgba(0,0,0,0.85)',padding:'4px 6px',borderRadius:25,boxShadow:'0 6px 20px rgba(0,0,0,0.5)',alignItems:'center',gap:6}}>
-              {G.br===1 ? (
-                <button onClick={()=>bid(G.flip.s)} style={{background:'#ffffff',color:'#2d3436',border:'none',borderRadius:18,padding:'6px 16px',fontSize:12,fontWeight:'bold',cursor:'pointer',display:'flex',alignItems:'center',gap:4,boxShadow:'0 1px 3px rgba(0,0,0,0.2)'}}>
-                  <span style={{color:RED(G.flip.s)?'#d63031':'#2d3436',fontSize:14}}>{G.flip.s}</span> Prendre
-                </button>
-              ) : (
-                SUITS.filter(s=>s!==G.flip?.s).map(s=>(
-                  <button key={s} onClick={()=>bid(s)} style={{background:'#ffffff',color:'#2d3436',border:'none',borderRadius:18,padding:'6px 12px',fontSize:14,fontWeight:'bold',cursor:'pointer',boxShadow:'0 1px 3px rgba(0,0,0,0.2)'}}>
-                    <span style={{color:RED(s)?'#d63031':'#2d3436'}}>{s}</span>
-                  </button>
-                ))
-              )}
-              <button onClick={()=>bid(null)} style={{background:'rgba(255,255,255,0.12)',color:'#ffffff',border:'none',borderRadius:18,padding:'6px 16px',fontSize:12,fontWeight:'500',cursor:'pointer'}}>
-                Passer
-              </button>
-            </div>
-          ) : (
-            <div style={{fontSize:13,opacity:0.7,fontStyle:'italic',background:'rgba(0,0,0,0.3)',padding:'4px 12px',borderRadius:12}}>{PN[G.bi]} réfléchit...</div>
-          )}
+      {/* ═══════════════════════════════════════════════════════════
+          ZONE DE PLI — croix avec snap[], cartes toujours visibles
+          ═══════════════════════════════════════════════════════════ */}
+      <div style={{
+        position:'absolute',
+        top:30, left:'15%', right:'15%', bottom:138,
+        zIndex:200,
+        display:'grid',
+        gridTemplateColumns:'1fr auto 1fr',
+        gridTemplateRows:'1fr auto 1fr',
+        alignItems:'center',
+        justifyItems:'center',
+        gap:4,
+        pointerEvents:'none',
+      }}>
+        {/* Ligne 1 : _ Nord _ */}
+        <div/>
+        <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:2}}>
+          <div style={{fontSize:8,opacity:.5,color:'white',height:10}}>Nord</div>
+          <div style={{width:PW,height:PH}}>
+            {G.snap[2]?<Crd card={G.snap[2]} W={PW} H={PH}/>:<EmptySlot W={PW} H={PH}/>}
+          </div>
         </div>
-      ) : (
-        /* 💎 TAPIS DE JEU RIGIDE */
-        <div style={{position:'absolute',top:'38%',left:'50%',transform:'translateX(-50%)',width:220,height:160,zIndex:3000}}>
-          <Slot card={G.snap[2]} playerIndex={2} />
-          <Slot card={G.snap[1]} playerIndex={1} />
-          <Slot card={G.snap[3]} playerIndex={3} />
-          <Slot card={G.snap[0]} playerIndex={0} />
-          
-          {/* Cartouche informatif central volant */}
-          {G.waiting && G.winner !== null && (
-            <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%, -50%)',zIndex:50,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minWidth:100}}>
-              <div style={{fontSize:12,color:'#ffd54f',fontWeight:'bold',textShadow:'0 2px 4px rgba(0,0,0,0.9)',background:'rgba(0,0,0,0.85)',padding:'4px 14px',borderRadius:14,border:'1px solid #ffd54f',boxShadow:'0 4px 10px rgba(0,0,0,0.45)'}}>
-                {PN[G.winner]} ✓
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+        <div/>
 
-      {/* Main Joueur (Sud) */}
-      <div style={{position:'absolute',bottom:14,left:0,right:0,zIndex:100,textAlign:'center'}}>
+        {/* Ligne 2 : Ouest _ Est */}
+        <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:2}}>
+          <div style={{fontSize:8,opacity:.5,color:'white',height:10}}>Ouest</div>
+          <div style={{width:PW,height:PH}}>
+            {G.snap[1]?<Crd card={G.snap[1]} W={PW} H={PH}/>:<EmptySlot W={PW} H={PH}/>}
+          </div>
+        </div>
+        {/* Centre : badge gagnant */}
+        <div style={{fontSize:10,color:'#ffd54f',fontWeight:'bold',textAlign:'center',minWidth:50,maxWidth:60}}>
+          {G.waiting&&G.winner!==null?`${PN[G.winner]}\n✓`:''}
+        </div>
+        <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:2}}>
+          <div style={{fontSize:8,opacity:.5,color:'white',height:10}}>Est</div>
+          <div style={{width:PW,height:PH}}>
+            {G.snap[3]?<Crd card={G.snap[3]} W={PW} H={PH}/>:<EmptySlot W={PW} H={PH}/>}
+          </div>
+        </div>
+
+        {/* Ligne 3 : _ Vous _ */}
+        <div/>
+        <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:2}}>
+          <div style={{fontSize:8,opacity:.5,color:'white',height:10}}>Vous</div>
+          <div style={{width:PW,height:PH}}>
+            {G.snap[0]?<Crd card={G.snap[0]} W={PW} H={PH}/>:<EmptySlot W={PW} H={PH}/>}
+          </div>
+        </div>
+        <div/>
+      </div>
+
+      {/* Indicateur tour */}
+      <div style={{position:'absolute',bottom:128,left:'50%',transform:'translateX(-50%)',
+        zIndex:50,whiteSpace:'nowrap'}}>
+        {G.waiting?(
+          <div style={{background:'rgba(0,0,0,.6)',border:'1px solid #ffd54f',
+            borderRadius:20,padding:'3px 12px',fontSize:11,color:'#ffd54f'}}>
+            {G.winner!==null?`${PN[G.winner]} remporte`:'…'}
+          </div>
+        ):myTurn?(
+          <div style={{background:'rgba(20,80,20,.95)',border:'2px solid #66bb6a',
+            borderRadius:20,padding:'4px 14px',fontSize:12,fontWeight:'bold',
+            animation:'pulse 1.2s infinite'}}>
+            🎯 À vous — jouez une carte
+          </div>
+        ):(
+          <div style={{background:'rgba(0,0,0,.5)',borderRadius:20,
+            padding:'3px 12px',fontSize:11,opacity:.8}}>
+            ▶ {PN[G.cur]} joue…
+          </div>
+        )}
+      </div>
+
+      {/* Main joueur */}
+      <div style={{position:'absolute',bottom:8,left:0,right:0,zIndex:8,textAlign:'center'}}>
         <Hand hand={hand0} okIds={okIds} onPlay={playCard} trump={G.trump}/>
       </div>
     </div>
   );
 }
 
-function PL({name,n,active,style={}}){
+// ── Utilitaires ───────────────────────────────────────────────────────────────
+function EmptySlot({W,H}){
+  return <div style={{width:W,height:H,borderRadius:4,
+    border:'1px dashed rgba(255,255,255,.12)',
+    background:'rgba(255,255,255,.03)'}}/>;
+}
+function PL({name,n,active,dealer,style={}}){
   return(
-    <div style={{textAlign:'center',...style,opacity:active?1:0.65}}>
-      <div style={{fontSize:11,fontWeight:active?'bold':'500',color:active?'#ffd54f':'rgba(255,255,255,0.5)',marginBottom:3,textShadow:'0 1px 2px rgba(0,0,0,0.6)'}}>
-        {active?'▼ ':''}{name}
+    <div style={{textAlign:'center',...style}}>
+      <div style={{fontSize:active?12:10,fontWeight:active?'bold':'normal',
+        color:active?'#ffd54f':'rgba(255,255,255,.7)',
+        textShadow:'0 1px 4px rgba(0,0,0,.9)',marginBottom:2}}>
+        {active?'▼ ':''}{name}{dealer?' 🔴':''}
       </div>
-      <div style={{fontSize:10,color:'rgba(255,255,255,0.4)',background:'rgba(0,0,0,0.2)',padding:'2px 8px',borderRadius:10,display:'inline-block'}}>
-        {n} 🂠
+      <div style={{background:active?'rgba(46,125,50,.7)':'rgba(0,0,0,.45)',
+        borderRadius:20,padding:'2px 10px',fontSize:11,display:'inline-block',
+        border:'1px solid rgba(255,255,255,.2)'}}>
+        {n}🂠
       </div>
     </div>
   );
 }
-
 function Btn({children,onClick,bg}){
-  return(
-    <button onClick={onClick} style={{background:bg,color:'white',border:'none',borderRadius:20,padding:'10px 24px',fontSize:13,cursor:'pointer',fontWeight:'bold',boxShadow:'0 4px 12px rgba(0,0,0,0.3)',letterSpacing:0.3}}>{children}</button>
-  );
+  return <button onClick={onClick} style={{background:bg,color:'white',border:'none',
+    borderRadius:22,padding:'9px 22px',fontSize:13,cursor:'pointer',fontWeight:'bold',
+    boxShadow:'0 3px 8px rgba(0,0,0,.4)'}}>{children}</button>;
+}
+function suitBtn(bg,big){
+  return{background:bg,color:'white',border:'2px solid rgba(255,255,255,.4)',
+    borderRadius:'50%',width:big?66:54,height:big?66:54,fontSize:big?30:22,
+    display:'flex',alignItems:'center',justifyContent:'center',
+    cursor:'pointer',fontWeight:'bold',boxShadow:'0 4px 12px rgba(0,0,0,.5)',flexShrink:0};
+}
+function passBtn(){
+  return{background:'rgba(40,40,40,.85)',color:'rgba(255,255,255,.85)',
+    border:'1px solid rgba(255,255,255,.25)',borderRadius:22,padding:'9px 20px',
+    fontSize:13,cursor:'pointer',fontWeight:'normal',boxShadow:'0 2px 8px rgba(0,0,0,.4)'};
 }
 
 export default function Belota(){
