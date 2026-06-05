@@ -586,58 +586,41 @@ function App(){
         active={G.cur===3&&!G.waiting} dealer={G.dealer===3}
         style={{position:'absolute',top:'44%',right:'2%',transform:'translateY(-50%)',zIndex:10}}/>
 
-      {/* ══════════════════════════════════════════════════════
-          ZONE DE PLI — style app Belote référence :
-          Cartes en ligne, sans rotation, superposées,
-          dans l'ORDRE DE JEU (G.trick), centrées
-          ══════════════════════════════════════════════════════ */}
+      {/* ════════════ ZONE DE PLI ════════════
+          - max 4 cartes de G.trick (ordre de jeu)
+          - centrées, empilées, sans rotation
+          ═══════════════════════════════════════ */}
       {(()=>{
-        const cards = G.trick||[];
-        if(!cards.length) return null;
-        const n = cards.length;
-        const OFFSET = 58;  // décalage horizontal entre cartes
-        const totalW = (n-1)*OFFSET + PW;
-        const containerW = Math.max(totalW + 20, 160);
+        const cards=(G.trick||[]).slice(0,4); // max 4
+        if(!cards.length)return null;
+        const OFF=60, CW=PW+(cards.length-1)*OFF;
         return(
           <div style={{
             position:'absolute',
-            top:'10%',
-            left:'50%',
-            transform:`translateX(-${containerW/2}px)`,
-            width:containerW,
-            height:PH+20,
-            zIndex:200,
-            pointerEvents:'none',
+            top:'10%', left:'50%',
+            marginLeft:-CW/2,
+            width:CW, height:PH,
+            zIndex:200, pointerEvents:'none',
           }}>
             {cards.map((t,i)=>(
-              <div key={t.p} style={{
+              <div key={`${t.p}-${i}`} style={{
                 position:'absolute',
-                left: i*OFFSET,
-                top: 0,
-                zIndex: i+1,
-                filter: G.waiting&&G.winner===t.p
-                  ? 'drop-shadow(0 0 10px #ffd54f) drop-shadow(0 0 20px rgba(255,213,79,.5))'
-                  : 'drop-shadow(0 3px 8px rgba(0,0,0,.55))',
+                left:i*OFF, top:0, zIndex:i+1,
+                filter:G.waiting&&G.winner===t.p
+                  ?'drop-shadow(0 0 12px #ffd54f)'
+                  :'drop-shadow(0 3px 8px rgba(0,0,0,.5))',
               }}>
                 <Crd card={t.c} W={PW} H={PH}/>
               </div>
             ))}
-            {/* Badge gagnant — sous les cartes */}
             {G.waiting&&G.winner!==null&&(
               <div style={{
-                position:'absolute',
-                top: PH+8,
-                left:'50%',
-                transform:'translateX(-50%)',
-                background:'rgba(0,0,0,.85)',
-                border:'1.5px solid #ffd54f',
-                borderRadius:20,
-                padding:'4px 16px',
-                fontSize:12,
-                color:'#ffd54f',
-                fontWeight:'bold',
-                whiteSpace:'nowrap',
-                zIndex:10,
+                position:'absolute',top:PH+10,
+                left:'50%',transform:'translateX(-50%)',
+                background:'rgba(0,0,0,.85)',border:'1.5px solid #ffd54f',
+                borderRadius:20,padding:'4px 18px',
+                fontSize:13,color:'#ffd54f',fontWeight:'bold',
+                whiteSpace:'nowrap',zIndex:10,
               }}>
                 {PN[G.winner]} remporte ✓
               </div>
@@ -646,10 +629,11 @@ function App(){
         );
       })()}
 
-      {/* Indicateur tour */}
+      {/* Indicateur tour — masqué pendant la pause */}
+      {!G.waiting&&(
       <div style={{position:'absolute',bottom:128,left:'50%',transform:'translateX(-50%)',
         zIndex:50,whiteSpace:'nowrap'}}>
-        {!G.waiting&&myTurn?(
+        {myTurn?(
           <div style={{background:'rgba(20,80,20,.95)',border:'2px solid #66bb6a',
             borderRadius:20,padding:'4px 14px',fontSize:12,fontWeight:'bold',
             animation:'pulse 1.2s infinite'}}>
@@ -662,7 +646,7 @@ function App(){
           </div>
         )}
       </div>
-
+      )}
       {/* Main joueur */}
       <div style={{position:'absolute',bottom:8,left:0,right:0,zIndex:8,textAlign:'center'}}>
         <Hand hand={hand0} okIds={okIds} onPlay={playCard} trump={G.trump}/>
