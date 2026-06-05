@@ -36,7 +36,7 @@ const cs=(c,t)=>c.s===t?TS[c.r]:NS[c.r];
 const cp=(c,t)=>c.s===t?TP[c.r]:NP[c.r];
 const nxt=p=>(p+1)%4;
 
-const PW=72,PH=102;   // cartes du pli
+const PW=82,PH=116;   // cartes du pli
 const HW=72,HH=104;  // cartes de la main
 const AI_DELAY=1300, SHOW_TRICK_MS=2500, BID_DELAY=900;
 
@@ -586,81 +586,66 @@ function App(){
         active={G.cur===3&&!G.waiting} dealer={G.dealer===3}
         style={{position:'absolute',top:'44%',right:'2%',transform:'translateY(-50%)',zIndex:10}}/>
 
-      {/* ════════════════════════════════════════════════════════════
-          ZONE DE PLI — grande cascade centrée, style app Belote
-          Cartes grandes, superposées, bien visibles, centrées
-          ════════════════════════════════════════════════════════════ */}
-      <div style={{
-        position:'absolute',
-        top:'8%', left:'50%',
-        transform:'translateX(-50%)',
-        width:280, height:200,
-        zIndex:200,
-        pointerEvents:'none',
-      }}>
-        {/* Ordre d'empilement visuel : Nord en bas, Vous en haut */}
+      {/* ══════════════════════════════════════════════════════
+          ZONE DE PLI — style app Belote référence :
+          Cartes en ligne, sans rotation, superposées,
+          dans l'ORDRE DE JEU (G.trick), centrées
+          ══════════════════════════════════════════════════════ */}
+      {(()=>{
+        const cards = G.trick||[];
+        if(!cards.length) return null;
+        const n = cards.length;
+        const OFFSET = 58;  // décalage horizontal entre cartes
+        const totalW = (n-1)*OFFSET + PW;
+        const containerW = Math.max(totalW + 20, 160);
+        return(
+          <div style={{
+            position:'absolute',
+            top:'10%',
+            left:'50%',
+            transform:`translateX(-${containerW/2}px)`,
+            width:containerW,
+            height:PH+20,
+            zIndex:200,
+            pointerEvents:'none',
+          }}>
+            {cards.map((t,i)=>(
+              <div key={t.p} style={{
+                position:'absolute',
+                left: i*OFFSET,
+                top: 0,
+                zIndex: i+1,
+                filter: G.waiting&&G.winner===t.p
+                  ? 'drop-shadow(0 0 10px #ffd54f) drop-shadow(0 0 20px rgba(255,213,79,.5))'
+                  : 'drop-shadow(0 3px 8px rgba(0,0,0,.55))',
+              }}>
+                <Crd card={t.c} W={PW} H={PH}/>
+              </div>
+            ))}
+            {/* Badge gagnant — sous les cartes */}
+            {G.waiting&&G.winner!==null&&(
+              <div style={{
+                position:'absolute',
+                top: PH+8,
+                left:'50%',
+                transform:'translateX(-50%)',
+                background:'rgba(0,0,0,.85)',
+                border:'1.5px solid #ffd54f',
+                borderRadius:20,
+                padding:'4px 16px',
+                fontSize:12,
+                color:'#ffd54f',
+                fontWeight:'bold',
+                whiteSpace:'nowrap',
+                zIndex:10,
+              }}>
+                {PN[G.winner]} remporte ✓
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
-        {/* Nord (2) — haut, légèrement à gauche */}
-        {G.snap[2]&&(
-          <div style={{
-            position:'absolute', top:0, left:30,
-            zIndex:1, transform:'rotate(-4deg)',
-            transformOrigin:'bottom center',
-            filter:G.waiting&&G.winner===2?'drop-shadow(0 0 8px #ffd54f)':'drop-shadow(0 2px 6px rgba(0,0,0,.5))',
-          }}>
-            <Crd card={G.snap[2]} W={PW} H={PH}/>
-          </div>
-        )}
-        {/* Ouest (1) — gauche, légère rotation */}
-        {G.snap[1]&&(
-          <div style={{
-            position:'absolute', top:15, left:5,
-            zIndex:2, transform:'rotate(-7deg)',
-            transformOrigin:'bottom center',
-            filter:G.waiting&&G.winner===1?'drop-shadow(0 0 8px #ffd54f)':'drop-shadow(0 2px 6px rgba(0,0,0,.5))',
-          }}>
-            <Crd card={G.snap[1]} W={PW} H={PH}/>
-          </div>
-        )}
-        {/* Est (3) — droite, légère rotation inverse */}
-        {G.snap[3]&&(
-          <div style={{
-            position:'absolute', top:15, right:5,
-            zIndex:3, transform:'rotate(7deg)',
-            transformOrigin:'bottom center',
-            filter:G.waiting&&G.winner===3?'drop-shadow(0 0 8px #ffd54f)':'drop-shadow(0 2px 6px rgba(0,0,0,.5))',
-          }}>
-            <Crd card={G.snap[3]} W={PW} H={PH}/>
-          </div>
-        )}
-        {/* Vous (0) — avant, centré, bien visible */}
-        {G.snap[0]&&(
-          <div style={{
-            position:'absolute', top:45,
-            left:'50%', transform:'translateX(-50%) rotate(2deg)',
-            transformOrigin:'bottom center',
-            zIndex:4,
-            filter:G.waiting&&G.winner===0?'drop-shadow(0 0 8px #ffd54f)':'drop-shadow(0 2px 8px rgba(0,0,0,.6))',
-          }}>
-            <Crd card={G.snap[0]} W={PW} H={PH}/>
-          </div>
-        )}
-
-        {/* Badge gagnant — une seule fois, sous les cartes */}
-        {G.waiting&&G.winner!==null&&(
-          <div style={{
-            position:'absolute', bottom:-36, left:'50%',
-            transform:'translateX(-50%)',
-            background:'rgba(0,0,0,.82)',
-            border:'1.5px solid #ffd54f',
-            borderRadius:20, padding:'5px 18px',
-            fontSize:13, color:'#ffd54f', fontWeight:'bold',
-            whiteSpace:'nowrap', zIndex:10,
-          }}>
-            {PN[G.winner]} remporte ✓
-          </div>
-        )}
-      </div>
       {/* Indicateur tour */}
       <div style={{position:'absolute',bottom:128,left:'50%',transform:'translateX(-50%)',
         zIndex:50,whiteSpace:'nowrap'}}>
