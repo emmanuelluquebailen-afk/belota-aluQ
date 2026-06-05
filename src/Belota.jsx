@@ -36,7 +36,7 @@ const cs=(c,t)=>c.s===t?TS[c.r]:NS[c.r];
 const cp=(c,t)=>c.s===t?TP[c.r]:NP[c.r];
 const nxt=p=>(p+1)%4;
 
-const PW=54,PH=78;   // cartes du pli
+const PW=58,PH=84;   // cartes du pli
 const HW=72,HH=104;  // cartes de la main
 const AI_DELAY=1300, SHOW_TRICK_MS=2500, BID_DELAY=900;
 
@@ -199,69 +199,160 @@ function PipCard({suit,rank,W,H}){
   );
 }
 
-// ── Figure — design épuré style carte française ──────────────────────────────
-// Grandes lettres serif, suit, miroir haut/bas — propre et lisible
+// ── Figures — portraits SVG authentiques style cartes françaises ────────────
 function FaceCard({suit,rank,W,H}){
-  const col=COL_SUIT(suit);
   const isRed=RED(suit);
-  // Couleurs de fond du médaillon central
-  const bgTop=isRed?'#fff8f8':'#f8f8ff';
-  const bgBot=isRed?'#fef0f0':'#f0f0fe';
-  const rankLetter=DIS[rank]; // V, D ou R
-  // Taille de la lettre centrale proportionnelle à la carte
-  const bigFs=Math.round(H*0.28);
-  const suitFs=Math.round(H*0.16);
-  const borderCol=isRed?'#e8a0a0':'#a0a0e8';
+  const col=isRed?'#C0392B':'#1a1a1a';
+  const c1=isRed?'#e74c3c':'#2c3e50';  // habit principal
+  const c2=isRed?'#c0392b':'#1a252f';  // habit secondaire
+  const gold='#D4AC0D';
+  const skin='#FDEBD0';
+  const hair=isRed?'#4a1010':'#1a1a2e';
+
+  // Valet : jeune homme, chapeau, hallebarde
+  const Valet=(
+    <g>
+      {/* Fond dégradé */}
+      <rect x="0" y="0" width="40" height="76" fill={isRed?'#fff8f8':'#f8f8ff'}/>
+      {/* Habit bas */}
+      <path d="M4,42 L36,42 L36,76 L4,76 Z" fill={c1}/>
+      <path d="M4,42 L20,76 L4,76 Z" fill={c2}/>
+      <path d="M36,42 L20,76 L36,76 Z" fill={c2}/>
+      {/* Ceinture dorée */}
+      <rect x="4" y="41" width="32" height="4" fill={gold}/>
+      {/* Habit haut */}
+      <path d="M8,22 L32,22 L36,42 L4,42 Z" fill={c1}/>
+      <path d="M14,22 L26,22 L24,42 L16,42 Z" fill={gold} opacity=".6"/>
+      {/* Tête */}
+      <ellipse cx="20" cy="17" rx="7" ry="8" fill={skin}/>
+      {/* Cheveux */}
+      <path d="M13,12 Q20,7 27,12 Q27,8 20,6 Q13,8 13,12 Z" fill={hair}/>
+      {/* Yeux */}
+      <ellipse cx="17" cy="16" rx="1.2" ry="1" fill="#2c3e50"/>
+      <ellipse cx="23" cy="16" rx="1.2" ry="1" fill="#2c3e50"/>
+      {/* Nez */}
+      <path d="M19,18 L20,20 L21,18" stroke="#c0a080" strokeWidth=".5" fill="none"/>
+      {/* Bouche */}
+      <path d="M17,21 Q20,23 23,21" stroke="#c08060" strokeWidth=".7" fill="none"/>
+      {/* Chapeau */}
+      <rect x="12" y="8" width="16" height="3" rx="1" fill={c1}/>
+      <rect x="10" y="10" width="20" height="1.5" rx=".5" fill={c1}/>
+      <rect x="16" y="5" width="8" height="5" rx="1" fill={c2}/>
+      {/* Plume */}
+      <path d="M24,5 Q30,2 28,8 Q26,6 24,5 Z" fill={isRed?'#fff':'#aaa'}/>
+      {/* Hallebarde */}
+      <line x1="33" y1="10" x2="33" y2="74" stroke="#888" strokeWidth="1.5"/>
+      <polygon points="33,10 30,15 36,15" fill="#bbb"/>
+      <rect x="31" y="14" width="4" height="2" fill="#999"/>
+      {/* Symbole */}
+      <text x="6" y="74" fontSize="7" fill={col} fontWeight="bold">{suit}</text>
+    </g>
+  );
+
+  // Dame : femme couronnée, robe, fleur
+  const Dame=(
+    <g>
+      <rect x="0" y="0" width="40" height="76" fill={isRed?'#fff5f8':'#f5f8ff'}/>
+      {/* Robe */}
+      <path d="M4,38 Q4,76 20,76 Q36,76 36,38 Z" fill="#3498DB"/>
+      <path d="M4,38 Q4,76 20,76 Z" fill="#2471A3"/>
+      <path d="M36,38 Q36,76 20,76 Z" fill="#2471A3"/>
+      {/* Dentelle robe */}
+      <path d="M4,38 Q12,44 20,38 Q28,44 36,38" stroke="white" strokeWidth="1" fill="none" opacity=".5"/>
+      {/* Corsage */}
+      <path d="M10,20 L30,20 L34,38 L6,38 Z" fill="#E8D5B7"/>
+      <path d="M15,20 L25,20 L23,38 L17,38 Z" fill={c1} opacity=".7"/>
+      {/* Tête */}
+      <ellipse cx="20" cy="14" rx="6.5" ry="7.5" fill={skin}/>
+      {/* Chevelure */}
+      <path d="M13,10 Q20,4 27,10 L27,18 Q23,15 20,16 Q17,15 13,18 Z" fill={isRed?'#8B4513':'#2c3e50'}/>
+      {/* Couronne */}
+      <path d="M13,8 L13,4 L16,7 L20,3 L24,7 L27,4 L27,8 Z" fill={gold}/>
+      <circle cx="20" cy="4" r="1.2" fill={isRed?'#e74c3c':'#2980b9'}/>
+      {/* Yeux */}
+      <ellipse cx="17" cy="13" rx="1.2" ry="1" fill="#2c3e50"/>
+      <ellipse cx="23" cy="13" rx="1.2" ry="1" fill="#2c3e50"/>
+      {/* Lèvres */}
+      <path d="M17,17 Q20,19 23,17" stroke="#e07060" strokeWidth=".8" fill="none"/>
+      {/* Collier */}
+      <path d="M13,20 Q20,24 27,20" stroke={gold} strokeWidth="1.2" fill="none"/>
+      {/* Fleur */}
+      <circle cx="30" cy="30" r="3.5" fill={isRed?'#e74c3c':'#2c3e50'}/>
+      <circle cx="30" cy="30" r="1.5" fill="white" opacity=".7"/>
+      <line x1="30" y1="33" x2="28" y2="38" stroke="#27ae60" strokeWidth="1"/>
+      {/* Symbole */}
+      <text x="6" y="74" fontSize="7" fill={col} fontWeight="bold">{suit}</text>
+    </g>
+  );
+
+  // Roi : couronne royale, manteau, sceptre, barbe
+  const Roi=(
+    <g>
+      <rect x="0" y="0" width="40" height="76" fill={isRed?'#fff8f5':'#f5f5ff'}/>
+      {/* Manteau */}
+      <path d="M3,40 L37,40 L37,76 L3,76 Z" fill="#8E1A1A"/>
+      <path d="M3,40 L20,76 L3,76 Z" fill="#6B1212"/>
+      <path d="M37,40 L20,76 L37,76 Z" fill="#6B1212"/>
+      {/* Col hermine */}
+      <path d="M3,40 Q20,46 37,40 Q37,44 20,50 Q3,44 3,40 Z" fill="#f5f5f5"/>
+      {/* Armure / habit */}
+      <path d="M9,22 L31,22 L37,40 L3,40 Z" fill="#2C3E7A"/>
+      <path d="M14,22 L26,22 L24,40 L16,40 Z" fill={gold} opacity=".7"/>
+      {/* Ceinture */}
+      <rect x="3" y="39" width="34" height="3" fill={gold}/>
+      {/* Tête */}
+      <ellipse cx="20" cy="16" rx="7" ry="7.5" fill={skin}/>
+      {/* Barbe */}
+      <path d="M13,18 Q20,26 27,18 Q25,24 20,26 Q15,24 13,18 Z" fill={isRed?'#5D1A1A':'#2c3e50'}/>
+      {/* Cheveux */}
+      <path d="M13,12 Q20,6 27,12 Q27,8 20,6 Q13,8 13,12 Z" fill={isRed?'#5D1A1A':'#1a1a2e'}/>
+      {/* Grande couronne */}
+      <path d="M11,10 L11,5 L15,8 L20,3 L25,8 L29,5 L29,10 Z" fill={gold}/>
+      <circle cx="20" cy="4" r="1.5" fill="#e74c3c"/>
+      <circle cx="14" cy="6.5" r="1" fill="#3498db"/>
+      <circle cx="26" cy="6.5" r="1" fill="#3498db"/>
+      {/* Yeux */}
+      <ellipse cx="16.5" cy="15" rx="1.2" ry="1" fill="#2c3e50"/>
+      <ellipse cx="23.5" cy="15" rx="1.2" ry="1" fill="#2c3e50"/>
+      {/* Sceptre */}
+      <line x1="6" y1="74" x2="6" y2="24" stroke={gold} strokeWidth="1.8"/>
+      <circle cx="6" cy="23" r="2.5" fill={gold}/>
+      <circle cx="6" cy="23" r="1.2" fill="#e74c3c"/>
+      {/* Épée */}
+      <line x1="34" y1="74" x2="34" y2="30" stroke="#aaa" strokeWidth="1.5"/>
+      <rect x="30" y="34" width="8" height="1.5" rx=".5" fill="#888"/>
+      <circle cx="34" cy="30" r="1.5" fill={gold}/>
+      {/* Symbole */}
+      <text x="20" y="74" fontSize="7" textAnchor="middle" fill={col} fontWeight="bold">{suit}</text>
+    </g>
+  );
+
+  const portraits={J:Valet,Q:Dame,K:Roi};
 
   return(
-    <div style={{
+    <svg viewBox="0 0 40 76" style={{
       position:'absolute',
-      top:H*0.13, left:W*0.1,
-      width:W*0.8, height:H*0.74,
-      borderRadius:3,
-      border:`1px solid ${borderCol}`,
-      overflow:'hidden',
-      display:'flex',flexDirection:'column',
+      top:H*0.11, left:W*0.06,
+      width:W*0.88, height:H*0.78,
+      overflow:'visible',
     }}>
       {/* Moitié haute */}
-      <div style={{
-        flex:1,
-        background:bgTop,
-        display:'flex',flexDirection:'column',
-        alignItems:'center',justifyContent:'center',
-        borderBottom:`0.5px solid ${borderCol}`,
-        gap:1,
-      }}>
-        <div style={{
-          fontSize:bigFs,
-          fontWeight:900,
-          color:col,
-          fontFamily:'"Georgia","Times New Roman",serif',
-          lineHeight:1,
-          letterSpacing:-1,
-        }}>{rankLetter}</div>
-        <div style={{fontSize:suitFs,color:col,lineHeight:1}}>{suit}</div>
-      </div>
-      {/* Moitié basse (miroir inversé) */}
-      <div style={{
-        flex:1,
-        background:bgBot,
-        display:'flex',flexDirection:'column',
-        alignItems:'center',justifyContent:'center',
-        gap:1,
-        transform:'rotate(180deg)',
-      }}>
-        <div style={{
-          fontSize:bigFs,
-          fontWeight:900,
-          color:col,
-          fontFamily:'"Georgia","Times New Roman",serif',
-          lineHeight:1,
-          letterSpacing:-1,
-        }}>{rankLetter}</div>
-        <div style={{fontSize:suitFs,color:col,lineHeight:1}}>{suit}</div>
-      </div>
-    </div>
+      <clipPath id={`ch${rank}${suit}`}>
+        <rect x="0" y="0" width="40" height="38"/>
+      </clipPath>
+      <g clipPath={`url(#ch${rank}${suit})`}>
+        {portraits[rank]}
+      </g>
+      {/* Ligne séparatrice */}
+      <line x1="0" y1="38" x2="40" y2="38" stroke={isRed?'#e8c0c0':'#c0c0e8'} strokeWidth="0.7"/>
+      {/* Moitié basse miroir */}
+      <clipPath id={`cb${rank}${suit}`}>
+        <rect x="0" y="38" width="40" height="38"/>
+      </clipPath>
+      <g clipPath={`url(#cb${rank}${suit})`} transform="translate(40,76) rotate(180)">
+        {portraits[rank]}
+      </g>
+    </svg>
   );
 }
 
@@ -608,58 +699,68 @@ function App(){
         active={G.cur===3&&!G.waiting} dealer={G.dealer===3}
         style={{position:'absolute',top:'44%',right:'2%',transform:'translateY(-50%)',zIndex:10}}/>
 
-      {/* ═══════════════════════════════════════════════════════════
-          ZONE DE PLI — croix avec snap[], cartes toujours visibles
-          ═══════════════════════════════════════════════════════════ */}
+      {/* ══════════════════════════════════════════════════════
+          ZONE DE PLI — cascade style "vrai jeu de cartes"
+          Cartes superposées avec offsets, grande taille, lisibles
+          ══════════════════════════════════════════════════════ */}
       <div style={{
         position:'absolute',
-        top:30, left:'15%', right:'15%', bottom:138,
+        top:'12%', left:'50%',
+        transform:'translateX(-50%)',
+        width:180, height:160,
         zIndex:200,
-        display:'grid',
-        gridTemplateColumns:'1fr auto 1fr',
-        gridTemplateRows:'1fr auto 1fr',
-        alignItems:'center',
-        justifyItems:'center',
-        gap:4,
-        pointerEvents:'none',
       }}>
-        {/* Ligne 1 : _ Nord _ */}
-        <div/>
-        <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:2}}>
-          <div style={{fontSize:8,opacity:.5,color:'white',height:10}}>Nord</div>
-          <div style={{width:PW,height:PH}}>
-            {G.snap[2]?<Crd card={G.snap[2]} W={PW} H={PH}/>:<EmptySlot W={PW} H={PH}/>}
+        {/* Chaque carte positionnée avec offset naturel */}
+        {/* Nord (2) — haut légèrement à gauche */}
+        {G.snap[2]&&(
+          <div style={{position:'absolute',top:0,left:20,zIndex:1,
+            transform:'rotate(-4deg)',transformOrigin:'bottom center',
+            filter:G.waiting&&G.winner===2?'drop-shadow(0 0 6px #ffd54f)':'none'}}>
+            <Crd card={G.snap[2]} W={PW} H={PH}/>
           </div>
-        </div>
-        <div/>
-
-        {/* Ligne 2 : Ouest _ Est */}
-        <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:2}}>
-          <div style={{fontSize:8,opacity:.5,color:'white',height:10}}>Ouest</div>
-          <div style={{width:PW,height:PH}}>
-            {G.snap[1]?<Crd card={G.snap[1]} W={PW} H={PH}/>:<EmptySlot W={PW} H={PH}/>}
+        )}
+        {/* Ouest (1) — gauche milieu */}
+        {G.snap[1]&&(
+          <div style={{position:'absolute',top:20,left:0,zIndex:2,
+            transform:'rotate(-8deg)',transformOrigin:'bottom center',
+            filter:G.waiting&&G.winner===1?'drop-shadow(0 0 6px #ffd54f)':'none'}}>
+            <Crd card={G.snap[1]} W={PW} H={PH}/>
           </div>
-        </div>
-        {/* Centre : badge gagnant */}
-        <div style={{fontSize:10,color:'#ffd54f',fontWeight:'bold',textAlign:'center',minWidth:50,maxWidth:60}}>
-          {G.waiting&&G.winner!==null?`${PN[G.winner]}\n✓`:''}
-        </div>
-        <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:2}}>
-          <div style={{fontSize:8,opacity:.5,color:'white',height:10}}>Est</div>
-          <div style={{width:PW,height:PH}}>
-            {G.snap[3]?<Crd card={G.snap[3]} W={PW} H={PH}/>:<EmptySlot W={PW} H={PH}/>}
+        )}
+        {/* Est (3) — droite milieu */}
+        {G.snap[3]&&(
+          <div style={{position:'absolute',top:20,right:0,zIndex:3,
+            transform:'rotate(8deg)',transformOrigin:'bottom center',
+            filter:G.waiting&&G.winner===3?'drop-shadow(0 0 6px #ffd54f)':'none'}}>
+            <Crd card={G.snap[3]} W={PW} H={PH}/>
           </div>
-        </div>
-
-        {/* Ligne 3 : _ Vous _ */}
-        <div/>
-        <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:2}}>
-          <div style={{fontSize:8,opacity:.5,color:'white',height:10}}>Vous</div>
-          <div style={{width:PW,height:PH}}>
-            {G.snap[0]?<Crd card={G.snap[0]} W={PW} H={PH}/>:<EmptySlot W={PW} H={PH}/>}
+        )}
+        {/* Vous (0) — avant, centré, bien visible */}
+        {G.snap[0]&&(
+          <div style={{position:'absolute',top:40,left:'50%',
+            transform:'translateX(-50%) rotate(2deg)',transformOrigin:'bottom center',
+            zIndex:4,
+            filter:G.waiting&&G.winner===0?'drop-shadow(0 0 6px #ffd54f)':'none'}}>
+            <Crd card={G.snap[0]} W={PW} H={PH}/>
           </div>
-        </div>
-        <div/>
+        )}
+        {/* Slots vides discrets quand pli vide */}
+        {!G.snap[2]&&!G.snap[1]&&!G.snap[3]&&!G.snap[0]&&(
+          <div style={{position:'absolute',top:20,left:'50%',transform:'translateX(-50%)',
+            width:PW,height:PH,borderRadius:6,
+            border:'1px dashed rgba(255,255,255,.1)',
+            background:'rgba(255,255,255,.03)'}}/> 
+        )}
+        {/* Badge gagnant */}
+        {G.waiting&&G.winner!==null&&(
+          <div style={{position:'absolute',bottom:-28,left:'50%',
+            transform:'translateX(-50%)',zIndex:10,
+            background:'rgba(0,0,0,.75)',border:'1px solid #ffd54f',
+            borderRadius:16,padding:'3px 12px',
+            fontSize:11,color:'#ffd54f',fontWeight:'bold',whiteSpace:'nowrap'}}>
+            {PN[G.winner]} remporte ✓
+          </div>
+        )}
       </div>
 
       {/* Indicateur tour */}
