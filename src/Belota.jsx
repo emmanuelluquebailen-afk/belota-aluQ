@@ -297,43 +297,48 @@ function Crd({card,ok,W=54,H=76,onClick}){
       filter: ok===false ? 'grayscale(40%)' : 'none',
       overflow:'hidden',
     }}>
-      {/* ── Index haut-gauche ── */}
-      <div style={{
-        position:'absolute',top:2,left:W<50?2:3,
-        display:'flex',flexDirection:'column',alignItems:'center',
-        zIndex:5,lineHeight:1,
-      }}>
-        <span style={{
-          fontSize:idxRank,fontWeight:900,color:col,
-          fontFamily:'"Georgia","Times New Roman",serif',
-          lineHeight:1,display:'block',
-        }}>{DIS[card.r]}</span>
-        <span style={{fontSize:idxSuit,color:col,lineHeight:1,display:'block'}}>
-          {card.s}
-        </span>
-      </div>
+      {/* Figures : image PNG plein cadre, pas d'indices (ils sont dans l'image) */}
+      {isFace && <FaceCard suit={card.s} rank={card.r} W={W} H={H}/>}
 
-      {/* ── Contenu central ── */}
-      {card.r==='A'   && <AceCard suit={card.s} W={W} H={H}/>}
-      {isFace         && <FaceCard suit={card.s} rank={card.r} W={W} H={H}/>}
-      {PIPS_DEF[card.r] && <PipCard suit={card.s} rank={card.r} W={W} H={H}/>}
+      {/* Autres cartes : indices de coins + contenu central */}
+      {!isFace && <>
+        {/* Index haut-gauche */}
+        <div style={{
+          position:'absolute',top:2,left:W<50?2:3,
+          display:'flex',flexDirection:'column',alignItems:'center',
+          zIndex:5,lineHeight:1,
+        }}>
+          <span style={{
+            fontSize:idxRank,fontWeight:900,color:col,
+            fontFamily:'"Georgia","Times New Roman",serif',
+            lineHeight:1,display:'block',
+          }}>{DIS[card.r]}</span>
+          <span style={{fontSize:idxSuit,color:col,lineHeight:1,display:'block'}}>
+            {card.s}
+          </span>
+        </div>
 
-      {/* ── Index bas-droite (inversé) ── */}
-      <div style={{
-        position:'absolute',bottom:2,right:W<50?2:3,
-        display:'flex',flexDirection:'column',alignItems:'center',
-        transform:'rotate(180deg)',
-        zIndex:5,lineHeight:1,
-      }}>
-        <span style={{
-          fontSize:idxRank,fontWeight:900,color:col,
-          fontFamily:'"Georgia","Times New Roman",serif',
-          lineHeight:1,display:'block',
-        }}>{DIS[card.r]}</span>
-        <span style={{fontSize:idxSuit,color:col,lineHeight:1,display:'block'}}>
-          {card.s}
-        </span>
-      </div>
+        {/* Contenu central */}
+        {card.r==='A' && <AceCard suit={card.s} W={W} H={H}/>}
+        {PIPS_DEF[card.r] && <PipCard suit={card.s} rank={card.r} W={W} H={H}/>}
+
+        {/* Index bas-droite (inversé) */}
+        <div style={{
+          position:'absolute',bottom:2,right:W<50?2:3,
+          display:'flex',flexDirection:'column',alignItems:'center',
+          transform:'rotate(180deg)',
+          zIndex:5,lineHeight:1,
+        }}>
+          <span style={{
+            fontSize:idxRank,fontWeight:900,color:col,
+            fontFamily:'"Georgia","Times New Roman",serif',
+            lineHeight:1,display:'block',
+          }}>{DIS[card.r]}</span>
+          <span style={{fontSize:idxSuit,color:col,lineHeight:1,display:'block'}}>
+            {card.s}
+          </span>
+        </div>
+      </>}
     </div>
   );
 }
