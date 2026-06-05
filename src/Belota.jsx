@@ -199,159 +199,119 @@ function PipCard({suit,rank,W,H}){
   );
 }
 
-// ── Figures — portraits SVG authentiques style cartes françaises ────────────
+// ── Figures — portraits SVG avec symbole couleur très visible ───────────────
 function FaceCard({suit,rank,W,H}){
   const isRed=RED(suit);
-  const col=isRed?'#C0392B':'#1a1a1a';
-  const c1=isRed?'#e74c3c':'#2c3e50';  // habit principal
-  const c2=isRed?'#c0392b':'#1a252f';  // habit secondaire
-  const gold='#D4AC0D';
-  const skin='#FDEBD0';
-  const hair=isRed?'#4a1010':'#1a1a2e';
+  const col=COL_SUIT(suit);
 
-  // Valet : jeune homme, chapeau, hallebarde
-  const Valet=(
-    <g>
-      {/* Fond dégradé */}
-      <rect x="0" y="0" width="40" height="76" fill={isRed?'#fff8f8':'#f8f8ff'}/>
-      {/* Habit bas */}
-      <path d="M4,42 L36,42 L36,76 L4,76 Z" fill={c1}/>
-      <path d="M4,42 L20,76 L4,76 Z" fill={c2}/>
-      <path d="M36,42 L20,76 L36,76 Z" fill={c2}/>
-      {/* Ceinture dorée */}
-      <rect x="4" y="41" width="32" height="4" fill={gold}/>
-      {/* Habit haut */}
-      <path d="M8,22 L32,22 L36,42 L4,42 Z" fill={c1}/>
-      <path d="M14,22 L26,22 L24,42 L16,42 Z" fill={gold} opacity=".6"/>
-      {/* Tête */}
-      <ellipse cx="20" cy="17" rx="7" ry="8" fill={skin}/>
-      {/* Cheveux */}
-      <path d="M13,12 Q20,7 27,12 Q27,8 20,6 Q13,8 13,12 Z" fill={hair}/>
-      {/* Yeux */}
-      <ellipse cx="17" cy="16" rx="1.2" ry="1" fill="#2c3e50"/>
-      <ellipse cx="23" cy="16" rx="1.2" ry="1" fill="#2c3e50"/>
-      {/* Nez */}
-      <path d="M19,18 L20,20 L21,18" stroke="#c0a080" strokeWidth=".5" fill="none"/>
-      {/* Bouche */}
-      <path d="M17,21 Q20,23 23,21" stroke="#c08060" strokeWidth=".7" fill="none"/>
-      {/* Chapeau */}
-      <rect x="12" y="8" width="16" height="3" rx="1" fill={c1}/>
-      <rect x="10" y="10" width="20" height="1.5" rx=".5" fill={c1}/>
-      <rect x="16" y="5" width="8" height="5" rx="1" fill={c2}/>
-      {/* Plume */}
-      <path d="M24,5 Q30,2 28,8 Q26,6 24,5 Z" fill={isRed?'#fff':'#aaa'}/>
-      {/* Hallebarde */}
-      <line x1="33" y1="10" x2="33" y2="74" stroke="#888" strokeWidth="1.5"/>
-      <polygon points="33,10 30,15 36,15" fill="#bbb"/>
-      <rect x="31" y="14" width="4" height="2" fill="#999"/>
-      {/* Symbole */}
-      <text x="6" y="74" fontSize="7" fill={col} fontWeight="bold">{suit}</text>
-    </g>
-  );
+  // Couleurs distinctes par couleur — on peut voir d'un coup d'œil la couleur
+  const suitColors={
+    '♥':{bg1:'#fff5f5',bg2:'#ffe8e8',border:'#f0b0b0',habTop:'#c0392b',habBot:'#922b21',acc:'#e74c3c'},
+    '♦':{bg1:'#fff8f0',bg2:'#feeee0',border:'#f0c8a0',habTop:'#d35400',habBot:'#a04000',acc:'#e67e22'},
+    '♠':{bg1:'#f0f0ff',bg2:'#e0e0f8',border:'#9090d0',habTop:'#1a237e',habBot:'#0d1642',acc:'#283593'},
+    '♣':{bg1:'#f0fff0',bg2:'#e0f8e0',border:'#90c090',habTop:'#1a4a1a',habBot:'#0d2e0d',acc:'#2e7d32'},
+  };
+  const sc=suitColors[suit]||suitColors['♠'];
 
-  // Dame : femme couronnée, robe, fleur
-  const Dame=(
-    <g>
-      <rect x="0" y="0" width="40" height="76" fill={isRed?'#fff5f8':'#f5f8ff'}/>
-      {/* Robe */}
-      <path d="M4,38 Q4,76 20,76 Q36,76 36,38 Z" fill="#3498DB"/>
-      <path d="M4,38 Q4,76 20,76 Z" fill="#2471A3"/>
-      <path d="M36,38 Q36,76 20,76 Z" fill="#2471A3"/>
-      {/* Dentelle robe */}
-      <path d="M4,38 Q12,44 20,38 Q28,44 36,38" stroke="white" strokeWidth="1" fill="none" opacity=".5"/>
-      {/* Corsage */}
-      <path d="M10,20 L30,20 L34,38 L6,38 Z" fill="#E8D5B7"/>
-      <path d="M15,20 L25,20 L23,38 L17,38 Z" fill={c1} opacity=".7"/>
-      {/* Tête */}
-      <ellipse cx="20" cy="14" rx="6.5" ry="7.5" fill={skin}/>
-      {/* Chevelure */}
-      <path d="M13,10 Q20,4 27,10 L27,18 Q23,15 20,16 Q17,15 13,18 Z" fill={isRed?'#8B4513':'#2c3e50'}/>
-      {/* Couronne */}
-      <path d="M13,8 L13,4 L16,7 L20,3 L24,7 L27,4 L27,8 Z" fill={gold}/>
-      <circle cx="20" cy="4" r="1.2" fill={isRed?'#e74c3c':'#2980b9'}/>
-      {/* Yeux */}
-      <ellipse cx="17" cy="13" rx="1.2" ry="1" fill="#2c3e50"/>
-      <ellipse cx="23" cy="13" rx="1.2" ry="1" fill="#2c3e50"/>
-      {/* Lèvres */}
-      <path d="M17,17 Q20,19 23,17" stroke="#e07060" strokeWidth=".8" fill="none"/>
-      {/* Collier */}
-      <path d="M13,20 Q20,24 27,20" stroke={gold} strokeWidth="1.2" fill="none"/>
-      {/* Fleur */}
-      <circle cx="30" cy="30" r="3.5" fill={isRed?'#e74c3c':'#2c3e50'}/>
-      <circle cx="30" cy="30" r="1.5" fill="white" opacity=".7"/>
-      <line x1="30" y1="33" x2="28" y2="38" stroke="#27ae60" strokeWidth="1"/>
-      {/* Symbole */}
-      <text x="6" y="74" fontSize="7" fill={col} fontWeight="bold">{suit}</text>
-    </g>
-  );
+  // Taille du grand symbole central selon taille carte
+  const bigSuit=Math.round(H*0.20);
+  const rankFs=Math.round(H*0.14);
 
-  // Roi : couronne royale, manteau, sceptre, barbe
-  const Roi=(
+  // Portraits simplifiés mais distinctifs par rang
+  const portraitTop=(
     <g>
-      <rect x="0" y="0" width="40" height="76" fill={isRed?'#fff8f5':'#f5f5ff'}/>
-      {/* Manteau */}
-      <path d="M3,40 L37,40 L37,76 L3,76 Z" fill="#8E1A1A"/>
-      <path d="M3,40 L20,76 L3,76 Z" fill="#6B1212"/>
-      <path d="M37,40 L20,76 L37,76 Z" fill="#6B1212"/>
-      {/* Col hermine */}
-      <path d="M3,40 Q20,46 37,40 Q37,44 20,50 Q3,44 3,40 Z" fill="#f5f5f5"/>
-      {/* Armure / habit */}
-      <path d="M9,22 L31,22 L37,40 L3,40 Z" fill="#2C3E7A"/>
-      <path d="M14,22 L26,22 L24,40 L16,40 Z" fill={gold} opacity=".7"/>
+      {/* Habit */}
+      <rect x="1" y="30" width="38" height="46" fill={sc.habTop}/>
+      <rect x="1" y="30" width="16" height="46" fill={sc.habBot}/>
+      {/* Détail habit */}
+      <rect x="14" y="30" width="12" height="46" fill={sc.acc} opacity=".5"/>
       {/* Ceinture */}
-      <rect x="3" y="39" width="34" height="3" fill={gold}/>
+      <rect x="1" y="42" width="38" height="3" fill="#D4AC0D"/>
+
+      {/* Accessoires selon rang */}
+      {rank==='K'&&<>
+        {/* Sceptre */}
+        <line x1="34" y1="74" x2="34" y2="33" stroke="#D4AC0D" strokeWidth="2"/>
+        <circle cx="34" cy="32" r="3" fill="#D4AC0D"/>
+        <circle cx="34" cy="32" r="1.5" fill={isRed?'#e74c3c':'#2980b9'}/>
+      </>}
+      {rank==='Q'&&<>
+        {/* Fleur */}
+        <circle cx="32" cy="36" r="4" fill={isRed?'#e74c3c':'#27ae60'}/>
+        <circle cx="32" cy="36" r="1.8" fill="white" opacity=".7"/>
+      </>}
+      {rank==='J'&&<>
+        {/* Hallebarde */}
+        <line x1="34" y1="74" x2="34" y2="28" stroke="#888" strokeWidth="1.8"/>
+        <polygon points="34,28 30,34 38,34" fill="#aaa"/>
+      </>}
+
       {/* Tête */}
-      <ellipse cx="20" cy="16" rx="7" ry="7.5" fill={skin}/>
-      {/* Barbe */}
-      <path d="M13,18 Q20,26 27,18 Q25,24 20,26 Q15,24 13,18 Z" fill={isRed?'#5D1A1A':'#2c3e50'}/>
+      <ellipse cx="20" cy="22" rx="8" ry="9" fill="#FDEBD0"/>
       {/* Cheveux */}
-      <path d="M13,12 Q20,6 27,12 Q27,8 20,6 Q13,8 13,12 Z" fill={isRed?'#5D1A1A':'#1a1a2e'}/>
-      {/* Grande couronne */}
-      <path d="M11,10 L11,5 L15,8 L20,3 L25,8 L29,5 L29,10 Z" fill={gold}/>
-      <circle cx="20" cy="4" r="1.5" fill="#e74c3c"/>
-      <circle cx="14" cy="6.5" r="1" fill="#3498db"/>
-      <circle cx="26" cy="6.5" r="1" fill="#3498db"/>
+      <path d={rank==='Q'
+        ? "M12,17 Q20,10 28,17 L28,25 Q24,20 20,21 Q16,20 12,25 Z"
+        : "M12,15 Q20,9 28,15 Q28,11 20,9 Q12,11 12,15 Z"}
+        fill={isRed?'#6B2E0A':'#1a1a2e'}/>
+
+      {rank==='K'&&<>
+        {/* Barbe */}
+        <path d="M13,26 Q20,34 27,26 Q25,32 20,34 Q15,32 13,26 Z" fill={isRed?'#5D1A1A':'#2c3e50'}/>
+        {/* Grande couronne */}
+        <path d="M11,14 L11,8 L15,12 L20,7 L25,12 L29,8 L29,14 Z" fill="#D4AC0D"/>
+        <circle cx="20" cy="8" r="1.8" fill={isRed?'#e74c3c':'#3498db'}/>
+      </>}
+      {rank==='Q'&&<>
+        {/* Petite couronne */}
+        <path d="M13,14 L13,10 L16,13 L20,9 L24,13 L27,10 L27,14 Z" fill="#D4AC0D"/>
+        <circle cx="20" cy="10" r="1.2" fill={isRed?'#ff6b6b':'#74b9ff'}/>
+      </>}
+      {rank==='J'&&<>
+        {/* Chapeau */}
+        <rect x="12" y="12" width="16" height="3" rx="1" fill={sc.habTop}/>
+        <rect x="14" y="9" width="12" height="5" rx="1" fill={sc.habBot}/>
+        {/* Plume */}
+        <path d="M26,9 Q32,6 30,13 Q28,10 26,9 Z" fill={isRed?'#fff':'#ddd'}/>
+      </>}
+
       {/* Yeux */}
-      <ellipse cx="16.5" cy="15" rx="1.2" ry="1" fill="#2c3e50"/>
-      <ellipse cx="23.5" cy="15" rx="1.2" ry="1" fill="#2c3e50"/>
-      {/* Sceptre */}
-      <line x1="6" y1="74" x2="6" y2="24" stroke={gold} strokeWidth="1.8"/>
-      <circle cx="6" cy="23" r="2.5" fill={gold}/>
-      <circle cx="6" cy="23" r="1.2" fill="#e74c3c"/>
-      {/* Épée */}
-      <line x1="34" y1="74" x2="34" y2="30" stroke="#aaa" strokeWidth="1.5"/>
-      <rect x="30" y="34" width="8" height="1.5" rx=".5" fill="#888"/>
-      <circle cx="34" cy="30" r="1.5" fill={gold}/>
-      {/* Symbole */}
-      <text x="20" y="74" fontSize="7" textAnchor="middle" fill={col} fontWeight="bold">{suit}</text>
+      <ellipse cx="16.5" cy="21" rx="1.3" ry="1.1" fill="#2c3e50"/>
+      <ellipse cx="23.5" cy="21" rx="1.3" ry="1.1" fill="#2c3e50"/>
+
+      {/* GRAND SYMBOLE COULEUR — très visible, au-dessus de tout */}
+      <text x="20" y="65" fontSize={bigSuit*0.85}
+        textAnchor="middle" fill={col}
+        fontWeight="bold" opacity=".9">{suit}</text>
     </g>
   );
-
-  const portraits={J:Valet,Q:Dame,K:Roi};
 
   return(
     <svg viewBox="0 0 40 76" style={{
       position:'absolute',
-      top:H*0.11, left:W*0.06,
-      width:W*0.88, height:H*0.78,
-      overflow:'visible',
+      top:H*0.10, left:W*0.06,
+      width:W*0.88, height:H*0.80,
+      overflow:'hidden',
+      borderRadius:2,
     }}>
+      <defs>
+        <linearGradient id={`fg${rank}${suit}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={sc.bg1}/>
+          <stop offset="100%" stopColor={sc.bg2}/>
+        </linearGradient>
+      </defs>
+      <rect x="0" y="0" width="40" height="76" fill={`url(#fg${rank}${suit})`}/>
+      <rect x="0" y="0" width="40" height="76" fill="none" stroke={sc.border} strokeWidth="0.8"/>
+
       {/* Moitié haute */}
-      <clipPath id={`ch${rank}${suit}`}>
-        <rect x="0" y="0" width="40" height="38"/>
-      </clipPath>
-      <g clipPath={`url(#ch${rank}${suit})`}>
-        {portraits[rank]}
-      </g>
-      {/* Ligne séparatrice */}
-      <line x1="0" y1="38" x2="40" y2="38" stroke={isRed?'#e8c0c0':'#c0c0e8'} strokeWidth="0.7"/>
-      {/* Moitié basse miroir */}
-      <clipPath id={`cb${rank}${suit}`}>
-        <rect x="0" y="38" width="40" height="38"/>
-      </clipPath>
-      <g clipPath={`url(#cb${rank}${suit})`} transform="translate(40,76) rotate(180)">
-        {portraits[rank]}
-      </g>
+      <clipPath id={`ctop${rank}${suit}`}><rect x="0" y="0" width="40" height="38"/></clipPath>
+      <g clipPath={`url(#ctop${rank}${suit})`}>{portraitTop}</g>
+
+      {/* Ligne centrale */}
+      <line x1="2" y1="38" x2="38" y2="38" stroke={sc.border} strokeWidth="0.8"/>
+
+      {/* Moitié basse — miroir */}
+      <clipPath id={`cbot${rank}${suit}`}><rect x="0" y="38" width="40" height="38"/></clipPath>
+      <g clipPath={`url(#cbot${rank}${suit})`} transform="translate(40,76) rotate(180)">{portraitTop}</g>
     </svg>
   );
 }
