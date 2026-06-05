@@ -204,17 +204,37 @@ const RANK_NAME = {J:'valet', Q:'dame', K:'roi'};
 const SUIT_NAME = {'♠':'pique','♥':'coeur','♦':'carreau','♣':'trefle'};
 
 function FaceCard({suit,rank,W,H}){
-  const src=`/${RANK_NAME[rank]}_de_${SUIT_NAME[suit]}.png`;
+  const src=`/${RANK_NAME[rank]} de ${SUIT_NAME[suit]}.png`;
+  const isRed=RED(suit);
+  const col=COL_SUIT(suit);
+  // Fallback si l'image ne charge pas
+  const [err,setErr]=useState(false);
+  if(err){
+    const bg=isRed?'#fff0f0':'#f0f0ff';
+    const bigFs=Math.round(H*0.24);
+    const rankFs=Math.round(H*0.16);
+    return(
+      <div style={{position:'absolute',inset:0,background:bg,
+        display:'flex',flexDirection:'column',alignItems:'center',
+        justifyContent:'center',gap:2}}>
+        <span style={{fontSize:rankFs,fontWeight:900,color:col,
+          fontFamily:'Georgia,serif',lineHeight:1}}>{DIS[rank]}</span>
+        <span style={{fontSize:bigFs,color:col,lineHeight:1}}>{suit}</span>
+      </div>
+    );
+  }
   return(
-    <img src={src} alt={`${rank}${suit}`} style={{
-      position:'absolute',
-      top:0, left:0,
-      width:'100%', height:'100%',
-      objectFit:'fill',
-      borderRadius:'inherit',
-      display:'block',
-      pointerEvents:'none',
-    }}/>
+    <img src={src} alt={`${rank}${suit}`}
+      onError={()=>setErr(true)}
+      style={{
+        position:'absolute',
+        top:0, left:0,
+        width:'100%', height:'100%',
+        objectFit:'fill',
+        borderRadius:'inherit',
+        display:'block',
+        pointerEvents:'none',
+      }}/>
   );
 }
 
