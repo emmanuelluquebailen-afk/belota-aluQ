@@ -199,122 +199,22 @@ function PipCard({suit,rank,W,H}){
   );
 }
 
-// ── Figures — portraits SVG avec symbole couleur très visible ───────────────
+// ── Figures — vraies cartes (images PNG) ────────────────────────────────────
+const RANK_NAME = {J:'valet', Q:'dame', K:'roi'};
+const SUIT_NAME = {'♠':'pique','♥':'coeur','♦':'carreau','♣':'trefle'};
+
 function FaceCard({suit,rank,W,H}){
-  const isRed=RED(suit);
-  const col=COL_SUIT(suit);
-
-  // Couleurs distinctes par couleur — on peut voir d'un coup d'œil la couleur
-  // Couleurs TRÈS distinctes — impossible de confondre visuellement
-  const suitColors={
-    '♥':{bg1:'#fff0f0',bg2:'#ffd0d0',border:'#e07070',habTop:'#c0392b',habBot:'#922b21',acc:'#e74c3c'},
-    '♦':{bg1:'#fff4e0',bg2:'#ffe0b0',border:'#e0a040',habTop:'#d35400',habBot:'#a04000',acc:'#e67e22'},
-    '♠':{bg1:'#e8e8ff',bg2:'#c0c0f0',border:'#6060c0',habTop:'#1a237e',habBot:'#0d1642',acc:'#283593'},
-    '♣':{bg1:'#e0ffe0',bg2:'#b0f0b0',border:'#408040',habTop:'#1a4a1a',habBot:'#0d2e0d',acc:'#2e7d32'},
-  };
-  const sc=suitColors[suit]||suitColors['♠'];
-
-  // Taille du grand symbole central selon taille carte
-  const bigSuit=Math.round(H*0.24);  // Plus grand pour être bien visible
-  const rankFs=Math.round(H*0.14);
-
-  // Portraits simplifiés mais distinctifs par rang
-  const portraitTop=(
-    <g>
-      {/* Habit */}
-      <rect x="1" y="30" width="38" height="46" fill={sc.habTop}/>
-      <rect x="1" y="30" width="16" height="46" fill={sc.habBot}/>
-      {/* Détail habit */}
-      <rect x="14" y="30" width="12" height="46" fill={sc.acc} opacity=".5"/>
-      {/* Ceinture */}
-      <rect x="1" y="42" width="38" height="3" fill="#D4AC0D"/>
-
-      {/* Accessoires selon rang */}
-      {rank==='K'&&<>
-        {/* Sceptre */}
-        <line x1="34" y1="74" x2="34" y2="33" stroke="#D4AC0D" strokeWidth="2"/>
-        <circle cx="34" cy="32" r="3" fill="#D4AC0D"/>
-        <circle cx="34" cy="32" r="1.5" fill={isRed?'#e74c3c':'#2980b9'}/>
-      </>}
-      {rank==='Q'&&<>
-        {/* Fleur */}
-        <circle cx="32" cy="36" r="4" fill={isRed?'#e74c3c':'#27ae60'}/>
-        <circle cx="32" cy="36" r="1.8" fill="white" opacity=".7"/>
-      </>}
-      {rank==='J'&&<>
-        {/* Hallebarde */}
-        <line x1="34" y1="74" x2="34" y2="28" stroke="#888" strokeWidth="1.8"/>
-        <polygon points="34,28 30,34 38,34" fill="#aaa"/>
-      </>}
-
-      {/* Tête */}
-      <ellipse cx="20" cy="22" rx="8" ry="9" fill="#FDEBD0"/>
-      {/* Cheveux */}
-      <path d={rank==='Q'
-        ? "M12,17 Q20,10 28,17 L28,25 Q24,20 20,21 Q16,20 12,25 Z"
-        : "M12,15 Q20,9 28,15 Q28,11 20,9 Q12,11 12,15 Z"}
-        fill={isRed?'#6B2E0A':'#1a1a2e'}/>
-
-      {rank==='K'&&<>
-        {/* Barbe */}
-        <path d="M13,26 Q20,34 27,26 Q25,32 20,34 Q15,32 13,26 Z" fill={isRed?'#5D1A1A':'#2c3e50'}/>
-        {/* Grande couronne */}
-        <path d="M11,14 L11,8 L15,12 L20,7 L25,12 L29,8 L29,14 Z" fill="#D4AC0D"/>
-        <circle cx="20" cy="8" r="1.8" fill={isRed?'#e74c3c':'#3498db'}/>
-      </>}
-      {rank==='Q'&&<>
-        {/* Petite couronne */}
-        <path d="M13,14 L13,10 L16,13 L20,9 L24,13 L27,10 L27,14 Z" fill="#D4AC0D"/>
-        <circle cx="20" cy="10" r="1.2" fill={isRed?'#ff6b6b':'#74b9ff'}/>
-      </>}
-      {rank==='J'&&<>
-        {/* Chapeau */}
-        <rect x="12" y="12" width="16" height="3" rx="1" fill={sc.habTop}/>
-        <rect x="14" y="9" width="12" height="5" rx="1" fill={sc.habBot}/>
-        {/* Plume */}
-        <path d="M26,9 Q32,6 30,13 Q28,10 26,9 Z" fill={isRed?'#fff':'#ddd'}/>
-      </>}
-
-      {/* Yeux */}
-      <ellipse cx="16.5" cy="21" rx="1.3" ry="1.1" fill="#2c3e50"/>
-      <ellipse cx="23.5" cy="21" rx="1.3" ry="1.1" fill="#2c3e50"/>
-
-      {/* GRAND SYMBOLE COULEUR — énorme, centré, impossible à manquer */}
-      <text x="20" y="68" fontSize={bigSuit}
-        textAnchor="middle" fill={col}
-        fontWeight="bold" opacity="1"
-        style={{filter:'drop-shadow(0 1px 2px rgba(0,0,0,.3))'}}>{suit}</text>
-    </g>
-  );
-
+  const src=`/${RANK_NAME[rank]}_de_${SUIT_NAME[suit]}.png`;
   return(
-    <svg viewBox="0 0 40 76" style={{
+    <img src={src} alt={`${rank}${suit}`} style={{
       position:'absolute',
-      top:H*0.10, left:W*0.06,
-      width:W*0.88, height:H*0.80,
-      overflow:'hidden',
-      borderRadius:2,
-    }}>
-      <defs>
-        <linearGradient id={`fg${rank}${suit}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={sc.bg1}/>
-          <stop offset="100%" stopColor={sc.bg2}/>
-        </linearGradient>
-      </defs>
-      <rect x="0" y="0" width="40" height="76" fill={`url(#fg${rank}${suit})`}/>
-      <rect x="0" y="0" width="40" height="76" fill="none" stroke={sc.border} strokeWidth="0.8"/>
-
-      {/* Moitié haute */}
-      <clipPath id={`ctop${rank}${suit}`}><rect x="0" y="0" width="40" height="38"/></clipPath>
-      <g clipPath={`url(#ctop${rank}${suit})`}>{portraitTop}</g>
-
-      {/* Ligne centrale */}
-      <line x1="2" y1="38" x2="38" y2="38" stroke={sc.border} strokeWidth="0.8"/>
-
-      {/* Moitié basse — miroir */}
-      <clipPath id={`cbot${rank}${suit}`}><rect x="0" y="38" width="40" height="38"/></clipPath>
-      <g clipPath={`url(#cbot${rank}${suit})`} transform="translate(40,76) rotate(180)">{portraitTop}</g>
-    </svg>
+      top:0, left:0,
+      width:'100%', height:'100%',
+      objectFit:'fill',
+      borderRadius:'inherit',
+      display:'block',
+      pointerEvents:'none',
+    }}/>
   );
 }
 
