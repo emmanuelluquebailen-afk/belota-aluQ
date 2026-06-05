@@ -36,7 +36,7 @@ const cs=(c,t)=>c.s===t?TS[c.r]:NS[c.r];
 const cp=(c,t)=>c.s===t?TP[c.r]:NP[c.r];
 const nxt=p=>(p+1)%4;
 
-const PW=58,PH=84;   // cartes du pli
+const PW=72,PH=102;   // cartes du pli
 const HW=72,HH=104;  // cartes de la main
 const AI_DELAY=1300, SHOW_TRICK_MS=2500, BID_DELAY=900;
 
@@ -586,79 +586,85 @@ function App(){
         active={G.cur===3&&!G.waiting} dealer={G.dealer===3}
         style={{position:'absolute',top:'44%',right:'2%',transform:'translateY(-50%)',zIndex:10}}/>
 
-      {/* ══════════════════════════════════════════════════════
-          ZONE DE PLI — cascade style "vrai jeu de cartes"
-          Cartes superposées avec offsets, grande taille, lisibles
-          ══════════════════════════════════════════════════════ */}
+      {/* ════════════════════════════════════════════════════════════
+          ZONE DE PLI — grande cascade centrée, style app Belote
+          Cartes grandes, superposées, bien visibles, centrées
+          ════════════════════════════════════════════════════════════ */}
       <div style={{
         position:'absolute',
-        top:'12%', left:'50%',
+        top:'8%', left:'50%',
         transform:'translateX(-50%)',
-        width:180, height:160,
+        width:280, height:200,
         zIndex:200,
+        pointerEvents:'none',
       }}>
-        {/* Chaque carte positionnée avec offset naturel */}
-        {/* Nord (2) — haut légèrement à gauche */}
+        {/* Ordre d'empilement visuel : Nord en bas, Vous en haut */}
+
+        {/* Nord (2) — haut, légèrement à gauche */}
         {G.snap[2]&&(
-          <div style={{position:'absolute',top:0,left:20,zIndex:1,
-            transform:'rotate(-4deg)',transformOrigin:'bottom center',
-            filter:G.waiting&&G.winner===2?'drop-shadow(0 0 6px #ffd54f)':'none'}}>
+          <div style={{
+            position:'absolute', top:0, left:30,
+            zIndex:1, transform:'rotate(-4deg)',
+            transformOrigin:'bottom center',
+            filter:G.waiting&&G.winner===2?'drop-shadow(0 0 8px #ffd54f)':'drop-shadow(0 2px 6px rgba(0,0,0,.5))',
+          }}>
             <Crd card={G.snap[2]} W={PW} H={PH}/>
           </div>
         )}
-        {/* Ouest (1) — gauche milieu */}
+        {/* Ouest (1) — gauche, légère rotation */}
         {G.snap[1]&&(
-          <div style={{position:'absolute',top:20,left:0,zIndex:2,
-            transform:'rotate(-8deg)',transformOrigin:'bottom center',
-            filter:G.waiting&&G.winner===1?'drop-shadow(0 0 6px #ffd54f)':'none'}}>
+          <div style={{
+            position:'absolute', top:15, left:5,
+            zIndex:2, transform:'rotate(-7deg)',
+            transformOrigin:'bottom center',
+            filter:G.waiting&&G.winner===1?'drop-shadow(0 0 8px #ffd54f)':'drop-shadow(0 2px 6px rgba(0,0,0,.5))',
+          }}>
             <Crd card={G.snap[1]} W={PW} H={PH}/>
           </div>
         )}
-        {/* Est (3) — droite milieu */}
+        {/* Est (3) — droite, légère rotation inverse */}
         {G.snap[3]&&(
-          <div style={{position:'absolute',top:20,right:0,zIndex:3,
-            transform:'rotate(8deg)',transformOrigin:'bottom center',
-            filter:G.waiting&&G.winner===3?'drop-shadow(0 0 6px #ffd54f)':'none'}}>
+          <div style={{
+            position:'absolute', top:15, right:5,
+            zIndex:3, transform:'rotate(7deg)',
+            transformOrigin:'bottom center',
+            filter:G.waiting&&G.winner===3?'drop-shadow(0 0 8px #ffd54f)':'drop-shadow(0 2px 6px rgba(0,0,0,.5))',
+          }}>
             <Crd card={G.snap[3]} W={PW} H={PH}/>
           </div>
         )}
         {/* Vous (0) — avant, centré, bien visible */}
         {G.snap[0]&&(
-          <div style={{position:'absolute',top:40,left:'50%',
-            transform:'translateX(-50%) rotate(2deg)',transformOrigin:'bottom center',
+          <div style={{
+            position:'absolute', top:45,
+            left:'50%', transform:'translateX(-50%) rotate(2deg)',
+            transformOrigin:'bottom center',
             zIndex:4,
-            filter:G.waiting&&G.winner===0?'drop-shadow(0 0 6px #ffd54f)':'none'}}>
+            filter:G.waiting&&G.winner===0?'drop-shadow(0 0 8px #ffd54f)':'drop-shadow(0 2px 8px rgba(0,0,0,.6))',
+          }}>
             <Crd card={G.snap[0]} W={PW} H={PH}/>
           </div>
         )}
-        {/* Slots vides discrets quand pli vide */}
-        {!G.snap[2]&&!G.snap[1]&&!G.snap[3]&&!G.snap[0]&&(
-          <div style={{position:'absolute',top:20,left:'50%',transform:'translateX(-50%)',
-            width:PW,height:PH,borderRadius:6,
-            border:'1px dashed rgba(255,255,255,.1)',
-            background:'rgba(255,255,255,.03)'}}/> 
-        )}
-        {/* Badge gagnant */}
+
+        {/* Badge gagnant — une seule fois, sous les cartes */}
         {G.waiting&&G.winner!==null&&(
-          <div style={{position:'absolute',bottom:-28,left:'50%',
-            transform:'translateX(-50%)',zIndex:10,
-            background:'rgba(0,0,0,.75)',border:'1px solid #ffd54f',
-            borderRadius:16,padding:'3px 12px',
-            fontSize:11,color:'#ffd54f',fontWeight:'bold',whiteSpace:'nowrap'}}>
+          <div style={{
+            position:'absolute', bottom:-36, left:'50%',
+            transform:'translateX(-50%)',
+            background:'rgba(0,0,0,.82)',
+            border:'1.5px solid #ffd54f',
+            borderRadius:20, padding:'5px 18px',
+            fontSize:13, color:'#ffd54f', fontWeight:'bold',
+            whiteSpace:'nowrap', zIndex:10,
+          }}>
             {PN[G.winner]} remporte ✓
           </div>
         )}
       </div>
-
       {/* Indicateur tour */}
       <div style={{position:'absolute',bottom:128,left:'50%',transform:'translateX(-50%)',
         zIndex:50,whiteSpace:'nowrap'}}>
-        {G.waiting?(
-          <div style={{background:'rgba(0,0,0,.6)',border:'1px solid #ffd54f',
-            borderRadius:20,padding:'3px 12px',fontSize:11,color:'#ffd54f'}}>
-            {G.winner!==null?`${PN[G.winner]} remporte`:'…'}
-          </div>
-        ):myTurn?(
+        {!G.waiting&&myTurn?(
           <div style={{background:'rgba(20,80,20,.95)',border:'2px solid #66bb6a',
             borderRadius:20,padding:'4px 14px',fontSize:12,fontWeight:'bold',
             animation:'pulse 1.2s infinite'}}>
