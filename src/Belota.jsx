@@ -205,16 +205,17 @@ function FaceCard({suit,rank,W,H}){
   const col=COL_SUIT(suit);
 
   // Couleurs distinctes par couleur — on peut voir d'un coup d'œil la couleur
+  // Couleurs TRÈS distinctes — impossible de confondre visuellement
   const suitColors={
-    '♥':{bg1:'#fff5f5',bg2:'#ffe8e8',border:'#f0b0b0',habTop:'#c0392b',habBot:'#922b21',acc:'#e74c3c'},
-    '♦':{bg1:'#fff8f0',bg2:'#feeee0',border:'#f0c8a0',habTop:'#d35400',habBot:'#a04000',acc:'#e67e22'},
-    '♠':{bg1:'#f0f0ff',bg2:'#e0e0f8',border:'#9090d0',habTop:'#1a237e',habBot:'#0d1642',acc:'#283593'},
-    '♣':{bg1:'#f0fff0',bg2:'#e0f8e0',border:'#90c090',habTop:'#1a4a1a',habBot:'#0d2e0d',acc:'#2e7d32'},
+    '♥':{bg1:'#fff0f0',bg2:'#ffd0d0',border:'#e07070',habTop:'#c0392b',habBot:'#922b21',acc:'#e74c3c'},
+    '♦':{bg1:'#fff4e0',bg2:'#ffe0b0',border:'#e0a040',habTop:'#d35400',habBot:'#a04000',acc:'#e67e22'},
+    '♠':{bg1:'#e8e8ff',bg2:'#c0c0f0',border:'#6060c0',habTop:'#1a237e',habBot:'#0d1642',acc:'#283593'},
+    '♣':{bg1:'#e0ffe0',bg2:'#b0f0b0',border:'#408040',habTop:'#1a4a1a',habBot:'#0d2e0d',acc:'#2e7d32'},
   };
   const sc=suitColors[suit]||suitColors['♠'];
 
   // Taille du grand symbole central selon taille carte
-  const bigSuit=Math.round(H*0.20);
+  const bigSuit=Math.round(H*0.24);  // Plus grand pour être bien visible
   const rankFs=Math.round(H*0.14);
 
   // Portraits simplifiés mais distinctifs par rang
@@ -278,10 +279,11 @@ function FaceCard({suit,rank,W,H}){
       <ellipse cx="16.5" cy="21" rx="1.3" ry="1.1" fill="#2c3e50"/>
       <ellipse cx="23.5" cy="21" rx="1.3" ry="1.1" fill="#2c3e50"/>
 
-      {/* GRAND SYMBOLE COULEUR — très visible, au-dessus de tout */}
-      <text x="20" y="65" fontSize={bigSuit*0.85}
+      {/* GRAND SYMBOLE COULEUR — énorme, centré, impossible à manquer */}
+      <text x="20" y="68" fontSize={bigSuit}
         textAnchor="middle" fill={col}
-        fontWeight="bold" opacity=".9">{suit}</text>
+        fontWeight="bold" opacity="1"
+        style={{filter:'drop-shadow(0 1px 2px rgba(0,0,0,.3))'}}>{suit}</text>
     </g>
   );
 
