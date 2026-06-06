@@ -501,7 +501,7 @@ function App(){
     return(
       <div style={TABLE}>
         <div style={{position:'absolute',top:0,left:0,right:0,height:30,background:'rgba(0,0,0,.55)',
-          display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0 14px',zIndex:10}}>
+          display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0 22px',zIndex:10}}>
           <div style={{fontWeight:'bold',fontSize:12}}>🃏 BELOTA</div>
           <div style={{fontSize:11}}>
             <span style={{color:'#4caf50',fontWeight:'bold'}}>{G.scores[0]}</span>
@@ -560,7 +560,7 @@ function App(){
       {/* Barre top */}
       <div style={{position:'absolute',top:0,left:0,right:0,height:28,
         background:'rgba(0,0,0,.6)',display:'flex',justifyContent:'space-between',
-        alignItems:'center',padding:'0 12px',zIndex:10}}>
+        alignItems:'center',padding:'0 22px',zIndex:10}}>
         <div style={{fontSize:11}}>
           <span style={{color:ac,fontWeight:'bold'}}>{G.trump} {G.trump?SFR[G.trump]:''}</span>
           <span style={{opacity:.5,fontSize:9}}> {G.tt===0?'V+N':'Adv.'}</span>
@@ -582,10 +582,10 @@ function App(){
         style={{position:'absolute',top:32,left:'50%',transform:'translateX(-50%)',zIndex:10}}/>
       <PL name="Ouest" n={(G.hands[1]||[]).filter(c=>c&&c.id).length}
         active={G.cur===1&&!G.waiting} dealer={G.dealer===1}
-        style={{position:'absolute',top:'44%',left:'2%',transform:'translateY(-50%)',zIndex:10}}/>
+        style={{position:'absolute',top:'44%',left:18,transform:'translateY(-50%)',zIndex:10}}/>
       <PL name="Est" n={(G.hands[3]||[]).filter(c=>c&&c.id).length}
         active={G.cur===3&&!G.waiting} dealer={G.dealer===3}
-        style={{position:'absolute',top:'44%',right:'2%',transform:'translateY(-50%)',zIndex:10}}/>
+        style={{position:'absolute',top:'44%',right:18,transform:'translateY(-50%)',zIndex:10}}/>
 
       {/* ══════ ZONE DE PLI EN CROIX ══════
           Centrée entre barre top (28px) et main (~252px)
