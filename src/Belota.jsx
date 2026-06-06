@@ -513,9 +513,9 @@ function App(){
         <PL name="Nord" n={(G.hands[2]||[]).length} active={G.bi===2} dealer={G.dealer===2}
           style={{position:'absolute',top:38,left:'50%',transform:'translateX(-50%)',zIndex:5}}/>
         <PL name="Ouest" n={(G.hands[1]||[]).length} active={G.bi===1} dealer={G.dealer===1}
-          style={{position:'absolute',top:'46%',left:'12%',transform:'translateY(-50%)',zIndex:5}}/>
+          style={{position:'absolute',top:'46%',left:18,transform:'translateY(-50%)',zIndex:5}}/>
         <PL name="Est" n={(G.hands[3]||[]).length} active={G.bi===3} dealer={G.dealer===3}
-          style={{position:'absolute',top:'46%',right:'12%',transform:'translateY(-50%)',zIndex:5}}/>
+          style={{position:'absolute',top:'46%',right:18,transform:'translateY(-50%)',zIndex:5}}/>
         {/* Carte retournée centrée */}
         <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-68%)',zIndex:5}}>
           <Crd card={G.flip} W={82} H={118}/>
@@ -582,10 +582,10 @@ function App(){
         style={{position:'absolute',top:32,left:'50%',transform:'translateX(-50%)',zIndex:10}}/>
       <PL name="Ouest" n={(G.hands[1]||[]).filter(c=>c&&c.id).length}
         active={G.cur===1&&!G.waiting} dealer={G.dealer===1}
-        style={{position:'absolute',top:'44%',left:18,transform:'translateY(-50%)',zIndex:10}}/>
+        style={{position:'absolute',top:'44%',left:'13%',transform:'translateY(-50%)',zIndex:10}}/>
       <PL name="Est" n={(G.hands[3]||[]).filter(c=>c&&c.id).length}
         active={G.cur===3&&!G.waiting} dealer={G.dealer===3}
-        style={{position:'absolute',top:'44%',right:18,transform:'translateY(-50%)',zIndex:10}}/>
+        style={{position:'absolute',top:'44%',right:'13%',transform:'translateY(-50%)',zIndex:10}}/>
 
       {/* ══════ ZONE DE PLI EN CROIX ══════
           Centrée entre barre top (28px) et main (~252px)
