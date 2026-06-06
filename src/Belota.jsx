@@ -36,8 +36,24 @@ const cs=(c,t)=>c.s===t?TS[c.r]:NS[c.r];
 const cp=(c,t)=>c.s===t?TP[c.r]:NP[c.r];
 const nxt=p=>(p+1)%4;
 
-const PW=62,PH=88;   // cartes du pli
-const HW=72,HH=104;  // cartes de la main
+
+// ── Prénoms aléatoires pour les IA ───────────────────────────────────────────
+const PRENOMS_H=['Baptiste','David','François','Guillaume','Ivan','Kevin','Marc','Nicolas','Olivier','Thomas'];
+const PRENOMS_F=['Alice','Clara','Emma','Hélène','Julie','Laura','Marie','Nadia','Rachel','Sophie'];
+const TOUS_PRENOMS=[...PRENOMS_H,...PRENOMS_F];
+function pickName(exclude=[]){
+  const pool=TOUS_PRENOMS.filter(n=>!exclude.includes(n));
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+function genNames(){
+  const n1=pickName([]);
+  const n2=pickName([n1]);
+  const n3=pickName([n1,n2]);
+  return{ouest:n1,nord:n2,est:n3};
+}
+
+const PW=70,PH=100;   // cartes du pli
+const HW=86,HH=124;  // cartes de la main
 const AI_DELAY=1300, SHOW_TRICK_MS=2500, BID_DELAY=900;
 
 // ── Tri ───────────────────────────────────────────────────────────────────────
@@ -254,9 +270,51 @@ function aiCardSmart(hand,trick,trump,player){
   return lowestBy(mv,trump);
 }
 
-function aiCard(hand,trick,trump,player,diff){
-  if(diff==='debutant')return aiCardDebutant(hand,trick,trump);
-  return aiCardSmart(hand,trick,trump,player); // intermediaire + expert
+// ── PARTENAIRE PRUDENT ───────────────────────────────────────────────────────
+function aiCardPrudent(hand,trick,trump,player){
+  const mv=legal(hand,trick||[],trump,player);
+  if(!mv.length)return hand[0];
+  const par=(player+2)%4;
+  if(!trick||!trick.length){
+    const nt=mv.filter(c=>c.s!==trump);
+    if(nt.length)return lowestBy(nt,trump);
+    return lowestBy(mv,trump);
+  }
+  const w=tWin(trick,trump);
+  if(w===par){
+    const nt=mv.filter(c=>c.s!==trump);
+    if(nt.length){const hon=nt.filter(c=>c.r==='10'||c.r==='A');if(hon.length)return highestBy(hon,trump);return lowestBy(nt,trump);}
+    return lowestBy(mv,trump);
+  }
+  const nt=mv.filter(c=>c.s!==trump);
+  if(nt.length)return highestBy(nt,trump);
+  return lowestBy(mv,trump);
+}
+
+// ── PARTENAIRE TÊTE BRÛLÉE ───────────────────────────────────────────────────
+function aiCardTemeraire(hand,trick,trump,player){
+  const mv=legal(hand,trick||[],trump,player);
+  if(!mv.length)return hand[0];
+  const par=(player+2)%4;
+  if(!trick||!trick.length){
+    const j=mv.find(c=>c.s===trump&&c.r==='J');if(j)return j;
+    return highestBy(mv,trump);
+  }
+  const w=tWin(trick,trump);
+  if(w===par){
+    const nt=mv.filter(c=>c.s!==trump);
+    if(nt.length){const hon=nt.filter(c=>c.r==='10'||c.r==='A');if(hon.length)return highestBy(hon,trump);}
+  }
+  return highestBy(mv,trump);
+}
+
+function aiCard(hand,trick,trump,player,diff,partnerStyle){
+  if(player===2&&partnerStyle){
+    if(partnerStyle==='prudent')   return aiCardPrudent(hand,trick,trump,player);
+    if(partnerStyle==='temeraire') return aiCardTemeraire(hand,trick,trump,player);
+  }
+  if(diff==='debutant')return aiCardDebutant(hand,trick,trump,player);
+  return aiCardSmart(hand,trick,trump,player);
 }
 
 
@@ -633,7 +691,7 @@ function Hand({hand,okIds,onPlay,trump}){
 }
 
 // ── App ───────────────────────────────────────────────────────────────────────
-function App({cfg,onMenu}){
+function App({cfg,names,onMenu}){
   const[G,setG]=useState(()=>init());
   const timer=useRef(null);
 
@@ -708,7 +766,7 @@ function App({cfg,onMenu}){
       setG(prev=>{
         if(prev.phase!=='PLAY'||prev.cur===0||prev.waiting)return prev;
         const p=prev.cur,hand=prev.hands[p].filter(c=>c&&c.id);
-        return doPlay(prev,p,aiCard(hand,prev.trick||[],prev.trump,p,cfg?.difficulty||'expert'));
+        return doPlay(prev,p,aiCard(hand,prev.trick||[],prev.trump,p,cfg?.difficulty||'expert',cfg?.partnerStyle||'actif'));
       });
     },AI_DELAY);
     return()=>clearTimeout(t);
@@ -754,6 +812,10 @@ function App({cfg,onMenu}){
     background:`radial-gradient(ellipse at 50% 40%,${tc}cc 0%,${tc} 50%,${tc}aa 100%)`,
     fontFamily:'Georgia,serif',color:'white',overflow:'hidden',userSelect:'none'};
 
+  // Noms affichés (prénoms pour IA, "Vous" pour joueur)
+  // Prénom du partenaire (Nord) fixé selon son style
+  const partnerName=cfg?.partnerStyle==='prudent'?'Denis':cfg?.partnerStyle==='temeraire'?'Juan':'David';
+  const pName=p=>p===0?'Vous':p===1?(names?.ouest||'Ouest'):p===2?partnerName:(names?.est||'Est');
   const hand0=(G.hands[0]||[]).filter(c=>c&&c.id);
   const myTurn=G.phase==='PLAY'&&G.cur===0&&!G.waiting;
   let okIds=null;
@@ -881,13 +943,13 @@ function App({cfg,onMenu}){
       </div>
 
       {/* Labels joueurs */}
-      <PL name="Nord" n={(G.hands[2]||[]).filter(c=>c&&c.id).length}
+      <PL name={pName(2)} n={(G.hands[2]||[]).filter(c=>c&&c.id).length}
         active={G.cur===2&&!G.waiting} dealer={G.dealer===2}
         style={{position:'absolute',top:32,left:'50%',transform:'translateX(-50%)',zIndex:10}}/>
-      <PL name="Ouest" n={(G.hands[1]||[]).filter(c=>c&&c.id).length}
+      <PL name={pName(1)} n={(G.hands[1]||[]).filter(c=>c&&c.id).length}
         active={G.cur===1&&!G.waiting} dealer={G.dealer===1}
         style={{position:'absolute',top:'44%',left:'13%',transform:'translateY(-50%)',zIndex:10}}/>
-      <PL name="Est" n={(G.hands[3]||[]).filter(c=>c&&c.id).length}
+      <PL name={pName(3)} n={(G.hands[3]||[]).filter(c=>c&&c.id).length}
         active={G.cur===3&&!G.waiting} dealer={G.dealer===3}
         style={{position:'absolute',top:'44%',right:'13%',transform:'translateY(-50%)',zIndex:10}}/>
 
@@ -924,7 +986,7 @@ function App({cfg,onMenu}){
                 boxShadow:'0 2px 8px rgba(0,0,0,.4)',
                 textDecoration:wins?'none':'line-through',
               }}>
-                {PN[p]} : {combos.map(c=>c.label).join(' · ')}
+                {pName(p)} : {combos.map(c=>c.label).join(' · ')}
                 {wins&&(
                   <span style={{opacity:.8,marginLeft:6}}>
                     +{combos.reduce((s,c)=>s+c.pts,0)} pts
@@ -1221,6 +1283,35 @@ function MenuScreen({cfg,setCfg,onPlay}){
             </button>
           ))}
 
+          {/* Choix du partenaire */}
+          <div style={{fontSize:11,opacity:.5,letterSpacing:1,margin:'14px 0 6px',textAlign:'center'}}>
+            PARTENAIRE (Nord)
+          </div>
+          {[
+            {id:'prudent',   emoji:'🛡️', label:'Prudent',      desc:'Joue sûr, économise les atouts'},
+            {id:'actif',     emoji:'⚡', label:'Actif',        desc:'Jeu équilibré, s'adapte'},
+            {id:'temeraire', emoji:'🔥', label:'Tête brûlée',  desc:'Attaque fort, prend des risques'},
+          ].map(s=>(
+            <button key={s.id} onClick={()=>setCfg(c=>({...c,partnerStyle:s.id}))} style={{
+              background:cfg.partnerStyle===s.id
+                ?'rgba(255,255,255,.18)':'rgba(0,0,0,.25)',
+              border:cfg.partnerStyle===s.id
+                ?'2px solid rgba(255,255,255,.4)':'2px solid rgba(255,255,255,.08)',
+              borderRadius:14,padding:'10px 16px',cursor:'pointer',
+              display:'flex',alignItems:'center',gap:12,textAlign:'left',
+              transition:'all .15s',
+            }}>
+              <span style={{fontSize:22}}>{s.emoji}</span>
+              <div>
+                <div style={{fontSize:14,fontWeight:'bold',color:'white'}}>{s.label}</div>
+                <div style={{fontSize:11,color:'rgba(255,255,255,.5)'}}>{s.desc}</div>
+              </div>
+              {cfg.partnerStyle===s.id&&(
+                <div style={{marginLeft:'auto',color:'#4caf50',fontSize:18}}>✓</div>
+              )}
+            </button>
+          ))}
+
           {/* Bouton lancer */}
           <button onClick={onPlay} style={{
             marginTop:10,
@@ -1337,13 +1428,18 @@ function BelotaRoot(){
     tableColor:'#1b5e20',
     combinaisons:false,
     valetForce:false,
+    partnerStyle:'actif',
   });
+  const[names,setNames]=useState(()=>genNames());
+
+  // Nouveaux prénoms à chaque partie
+  function startGame(){setNames(genNames());setScreen('GAME');}
 
   if(screen==='SPLASH') return <SplashScreen onDone={()=>setScreen('MENU')}/>;
   if(screen==='MENU')   return(
-    <MenuScreen cfg={cfg} setCfg={setCfg} onPlay={()=>setScreen('GAME')}/>
+    <MenuScreen cfg={cfg} setCfg={setCfg} onPlay={startGame}/>
   );
-  return <App cfg={cfg} onMenu={()=>setScreen('MENU')}/>;
+  return <App cfg={cfg} names={names} onMenu={()=>setScreen('MENU')}/>;
 }
 
 export default function Belota(){
