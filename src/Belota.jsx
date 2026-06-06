@@ -94,14 +94,103 @@ function legal(hand,trick,trump,player){
   return tc;
 }
 
-function aiTake(hand,suit,r){const tc=hand.filter(c=>c.s===suit);return r===1?(tc.some(c=>c.r==='J')||(tc.length>=3&&tc.some(c=>c.r==='9'))||tc.length>=4):(tc.some(c=>c.r==='J')||tc.length>=3);}
-function aiSuit(hand,ex){let best=null,bv=-1;for(const s of SUITS){if(s===ex)continue;const v=hand.filter(c=>c.s===s).reduce((a,c)=>a+TS[c.r],0)+hand.filter(c=>c.s===s).length*2;if(v>bv){bv=v;best=s;}}return best;}
-function aiCard(hand,trick,trump,player){
+// ── IA ENCHÈRES ──────────────────────────────────────────────────────────────
+// Valeurs atout pour évaluation
+const VALS_AT={J:20,'9':14,A:11,'10':10,K:4,Q:3,'8':0,'7':0};
+const VALS_NS={A:8,'10':6,K:4,Q:3,J:2,'9':1,'8':0,'7':0};
+
+// Force des atouts dans la main
+function forceAtouts(hand,suit){
+  return hand.filter(c=>c.s===suit).reduce((s,c)=>s+(VALS_AT[c.r]||0),0);
+}
+// Évaluation globale de la main pour l'intermédiaire
+function evalMain(hand,suit){
+  return hand.reduce((s,c)=>s+(c.s===suit?(VALS_AT[c.r]||0):(VALS_NS[c.r]||0)),0);
+}
+
+// ── IA DÉBUTANT — enchères (traduit depuis Python) ───────────────────────────
+function aiTakeDebutant(hand,suit,flip,round){
+  const withFlip=round===1?[...hand,flip]:hand;
+  const nbAtouts=withFlip.filter(c=>c.s===suit).length;
+  const force=forceAtouts(hand,suit);
+  const aValetMain=hand.some(c=>c.r==='J'&&c.s===suit);
+  const a9Main=hand.some(c=>c.r==='9'&&c.s===suit);
+  const valetTable=round===1&&flip.r==='J';
+  const neufTable=round===1&&flip.r==='9';
+  // 1. Combo fort Valet + 9
+  if((aValetMain||valetTable)&&(a9Main||neufTable))return true;
+  // 2. Force atouts élevée
+  if(force>=35)return true;
+  // 3. Valet + support
+  if((aValetMain||valetTable)&&nbAtouts>=2)return true;
+  // 4. Beaucoup d'atouts
+  if(nbAtouts>=4)return true;
+  return false;
+}
+
+// ── IA INTERMÉDIAIRE — enchères (traduit depuis Python) ──────────────────────
+function aiTakeIntermediaire(hand,suit,flip,round){
+  const withFlip=round===1?[...hand,flip]:hand;
+  let score=evalMain(hand,suit);
+  const nbAtouts=withFlip.filter(c=>c.s===suit).length;
+  const nbValets=withFlip.filter(c=>c.r==='J').length;
+  // Bonus/malus structurels
+  if(nbAtouts>=5)score+=20;
+  else if(nbAtouts<=2)score-=10;
+  score+=nbValets*10;
+  const aGrosAtout=withFlip.some(c=>(c.r==='J'||c.r==='9')&&c.s===suit);
+  if(score>=55)return true;
+  if(score>=45&&aGrosAtout)return true;
+  return false;
+}
+
+// ── IA EXPERT — enchères (logique originale, la plus forte) ──────────────────
+function aiTakeExpert(hand,suit,round){
+  const tc=hand.filter(c=>c.s===suit);
+  return round===1
+    ?(tc.some(c=>c.r==='J')||(tc.length>=3&&tc.some(c=>c.r==='9'))||tc.length>=4)
+    :(tc.some(c=>c.r==='J')||tc.length>=3);
+}
+
+// ── Dispatcher enchères selon difficulté ─────────────────────────────────────
+function aiTake(hand,suit,flip,round,diff){
+  if(diff==='debutant')     return aiTakeDebutant(hand,suit,flip,round);
+  if(diff==='intermediaire')return aiTakeIntermediaire(hand,suit,flip,round);
+  return aiTakeExpert(hand,suit,round); // expert (défaut)
+}
+
+function aiSuit(hand,ex){
+  let best=null,bv=-1;
+  for(const s of SUITS){
+    if(s===ex)continue;
+    const v=hand.filter(c=>c.s===s).reduce((a,c)=>a+TS[c.r],0)+hand.filter(c=>c.s===s).length*2;
+    if(v>bv){bv=v;best=s;}
+  }
+  return best;
+}
+
+// ── IA JEU — jouer une carte ──────────────────────────────────────────────────
+function aiCardDebutant(hand,trick,trump){
+  // Débutant : joue une carte légale aléatoire
+  const mv=legal(hand,trick||[],trump,999);
+  if(!mv.length)return hand[0];
+  return mv[Math.floor(Math.random()*mv.length)];
+}
+function aiCardExpert(hand,trick,trump,player){
   const mv=legal(hand,trick||[],trump,player);if(!mv.length)return hand[0];
   const par=(player+2)%4;
-  if(!trick||!trick.length){const j=mv.find(c=>c.s===trump&&c.r==='J');if(j)return j;const nt=mv.filter(c=>c.s!==trump);if(nt.length)return nt.reduce((b,c)=>cs(c,trump)>cs(b,trump)?c:b);return mv.reduce((b,c)=>cs(c,trump)<cs(b,trump)?c:b);}
+  if(!trick||!trick.length){
+    const j=mv.find(c=>c.s===trump&&c.r==='J');if(j)return j;
+    const nt=mv.filter(c=>c.s!==trump);
+    if(nt.length)return nt.reduce((b,c)=>cs(c,trump)>cs(b,trump)?c:b);
+    return mv.reduce((b,c)=>cs(c,trump)<cs(b,trump)?c:b);
+  }
   const w=tWin(trick,trump);
   return w===par?mv.reduce((b,c)=>cs(c,trump)<cs(b,trump)?c:b):mv.reduce((b,c)=>cs(c,trump)>cs(b,trump)?c:b);
+}
+function aiCard(hand,trick,trump,player,diff){
+  if(diff==='debutant')return aiCardDebutant(hand,trick,trump);
+  return aiCardExpert(hand,trick,trump,player); // intermediaire + expert
 }
 
 
@@ -218,18 +307,25 @@ function calcR(G){
   if(pts[tt]>pts[ot]){res='ok';rp=[...pts];}
   else if(pts[tt]===pts[ot]){res='litige';rp=tt===0?[0,162]:[162,0];}
   else{res='chute';rp=tt===0?[0,162]:[162,0];}
-  rp=[rp[0]+G.bB[0],rp[1]+G.bB[1]];
+  const bB0=G.bB[0],bB1=G.bB[1];
+  rp=[rp[0]+bB0,rp[1]+bB1];
   const ttn=tt===0?'Vous+Nord':'Ouest+Est',dtn=tt===0?'Ouest+Est':'Vous+Nord';
   let msg,detail;
-  if(res==='ok'){msg=`✅ ${ttn} réussit !`;detail=`${ttn} ${pts[tt]} pts | ${dtn} ${pts[ot]} pts`;}
-  else if(res==='litige'){msg=`🟡 Litige — ${dtn} prend 162`;detail=`${pts[0]}-${pts[1]}`;}
-  else{msg=`❌ CHUTE ! ${dtn} prend 162`;detail=`${ttn} ${pts[tt]} pts | ${dtn} ${pts[ot]} pts`;}
+  // Détail : plis + belote + total
+  const mkDetail=(t0,t1)=>{
+    const b0=bB0>0?` +${bB0} Bel.`:'';
+    const b1=bB1>0?` +${bB1} Bel.`:'';
+    return `Vous+Nord ${t0}${b0} | Adv. ${t1}${b1}`;
+  };
+  if(res==='ok'){msg=`✅ ${ttn} réussit !`;detail=mkDetail(pts[0],pts[1]);}
+  else if(res==='litige'){msg=`🟡 Litige — ${dtn} prend 162`;detail=mkDetail(pts[0],pts[1]);}
+  else{msg=`❌ CHUTE ! ${dtn} prend 162`;detail=mkDetail(pts[0],pts[1]);}
   // Ajouter pts annonces (combinaisons)
   const annp=G.annPts||[0,0];
   rp=[rp[0]+annp[0],rp[1]+annp[1]];
   const ns2=[G.scores[0]+rp[0],G.scores[1]+rp[1]];
   const go2=ns2[0]>=1000||ns2[1]>=1000;
-  return{...G,phase:go2?'END':'OVER',scores:ns2,result:{pts,rp,res,msg,detail},ann:''};
+  return{...G,phase:go2?'END':'OVER',scores:ns2,result:{pts,rp,res,msg,detail,bB:[bB0,bB1]},ann:''};
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -512,8 +608,9 @@ function App({cfg,onMenu}){
             hands:nh,annCombos:ac,annPts:ar.pts,annDone:false,
             bH:prev.hands.map(h=>h.some(c=>c&&c.s===suit&&c.r==='K')&&h.some(c=>c&&c.s===suit&&c.r==='Q'))};
         };
-        if(prev.br===1){if(aiTake(hand,prev.flip.s,1))return take(prev.flip.s);}
-        else{const s=aiSuit(hand,prev.flip.s);if(s&&aiTake(hand,s,2))return take(s);}
+        const diff=cfg?.difficulty||'expert';
+        if(prev.br===1){if(aiTake(hand,prev.flip.s,prev.flip,1,diff))return take(prev.flip.s);}
+        else{const s=aiSuit(hand,prev.flip.s);if(s&&aiTake(hand,s,prev.flip,2,diff))return take(s);}
         const nc=prev.bc+1;
         if(nc>=4){if(prev.br===1)return{...prev,br:2,bi:prev.fp,bc:0};const nd=deal(prev.fp);return{...prev,...nd,br:1,bi:prev.fp,bc:0,trump:null};}
         return{...prev,bi:nxt(prev.bi),bc:nc};
@@ -528,7 +625,7 @@ function App({cfg,onMenu}){
       setG(prev=>{
         if(prev.phase!=='PLAY'||prev.cur===0||prev.waiting)return prev;
         const p=prev.cur,hand=prev.hands[p].filter(c=>c&&c.id);
-        return doPlay(prev,p,aiCard(hand,prev.trick||[],prev.trump,p));
+        return doPlay(prev,p,aiCard(hand,prev.trick||[],prev.trump,p,cfg?.difficulty||'expert'));
       });
     },AI_DELAY);
     return()=>clearTimeout(t);
@@ -593,7 +690,12 @@ function App({cfg,onMenu}){
           </div>
           {r&&<>
             <div style={{fontSize:15,fontWeight:'bold',color:'#ffd54f',marginBottom:5}}>{r.msg}</div>
-            <div style={{fontSize:11,opacity:.65,marginBottom:14}}>{r.detail}</div>
+            <div style={{fontSize:11,opacity:.65,marginBottom:6}}>{r.detail}</div>
+            {(r.bB&&(r.bB[0]>0||r.bB[1]>0))&&(
+              <div style={{fontSize:11,color:'#ffd54f',marginBottom:10}}>
+                🏅 Belote+Rebelote : {r.bB[0]>0?`Vous+Nord +${r.bB[0]}pts`:''}{r.bB[1]>0?`Adv. +${r.bB[1]}pts`:''}
+              </div>
+            )}
             <div style={{display:'flex',justifyContent:'center',gap:36,marginBottom:14}}>
               <div><div style={{fontSize:10,opacity:.55}}>Vous+Nord</div><div style={{color:'#4caf50',fontWeight:'bold',fontSize:22}}>+{r.rp[0]}</div></div>
               <div><div style={{fontSize:10,opacity:.55}}>Ouest+Est</div><div style={{color:'#ef5350',fontWeight:'bold',fontSize:22}}>+{r.rp[1]}</div></div>
@@ -783,6 +885,31 @@ function App({cfg,onMenu}){
           </div>
         </div>
       )}
+      {/* Bannière Belote / Rebelote — animation centrée */}
+      {G.ann&&G.ann.includes('elote')&&(
+        <div style={{
+          position:'absolute',
+          top:'38%',left:'50%',
+          transform:'translate(-50%,-50%)',
+          zIndex:500,
+          background:'linear-gradient(135deg,rgba(180,120,0,.95),rgba(120,80,0,.95))',
+          border:'2px solid #ffd54f',
+          borderRadius:16,
+          padding:'10px 28px',
+          fontSize:22,fontWeight:900,
+          color:'#fff',
+          letterSpacing:2,
+          textShadow:'0 2px 8px rgba(0,0,0,.5)',
+          boxShadow:'0 4px 24px rgba(255,213,79,.5)',
+          animation:'beloteAnim .4s ease-out',
+          pointerEvents:'none',
+          whiteSpace:'nowrap',
+        }}>
+          {G.ann}
+        </div>
+      )}
+      <style>{`@keyframes beloteAnim{from{opacity:0;transform:translate(-50%,-50%) scale(.7)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}`}</style>
+
       {/* Main joueur */}
       <div style={{position:'absolute',bottom:8,left:0,right:0,zIndex:8,textAlign:'center'}}>
         <Hand hand={hand0} okIds={okIds} onPlay={playCard} trump={G.trump}/>
