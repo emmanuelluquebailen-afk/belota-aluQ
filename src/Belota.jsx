@@ -380,6 +380,16 @@ function Hand({hand,okIds,onPlay,trump}){
 function App(){
   const[G,setG]=useState(()=>init());
   const timer=useRef(null);
+
+  // Préchargement des 12 images de figures au démarrage → zéro latence ensuite
+  useEffect(()=>{
+    ['valet','dame','roi'].forEach(r=>
+      ['coeur','pique','carreau','trefle'].forEach(s=>{
+        const img=new Image();
+        img.src=`/${r} de ${s}.png`;
+      })
+    );
+  },[]);
   const[ls,setLs]=useState(()=>typeof window!=='undefined'&&window.innerWidth>window.innerHeight);
   useEffect(()=>{const u=()=>setLs(window.innerWidth>window.innerHeight);window.addEventListener('resize',u);return()=>window.removeEventListener('resize',u);},[]);
 
