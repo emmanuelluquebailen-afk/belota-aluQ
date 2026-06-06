@@ -309,27 +309,43 @@ function bestCombo(combos){
   return combos.reduce((b,c)=>c.topVal>b.topVal?c:b);
 }
 
-function resolveAnnonces(allCombos,taker){
-  // allCombos[p] = tableau de combos du joueur p
-  // La meilleure combinaison gagne pour toute l'équipe
-  const teamBest=[null,null]; // [team0, team1]
+// Compare deux combos selon les règles belote :
+// 1. topVal plus élevé gagne (carrés > suites, suite haute > suite basse)
+// 2. À égalité → l'équipe preneuse (taker) est prioritaire
+// compareCombo retourne >0 si a gagne, <0 si b gagne
+// Le tiebreak est géré dans resolveAnnonces via takerTeam
+function compareCombo(a,b){
+  if(!a&&!b)return 0;
+  if(!a)return -1;
+  if(!b)return 1;
+  return a.topVal-b.topVal;
+}
+
+function resolveAnnonces(allCombos,taker,trump){
+  const takerTeam=team(taker);
+  const teamBest=[null,null];
   for(let p=0;p<4;p++){
     const best=bestCombo(allCombos[p]||[]);
     const t=team(p);
-    if(!teamBest[t]||( best&&best.topVal>teamBest[t].topVal))teamBest[t]=best;
+    if(compareCombo(best,teamBest[t])>0) teamBest[t]=best;
   }
-  if(!teamBest[0]&&!teamBest[1])return{winner:-1,pts:[0,0]};
-  if(!teamBest[0])return{winner:1,pts:[0,allCombos.flat?.[0]?.pts||0]};
-  if(!teamBest[1])return{winner:0,pts:[allCombos.flat?.[0]?.pts||0,0]};
-  // Comparer
-  const t0wins=teamBest[0].topVal>teamBest[1].topVal||(teamBest[0].topVal===teamBest[1].topVal&&team(taker)===0);
-  const winTeam=t0wins?0:1;
-  // Somme des pts de l'équipe gagnante
-  let pts=[0,0];
+  if(!teamBest[0]&&!teamBest[1])return{winner:-1,pts:[0,0],winTeam:-1};
+  if(!teamBest[0])return{winner:1,pts:[0,sumPts(allCombos,1)],winTeam:1};
+  if(!teamBest[1])return{winner:0,pts:[sumPts(allCombos,0),0],winTeam:0};
+  // Comparaison finale — égalité → équipe preneuse prioritaire
+  const cmp=compareCombo(teamBest[0],teamBest[1]);
+  const winTeam=cmp>0?0:cmp<0?1:takerTeam;
+  const pts=[0,0];
   for(let p=0;p<4;p++){
     if(team(p)===winTeam)(allCombos[p]||[]).forEach(c=>{pts[winTeam]+=c.pts;});
   }
-  return{winner:winTeam,pts};
+  return{winner:winTeam,pts,winTeam};
+}
+
+function sumPts(allCombos,t){
+  let s=0;
+  for(let p=0;p<4;p++)if(team(p)===t)(allCombos[p]||[]).forEach(c=>{s+=c.pts;});
+  return s;
 }
 
 function init(scores,dealer){
@@ -631,12 +647,12 @@ function App({cfg,onMenu}){
     const suit=G.flip.s;
     const nh=complete(G.hands,G.flip,G.rest,p);
     const ac=nh.map(h=>detectCombos(h));
-    const ar=resolveAnnonces(ac,p);
+    const ar=resolveAnnonces(ac,p,suit);
     setG(prev=>{
       if(prev.phase!=='BID'||prev.flip?.r!=='J')return prev;
       return{...prev,phase:'PLAY',trump:suit,taker:p,tt:team(p),cur:prev.fp,
         trick:[],snap:[null,null,null,null],waiting:false,winner:null,
-        hands:nh,annCombos:ac,annPts:ar.pts,annDone:false,
+        hands:nh,annCombos:ac,annPts:ar.pts,annWinTeam:ar.winTeam,annDone:false,
         bH:prev.hands.map(h=>h.some(c=>c&&c.s===suit&&c.r==='K')&&h.some(c=>c&&c.s===suit&&c.r==='Q'))};
     });
   },[G.phase,G.flip?.r,cfg?.valetForce]);
@@ -669,10 +685,10 @@ function App({cfg,onMenu}){
         const take=suit=>{
           const nh=complete(prev.hands,prev.flip,prev.rest,p);
           const ac=nh.map(h=>detectCombos(h));
-          const ar=resolveAnnonces(ac,p);
+          const ar=resolveAnnonces(ac,p,suit);
           return{...prev,phase:'PLAY',trump:suit,taker:p,tt:team(p),cur:prev.fp,
             trick:[],snap:[null,null,null,null],waiting:false,winner:null,
-            hands:nh,annCombos:ac,annPts:ar.pts,annDone:false,
+            hands:nh,annCombos:ac,annPts:ar.pts,annWinTeam:ar.winTeam,annDone:false,
             bH:prev.hands.map(h=>h.some(c=>c&&c.s===suit&&c.r==='K')&&h.some(c=>c&&c.s===suit&&c.r==='Q'))};
         };
         const diff=cfg?.difficulty||'expert';
@@ -703,10 +719,10 @@ function App({cfg,onMenu}){
       setG(prev=>{
       const nh=complete(prev.hands,prev.flip,prev.rest,0);
       const ac=nh.map(h=>detectCombos(h));
-      const ar=resolveAnnonces(ac,0);
+      const ar=resolveAnnonces(ac,0,suit);
       return{...prev,phase:'PLAY',trump:suit,taker:0,tt:0,cur:prev.fp,
         trick:[],snap:[null,null,null,null],waiting:false,winner:null,
-        hands:nh,annCombos:ac,annPts:ar.pts,annDone:false,
+        hands:nh,annCombos:ac,annPts:ar.pts,annWinTeam:ar.winTeam,annDone:false,
         bH:prev.hands.map(h=>h.some(c=>c&&c.s===suit&&c.r==='K')&&h.some(c=>c&&c.s===suit&&c.r==='Q'))};
     });
       return;
@@ -891,23 +907,34 @@ function App({cfg,onMenu}){
           {[0,1,2,3].map(p=>{
             const combos=(G.annCombos||[])[p]||[];
             if(!combos.length)return null;
-            const isUs=team(p)===0;
+            const pTeam=team(p);
+            const wins=G.annWinTeam===pTeam;
             return(
               <div key={p} style={{
-                background:isUs?'rgba(39,174,96,.92)':'rgba(192,57,43,.92)',
-                border:`1px solid ${isUs?'#2ecc71':'#e74c3c'}`,
+                background:wins
+                  ?(pTeam===0?'rgba(39,174,96,.92)':'rgba(192,57,43,.92)')
+                  :'rgba(80,80,80,.85)',
+                border:`1px solid ${wins?(pTeam===0?'#2ecc71':'#e74c3c'):'rgba(255,255,255,.2)'}`,
                 borderRadius:12,
-                padding:'3px 12px',
+                padding:'3px 14px',
                 fontSize:11,
-                color:'white',
+                color:wins?'white':'rgba(255,255,255,.55)',
                 fontWeight:'bold',
                 whiteSpace:'nowrap',
                 boxShadow:'0 2px 8px rgba(0,0,0,.4)',
+                textDecoration:wins?'none':'line-through',
               }}>
                 {PN[p]} : {combos.map(c=>c.label).join(' · ')}
-                <span style={{opacity:.7,marginLeft:6}}>
-                  +{combos.reduce((s,c)=>s+c.pts,0)} pts
-                </span>
+                {wins&&(
+                  <span style={{opacity:.8,marginLeft:6}}>
+                    +{combos.reduce((s,c)=>s+c.pts,0)} pts
+                  </span>
+                )}
+                {!wins&&(
+                  <span style={{opacity:.5,marginLeft:6,fontWeight:'normal'}}>
+                    annulée
+                  </span>
+                )}
               </div>
             );
           })}
