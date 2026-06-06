@@ -749,7 +749,7 @@ function App({cfg,names,onMenu}){
             hands:nh,annCombos:ac,annPts:ar.pts,annWinTeam:ar.winTeam,annDone:false,
             bH:prev.hands.map(h=>h.some(c=>c&&c.s===suit&&c.r==='K')&&h.some(c=>c&&c.s===suit&&c.r==='Q'))};
         };
-        const diff=cfg?.difficulty||'expert';
+        const diff=cfg?.difficulty||'intermediaire';
         if(prev.br===1){if(aiTake(hand,prev.flip.s,prev.flip,1,diff))return take(prev.flip.s);}
         else{const s=aiSuit(hand,prev.flip.s);if(s&&aiTake(hand,s,prev.flip,2,diff))return take(s);}
         const nc=prev.bc+1;
@@ -766,7 +766,7 @@ function App({cfg,names,onMenu}){
       setG(prev=>{
         if(prev.phase!=='PLAY'||prev.cur===0||prev.waiting)return prev;
         const p=prev.cur,hand=prev.hands[p].filter(c=>c&&c.id);
-        return doPlay(prev,p,aiCard(hand,prev.trick||[],prev.trump,p,cfg?.difficulty||'expert',cfg?.partnerStyle||'actif'));
+        return doPlay(prev,p,aiCard(hand,prev.trick||[],prev.trump,p,cfg?.difficulty||'intermediaire',cfg?.partnerStyle||'actif'));
       });
     },AI_DELAY);
     return()=>clearTimeout(t);
@@ -1424,7 +1424,7 @@ function Toggle({val,onToggle}){
 function BelotaRoot(){
   const[screen,setScreen]=useState('SPLASH');
   const[cfg,setCfg]=useState({
-    difficulty:'intermediaire',
+    difficulty:null,
     tableColor:'#1b5e20',
     combinaisons:false,
     valetForce:false,
