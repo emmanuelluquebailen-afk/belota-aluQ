@@ -36,7 +36,7 @@ const cs=(c,t)=>c.s===t?TS[c.r]:NS[c.r];
 const cp=(c,t)=>c.s===t?TP[c.r]:NP[c.r];
 const nxt=p=>(p+1)%4;
 
-const PW=68,PH=96;   // cartes du pli
+const PW=62,PH=88;   // cartes du pli
 const HW=72,HH=104;  // cartes de la main
 const AI_DELAY=1300, SHOW_TRICK_MS=2500, BID_DELAY=900;
 
@@ -588,29 +588,28 @@ function App(){
         style={{position:'absolute',top:'44%',right:'2%',transform:'translateY(-50%)',zIndex:10}}/>
 
       {/* ══════ ZONE DE PLI EN CROIX ══════
-          Nord en haut, Ouest gauche, Est droite,
-          Vous en bas — superposées au centre
-          ════════════════════════════════════════ */}
+          Centrée entre barre top (28px) et main (~252px)
+          Centre cible : ~155px. CW=161 CH=196
+          ═══════════════════════════════════════ */}
       {(()=>{
-        const cards=(G.trick||[]).slice(0,4);
-        if(!cards.length)return null;
-        // Chaque carte posée par son joueur à sa position en croix
         const byP={};
-        cards.forEach(t=>{byP[t.p]=t.c;});
-        // Positions dans le conteneur (croix)
-        // Conteneur : 3*PW × 3*PH centré sur l'écran
-        const CW=PW*2.6, CH=PH*2.4;
+        (G.trick||[]).slice(0,4).forEach(t=>{byP[t.p]=t.c;});
+        if(!Object.keys(byP).length)return null;
+
+        const CW=Math.round(PW*2.6);  // ~161px
+        const CH=Math.round(PH*2.22); // ~196px
+        // Positions de chaque carte dans le conteneur
         const pos={
-          2:{left:CW/2-PW/2, top:0,          zIndex:1}, // Nord — haut
-          1:{left:0,          top:CH/2-PH/2,  zIndex:2}, // Ouest — gauche
-          3:{left:CW-PW,      top:CH/2-PH/2,  zIndex:3}, // Est — droite
-          0:{left:CW/2-PW/2,  top:CH-PH,      zIndex:4}, // Vous — bas
+          2:{l:Math.round(CW/2-PW/2), t:0               },// Nord — haut centre
+          1:{l:0,                      t:Math.round(CH/2-PH/2)},// Ouest — gauche
+          3:{l:CW-PW,                  t:Math.round(CH/2-PH/2)},// Est — droite
+          0:{l:Math.round(CW/2-PW/2), t:CH-PH            },// Vous — bas centre
         };
         return(
           <div style={{
             position:'absolute',
-            top:'50%', left:'50%',
-            marginTop:-(CH/2+40),
+            top:55,          /* centre visuel à 55+CH/2=153px ✓ */
+            left:'50%',
             marginLeft:-CW/2,
             width:CW, height:CH,
             zIndex:200, pointerEvents:'none',
@@ -621,8 +620,8 @@ function App(){
               return(
                 <div key={p} style={{
                   position:'absolute',
-                  left:pp.left, top:pp.top,
-                  zIndex:pp.zIndex,
+                  left:pp.l, top:pp.t,
+                  zIndex:p===0?4:p===3?3:p===1?2:1,
                   filter:G.waiting&&G.winner===p
                     ?'drop-shadow(0 0 14px #ffd54f)'
                     :'drop-shadow(0 3px 10px rgba(0,0,0,.55))',
@@ -631,16 +630,18 @@ function App(){
                 </div>
               );
             })}
+            {/* Badge gagnant centré */}
             {G.waiting&&G.winner!==null&&(
               <div style={{
                 position:'absolute',
-                top:CH+8, left:'50%',
+                top:CH/2-14, left:'50%',
                 transform:'translateX(-50%)',
-                background:'rgba(0,0,0,.85)',
+                background:'rgba(0,0,0,.88)',
                 border:'1.5px solid #ffd54f',
-                borderRadius:20, padding:'4px 18px',
-                fontSize:13, color:'#ffd54f', fontWeight:'bold',
+                borderRadius:20, padding:'4px 16px',
+                fontSize:12, color:'#ffd54f', fontWeight:'bold',
                 whiteSpace:'nowrap', zIndex:10,
+                pointerEvents:'none',
               }}>
                 {PN[G.winner]} remporte ✓
               </div>
@@ -649,7 +650,6 @@ function App(){
         );
       })()}
 
-      {/* Indicateur tour — masqué pendant la pause */}
       {!G.waiting&&(
       <div style={{position:'absolute',bottom:128,left:'50%',transform:'translateX(-50%)',
         zIndex:50,whiteSpace:'nowrap'}}>
