@@ -1014,7 +1014,7 @@ function App({cfg,names,onMenu}){
 
         // Croix serrée : juste sous le label Nord, ne déborde pas sur la main
         // PW=72 PH=105 → CW=144 CH=166, top:63
-        const CPW=72, CPH=105;
+        const CPW=80, CPH=116;
         const CW=CPW*2;    // 144px — Ouest/Est proches
         const CH=CPH*1.58; // ~166px — Nord/Vous serrés
         const pos={
