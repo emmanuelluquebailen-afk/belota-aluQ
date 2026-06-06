@@ -501,7 +501,7 @@ function App(){
     return(
       <div style={TABLE}>
         <div style={{position:'absolute',top:0,left:0,right:0,height:30,background:'rgba(0,0,0,.55)',
-          display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0 22px',zIndex:10}}>
+          display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0 34px',zIndex:10}}>
           <div style={{fontWeight:'bold',fontSize:12}}>🃏 BELOTA</div>
           <div style={{fontSize:11}}>
             <span style={{color:'#4caf50',fontWeight:'bold'}}>{G.scores[0]}</span>
@@ -560,7 +560,7 @@ function App(){
       {/* Barre top */}
       <div style={{position:'absolute',top:0,left:0,right:0,height:28,
         background:'rgba(0,0,0,.6)',display:'flex',justifyContent:'space-between',
-        alignItems:'center',padding:'0 22px',zIndex:10}}>
+        alignItems:'center',padding:'0 34px',zIndex:10}}>
         <div style={{fontSize:11}}>
           <span style={{color:ac,fontWeight:'bold'}}>{G.trump} {G.trump?SFR[G.trump]:''}</span>
           <span style={{opacity:.5,fontSize:9}}> {G.tt===0?'V+N':'Adv.'}</span>
