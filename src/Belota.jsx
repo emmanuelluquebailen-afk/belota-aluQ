@@ -1007,11 +1007,7 @@ function MenuScreen({cfg,setCfg,onPlay}){
               <div style={{flex:1,marginRight:12}}>
                 <div style={{fontSize:14,fontWeight:'bold'}}>Combinaisons</div>
                 <div style={{fontSize:11,opacity:.5,lineHeight:1.5}}>
-                  Tierce (3 suite) +20 · Cinquante (4 suite) +50{'
-'}
-                  Cent (5 suite) +100 · Carré de V +200{'
-'}
-                  Carré de 9 +150 · Carré d'As/10/R/D +100
+                  Tierce +20 · Cinquante +50 · Cent +100
                 </div>
               </div>
               <Toggle val={cfg.combinaisons} onToggle={()=>setCfg(c=>({...c,combinaisons:!c.combinaisons}))}/>
@@ -1022,8 +1018,7 @@ function MenuScreen({cfg,setCfg,onPlay}){
               <div style={{flex:1,marginRight:12}}>
                 <div style={{fontSize:14,fontWeight:'bold'}}>Valet forcé</div>
                 <div style={{fontSize:11,opacity:.5,lineHeight:1.5}}>
-                  Si la carte retournée est un Valet,{'
-'}
+                  Si la carte retournée est un Valet, 
                   le premier joueur la prend d'office
                 </div>
               </div>
