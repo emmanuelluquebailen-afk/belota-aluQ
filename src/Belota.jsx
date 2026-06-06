@@ -1007,7 +1007,7 @@ function MenuScreen({cfg,setCfg,onPlay}){
               <div style={{flex:1,marginRight:12}}>
                 <div style={{fontSize:14,fontWeight:'bold'}}>Combinaisons</div>
                 <div style={{fontSize:11,opacity:.5,lineHeight:1.5}}>
-                  Tierce +20 · Cinquante +50 · Cent +100
+                  Tierce +20 · Cinquante +50 · Cent +100 · Carré V +200 · Carré 9 +150 · Carré As/10/R/D +100
                 </div>
               </div>
               <Toggle val={cfg.combinaisons} onToggle={()=>setCfg(c=>({...c,combinaisons:!c.combinaisons}))}/>
