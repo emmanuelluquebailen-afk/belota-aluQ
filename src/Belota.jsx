@@ -104,6 +104,79 @@ function aiCard(hand,trick,trump,player){
   return w===par?mv.reduce((b,c)=>cs(c,trump)<cs(b,trump)?c:b):mv.reduce((b,c)=>cs(c,trump)>cs(b,trump)?c:b);
 }
 
+
+// ── Logique des combinaisons (annonces) ──────────────────────────────────────
+const ANN_ORDER=['7','8','9','10','J','Q','K','A'];
+const CARRE_PTS={J:200,'9':150,A:100,'10':100,K:100,Q:100};
+
+function detectCombos(hand){
+  const res=[];
+  // Séquences par couleur
+  for(const suit of SUITS){
+    const idx=hand.filter(c=>c.s===suit).map(c=>ANN_ORDER.indexOf(c.r)).filter(i=>i>=0).sort((a,b)=>a-b);
+    if(idx.length<3)continue;
+    // Trouver les suites consécutives
+    let run=[idx[0]];
+    for(let i=1;i<idx.length;i++){
+      if(idx[i]===idx[i-1]+1){run.push(idx[i]);}
+      else{processRun(run,suit,res);run=[idx[i]];}
+    }
+    processRun(run,suit,res);
+  }
+  // Carrés (4 du même rang)
+  for(const rank of Object.keys(CARRE_PTS)){
+    if(hand.filter(c=>c.r===rank).length===4){
+      res.push({type:'carre',rank,pts:CARRE_PTS[rank],
+        label:`Carré de ${DIS[rank]}`,topVal:1000+CARRE_PTS[rank]});
+    }
+  }
+  return res;
+}
+
+function processRun(run,suit,res){
+  if(run.length>=5){
+    const top=run[run.length-1];
+    res.push({type:'cent',suit,pts:100,topVal:200+top,
+      label:`Cent (${ANN_ORDER[run[0]]}→${ANN_ORDER[top]}${suit})`});
+  } else if(run.length===4){
+    const top=run[run.length-1];
+    res.push({type:'cinquante',suit,pts:50,topVal:100+top,
+      label:`Cinquante (${ANN_ORDER[run[0]]}→${ANN_ORDER[top]}${suit})`});
+  } else if(run.length===3){
+    const top=run[run.length-1];
+    res.push({type:'tierce',suit,pts:20,topVal:top,
+      label:`Tierce (${ANN_ORDER[run[0]]}→${ANN_ORDER[top]}${suit})`});
+  }
+}
+
+function bestCombo(combos){
+  if(!combos.length)return null;
+  return combos.reduce((b,c)=>c.topVal>b.topVal?c:b);
+}
+
+function resolveAnnonces(allCombos,taker){
+  // allCombos[p] = tableau de combos du joueur p
+  // La meilleure combinaison gagne pour toute l'équipe
+  const teamBest=[null,null]; // [team0, team1]
+  for(let p=0;p<4;p++){
+    const best=bestCombo(allCombos[p]||[]);
+    const t=team(p);
+    if(!teamBest[t]||( best&&best.topVal>teamBest[t].topVal))teamBest[t]=best;
+  }
+  if(!teamBest[0]&&!teamBest[1])return{winner:-1,pts:[0,0]};
+  if(!teamBest[0])return{winner:1,pts:[0,allCombos.flat?.[0]?.pts||0]};
+  if(!teamBest[1])return{winner:0,pts:[allCombos.flat?.[0]?.pts||0,0]};
+  // Comparer
+  const t0wins=teamBest[0].topVal>teamBest[1].topVal||(teamBest[0].topVal===teamBest[1].topVal&&team(taker)===0);
+  const winTeam=t0wins?0:1;
+  // Somme des pts de l'équipe gagnante
+  let pts=[0,0];
+  for(let p=0;p<4;p++){
+    if(team(p)===winTeam)(allCombos[p]||[]).forEach(c=>{pts[winTeam]+=c.pts;});
+  }
+  return{winner:winTeam,pts};
+}
+
 function init(scores,dealer){
   const sc=scores||[0,0],dl=dealer!==undefined?dealer:3,fp=nxt(dl);
   const{hands,flip,rest}=deal(fp);
@@ -111,7 +184,8 @@ function init(scores,dealer){
     br:1,bi:fp,bc:0,taker:null,tt:null,
     trick:[],snap:[null,null,null,null],waiting:false,winner:null,
     done:[],cur:fp,scores:sc,ann:'',
-    bB:[0,0],bH:null,bP:[0,0,0,0],result:null,lw:null};
+    bB:[0,0],bH:null,bP:[0,0,0,0],result:null,lw:null,
+    annCombos:[[],[],[],[]],annPts:[0,0],annDone:false};
 }
 function doPlay(G,player,card){
   if(G.waiting)return G;
@@ -145,14 +219,17 @@ function calcR(G){
   else if(pts[tt]===pts[ot]){res='litige';rp=tt===0?[0,162]:[162,0];}
   else{res='chute';rp=tt===0?[0,162]:[162,0];}
   rp=[rp[0]+G.bB[0],rp[1]+G.bB[1]];
-  const ns=[G.scores[0]+rp[0],G.scores[1]+rp[1]];
-  const go=ns[0]>=1000||ns[1]>=1000;
   const ttn=tt===0?'Vous+Nord':'Ouest+Est',dtn=tt===0?'Ouest+Est':'Vous+Nord';
   let msg,detail;
   if(res==='ok'){msg=`✅ ${ttn} réussit !`;detail=`${ttn} ${pts[tt]} pts | ${dtn} ${pts[ot]} pts`;}
   else if(res==='litige'){msg=`🟡 Litige — ${dtn} prend 162`;detail=`${pts[0]}-${pts[1]}`;}
   else{msg=`❌ CHUTE ! ${dtn} prend 162`;detail=`${ttn} ${pts[tt]} pts | ${dtn} ${pts[ot]} pts`;}
-  return{...G,phase:go?'END':'OVER',scores:ns,result:{pts,rp,res,msg,detail},ann:''};
+  // Ajouter pts annonces (combinaisons)
+  const annp=G.annPts||[0,0];
+  rp=[rp[0]+annp[0],rp[1]+annp[1]];
+  const ns2=[G.scores[0]+rp[0],G.scores[1]+rp[1]];
+  const go2=ns2[0]>=1000||ns2[1]>=1000;
+  return{...G,phase:go2?'END':'OVER',scores:ns2,result:{pts,rp,res,msg,detail},ann:''};
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -381,6 +458,26 @@ function App({cfg,onMenu}){
   const[G,setG]=useState(()=>init());
   const timer=useRef(null);
 
+  // Valet forcé : si la carte retournée est un Valet → prise automatique par fp
+  useEffect(()=>{
+    if(!cfg?.valetForce)return;
+    if(G.phase!=='BID'||G.flip?.r!=='J')return;
+    // Prise automatique immédiate par le premier joueur (fp)
+    const p=G.fp;
+    const hand=G.hands[p].filter(c=>c&&c.id);
+    const suit=G.flip.s;
+    const nh=complete(G.hands,G.flip,G.rest,p);
+    const ac=nh.map(h=>detectCombos(h));
+    const ar=resolveAnnonces(ac,p);
+    setG(prev=>{
+      if(prev.phase!=='BID'||prev.flip?.r!=='J')return prev;
+      return{...prev,phase:'PLAY',trump:suit,taker:p,tt:team(p),cur:prev.fp,
+        trick:[],snap:[null,null,null,null],waiting:false,winner:null,
+        hands:nh,annCombos:ac,annPts:ar.pts,annDone:false,
+        bH:prev.hands.map(h=>h.some(c=>c&&c.s===suit&&c.r==='K')&&h.some(c=>c&&c.s===suit&&c.r==='Q'))};
+    });
+  },[G.phase,G.flip?.r,cfg?.valetForce]);
+
   // Préchargement des 12 images de figures au démarrage → zéro latence ensuite
   useEffect(()=>{
     ['valet','dame','roi'].forEach(r=>
@@ -406,10 +503,15 @@ function App({cfg,onMenu}){
       setG(prev=>{
         if(prev.phase!=='BID'||prev.bi===0)return prev;
         const p=prev.bi,hand=prev.hands[p].filter(c=>c&&c.id);
-        const take=suit=>({...prev,phase:'PLAY',trump:suit,taker:p,tt:team(p),cur:prev.fp,
-          trick:[],snap:[null,null,null,null],waiting:false,winner:null,
-          hands:complete(prev.hands,prev.flip,prev.rest,p),
-          bH:prev.hands.map(h=>h.some(c=>c&&c.s===suit&&c.r==='K')&&h.some(c=>c&&c.s===suit&&c.r==='Q'))});
+        const take=suit=>{
+          const nh=complete(prev.hands,prev.flip,prev.rest,p);
+          const ac=nh.map(h=>detectCombos(h));
+          const ar=resolveAnnonces(ac,p);
+          return{...prev,phase:'PLAY',trump:suit,taker:p,tt:team(p),cur:prev.fp,
+            trick:[],snap:[null,null,null,null],waiting:false,winner:null,
+            hands:nh,annCombos:ac,annPts:ar.pts,annDone:false,
+            bH:prev.hands.map(h=>h.some(c=>c&&c.s===suit&&c.r==='K')&&h.some(c=>c&&c.s===suit&&c.r==='Q'))};
+        };
         if(prev.br===1){if(aiTake(hand,prev.flip.s,1))return take(prev.flip.s);}
         else{const s=aiSuit(hand,prev.flip.s);if(s&&aiTake(hand,s,2))return take(s);}
         const nc=prev.bc+1;
@@ -434,10 +536,15 @@ function App({cfg,onMenu}){
 
   function bid(suit){
     if(suit!==null){
-      setG(prev=>({...prev,phase:'PLAY',trump:suit,taker:0,tt:0,cur:prev.fp,
+      setG(prev=>{
+      const nh=complete(prev.hands,prev.flip,prev.rest,0);
+      const ac=nh.map(h=>detectCombos(h));
+      const ar=resolveAnnonces(ac,0);
+      return{...prev,phase:'PLAY',trump:suit,taker:0,tt:0,cur:prev.fp,
         trick:[],snap:[null,null,null,null],waiting:false,winner:null,
-        hands:complete(prev.hands,prev.flip,prev.rest,0),
-        bH:prev.hands.map(h=>h.some(c=>c&&c.s===suit&&c.r==='K')&&h.some(c=>c&&c.s===suit&&c.r==='Q'))}));
+        hands:nh,annCombos:ac,annPts:ar.pts,annDone:false,
+        bH:prev.hands.map(h=>h.some(c=>c&&c.s===suit&&c.r==='K')&&h.some(c=>c&&c.s===suit&&c.r==='Q'))};
+    });
       return;
     }
     setG(prev=>{
@@ -575,8 +682,14 @@ function App({cfg,onMenu}){
           <span style={{color:ac,fontWeight:'bold',fontSize:11}}>{G.trump} {G.trump?SFR[G.trump]:''}</span>
           <span style={{opacity:.5,fontSize:9}}>{G.tt===0?'V+N':'Adv.'}</span>
         </div>
-        <div style={{fontSize:12,color:G.waiting?'#ffd54f':'rgba(255,255,255,.9)',fontWeight:'bold'}}>
-          {G.ann||`Pli ${G.done.length+1}/8`}
+        <div style={{fontSize:12,color:G.waiting?'#ffd54f':'rgba(255,255,255,.9)',fontWeight:'bold',
+          display:'flex',flexDirection:'column',alignItems:'center',gap:1}}>
+          <span>{G.ann||`Pli ${G.done.length+1}/8`}</span>
+          {!G.annDone&&G.done.length===0&&(G.annCombos||[])[0]?.length>0&&(
+            <span style={{fontSize:9,color:'#ffd54f',opacity:.9}}>
+              🃏 {((G.annCombos||[])[0]||[]).map(c=>c.label).join(' · ')}
+            </span>
+          )}
         </div>
         <div style={{fontSize:11}}>
           <span style={{color:'#4caf50',fontWeight:'bold'}}>{G.scores[0]}</span>
@@ -767,10 +880,9 @@ function SplashScreen({onDone}){
 // 🎮  MENU PRINCIPAL
 // ══════════════════════════════════════════════════
 const DIFFICULTIES=[
-  {id:'facile',  label:'Facile',        dot:'#27ae60', desc:'IA aléatoire · Idéal pour apprendre'},
-  {id:'normal',  label:'Normal',        dot:'#f39c12', desc:'IA standard · Jeu équilibré'},
-  {id:'difficile',label:'Difficile',   dot:'#e74c3c', desc:'IA agressive · Pour les confirmés'},
-  {id:'expert',  label:'Expert',        dot:'#2c3e50', desc:'IA optimale · Sans pitié'},
+  {id:'debutant',      label:'Débutant',      dot:'#27ae60', desc:'IA aléatoire · Parfait pour apprendre les règles'},
+  {id:'intermediaire', label:'Intermédiaire', dot:'#f39c12', desc:'IA standard · Jeu équilibré et progressif'},
+  {id:'expert',        label:'Expert',        dot:'#e74c3c', desc:'IA optimale · Stratégie maximale · Sans pitié'},
 ];
 const TABLE_COLORS=[
   {id:'#1b5e20', label:'Vert'},
@@ -890,20 +1002,30 @@ function MenuScreen({cfg,setCfg,onPlay}){
             display:'flex',flexDirection:'column',gap:12}}>
             <div style={{fontSize:12,opacity:.6,letterSpacing:1}}>RÈGLES</div>
 
-            {/* Annonces */}
+            {/* Combinaisons */}
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-              <div>
-                <div style={{fontSize:14,fontWeight:'bold'}}>Belote / Rebelote</div>
-                <div style={{fontSize:11,opacity:.5}}>Annonce Roi + Dame atout (+20 pts)</div>
+              <div style={{flex:1,marginRight:12}}>
+                <div style={{fontSize:14,fontWeight:'bold'}}>Combinaisons</div>
+                <div style={{fontSize:11,opacity:.5,lineHeight:1.5}}>
+                  Tierce (3 suite) +20 · Cinquante (4 suite) +50{'
+'}
+                  Cent (5 suite) +100 · Carré de V +200{'
+'}
+                  Carré de 9 +150 · Carré d'As/10/R/D +100
+                </div>
               </div>
-              <Toggle val={cfg.annonces} onToggle={()=>setCfg(c=>({...c,annonces:!c.annonces}))}/>
+              <Toggle val={cfg.combinaisons} onToggle={()=>setCfg(c=>({...c,combinaisons:!c.combinaisons}))}/>
             </div>
 
             {/* Valet forcé */}
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-              <div>
+              <div style={{flex:1,marginRight:12}}>
                 <div style={{fontSize:14,fontWeight:'bold'}}>Valet forcé</div>
-                <div style={{fontSize:11,opacity:.5}}>Obliger à jouer le Valet atout en premier</div>
+                <div style={{fontSize:11,opacity:.5,lineHeight:1.5}}>
+                  Si la carte retournée est un Valet,{'
+'}
+                  le premier joueur la prend d'office
+                </div>
               </div>
               <Toggle val={cfg.valetForce} onToggle={()=>setCfg(c=>({...c,valetForce:!c.valetForce}))}/>
             </div>
@@ -954,9 +1076,9 @@ function Toggle({val,onToggle}){
 function BelotaRoot(){
   const[screen,setScreen]=useState('SPLASH');
   const[cfg,setCfg]=useState({
-    difficulty:'normal',
+    difficulty:'intermediaire',
     tableColor:'#1b5e20',
-    annonces:true,
+    combinaisons:false,
     valetForce:false,
   });
 
