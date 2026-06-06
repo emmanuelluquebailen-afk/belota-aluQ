@@ -513,19 +513,14 @@ function App(){
         <PL name="Nord" n={(G.hands[2]||[]).length} active={G.bi===2} dealer={G.dealer===2}
           style={{position:'absolute',top:38,left:'50%',transform:'translateX(-50%)',zIndex:5}}/>
         <PL name="Ouest" n={(G.hands[1]||[]).length} active={G.bi===1} dealer={G.dealer===1}
-          style={{position:'absolute',top:'46%',left:18,transform:'translateY(-50%)',zIndex:5}}/>
+          style={{position:'absolute',top:'46%',left:'13%',transform:'translateY(-50%)',zIndex:5}}/>
         <PL name="Est" n={(G.hands[3]||[]).length} active={G.bi===3} dealer={G.dealer===3}
-          style={{position:'absolute',top:'46%',right:18,transform:'translateY(-50%)',zIndex:5}}/>
+          style={{position:'absolute',top:'46%',right:'13%',transform:'translateY(-50%)',zIndex:5}}/>
         {/* Carte retournée centrée */}
         <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-68%)',zIndex:5}}>
           <Crd card={G.flip} W={82} H={118}/>
         </div>
-        {!mb&&(
-          <div style={{position:'absolute',bottom:'32%',left:'50%',transform:'translateX(-50%)',
-            zIndex:10,background:'rgba(0,0,0,.55)',borderRadius:20,padding:'4px 14px',fontSize:11}}>
-            ⏳ {PN[G.bi]} réfléchit…
-          </div>
-        )}
+
         {mb&&(
           <div style={{position:'absolute',bottom:'28%',left:'50%',
             transform:'translateX(-50%)',zIndex:20,display:'flex',gap:10,alignItems:'center'}}>
@@ -649,22 +644,16 @@ function App(){
         );
       })()}
 
-      {!G.waiting&&(
-      <div style={{position:'absolute',bottom:128,left:'50%',transform:'translateX(-50%)',
-        zIndex:50,whiteSpace:'nowrap'}}>
-        {myTurn?(
+      {/* Indicateur tour — seulement quand c'est au joueur */}
+      {!G.waiting&&myTurn&&(
+        <div style={{position:'absolute',bottom:128,left:'50%',transform:'translateX(-50%)',
+          zIndex:50,whiteSpace:'nowrap'}}>
           <div style={{background:'rgba(20,80,20,.95)',border:'2px solid #66bb6a',
             borderRadius:20,padding:'4px 14px',fontSize:12,fontWeight:'bold',
             animation:'pulse 1.2s infinite'}}>
             🎯 À vous — jouez une carte
           </div>
-        ):(
-          <div style={{background:'rgba(0,0,0,.5)',borderRadius:20,
-            padding:'3px 12px',fontSize:11,opacity:.8}}>
-            ▶ {PN[G.cur]} joue…
-          </div>
-        )}
-      </div>
+        </div>
       )}
       {/* Main joueur */}
       <div style={{position:'absolute',bottom:8,left:0,right:0,zIndex:8,textAlign:'center'}}>
