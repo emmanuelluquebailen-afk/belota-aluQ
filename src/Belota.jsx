@@ -875,11 +875,11 @@ function App({cfg,names,onMenu}){
           </div>
           <div style={{fontSize:10,opacity:.7}}>Don: {PN[G.dealer]}</div>
         </div>
-        <PL name="Nord" n={(G.hands[2]||[]).length} active={G.bi===2} dealer={G.dealer===2}
+        <PL name={pName(2)} n={(G.hands[2]||[]).length} active={G.bi===2} dealer={G.dealer===2}
           style={{position:'absolute',top:38,left:'50%',transform:'translateX(-50%)',zIndex:5}}/>
-        <PL name="Ouest" n={(G.hands[1]||[]).length} active={G.bi===1} dealer={G.dealer===1}
+        <PL name={pName(1)} n={(G.hands[1]||[]).length} active={G.bi===1} dealer={G.dealer===1}
           style={{position:'absolute',top:'46%',left:'13%',transform:'translateY(-50%)',zIndex:5}}/>
-        <PL name="Est" n={(G.hands[3]||[]).length} active={G.bi===3} dealer={G.dealer===3}
+        <PL name={pName(3)} n={(G.hands[3]||[]).length} active={G.bi===3} dealer={G.dealer===3}
           style={{position:'absolute',top:'46%',right:'13%',transform:'translateY(-50%)',zIndex:5}}/>
         {/* Carte retournée centrée */}
         <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-68%)',zIndex:5}}>
@@ -1283,46 +1283,41 @@ function MenuScreen({cfg,setCfg,onPlay}){
             </button>
           ))}
 
-          {/* Choix du partenaire */}
-          <div style={{fontSize:11,opacity:.5,letterSpacing:1,margin:'14px 0 6px',textAlign:'center'}}>
-            PARTENAIRE (Nord)
-          </div>
-          {[
-            {id:'prudent',   emoji:'🛡️', label:'Prudent',      desc:'Joue sûr, économise les atouts'},
-            {id:"actif", emoji:"⚡", label:"David — Actif", desc:"Jeu équilibré, bien dosé"},
-            {id:'temeraire', emoji:'🔥', label:'Tête brûlée',  desc:'Attaque fort, prend des risques'},
-          ].map(s=>(
-            <button key={s.id} onClick={()=>setCfg(c=>({...c,partnerStyle:s.id}))} style={{
-              background:cfg.partnerStyle===s.id
-                ?'rgba(255,255,255,.18)':'rgba(0,0,0,.25)',
-              border:cfg.partnerStyle===s.id
-                ?'2px solid rgba(255,255,255,.4)':'2px solid rgba(255,255,255,.08)',
-              borderRadius:14,padding:'10px 16px',cursor:'pointer',
-              display:'flex',alignItems:'center',gap:12,textAlign:'left',
-              transition:'all .15s',
-            }}>
-              <span style={{fontSize:22}}>{s.emoji}</span>
-              <div>
-                <div style={{fontSize:14,fontWeight:'bold',color:'white'}}>{s.label}</div>
-                <div style={{fontSize:11,color:'rgba(255,255,255,.5)'}}>{s.desc}</div>
+          {/* Partenaire — apparaît APRÈS avoir choisi le niveau */}
+          {cfg.difficulty&&(
+            <>
+              <div style={{fontSize:11,opacity:.5,letterSpacing:1,margin:'14px 0 6px',textAlign:'center'}}>
+                PARTENAIRE · Nord
               </div>
-              {cfg.partnerStyle===s.id&&(
-                <div style={{marginLeft:'auto',color:'#4caf50',fontSize:18}}>✓</div>
+              {[
+                {id:'prudent',   emoji:'🛡️', label:'Denis'},
+                {id:'actif',     emoji:'⚡', label:'David'},
+                {id:'temeraire', emoji:'🔥', label:'Juan'},
+              ].map(s=>(
+                <button key={s.id} onClick={()=>setCfg(c=>({...c,partnerStyle:s.id}))} style={{
+                  background:cfg.partnerStyle===s.id?'rgba(255,255,255,.18)':'rgba(0,0,0,.25)',
+                  border:cfg.partnerStyle===s.id?'2px solid rgba(255,255,255,.4)':'2px solid rgba(255,255,255,.08)',
+                  borderRadius:14,padding:'12px 16px',cursor:'pointer',
+                  display:'flex',alignItems:'center',gap:12,textAlign:'left',transition:'all .15s',
+                }}>
+                  <span style={{fontSize:22}}>{s.emoji}</span>
+                  <div style={{fontSize:14,fontWeight:'bold',color:'white',marginLeft:4}}>{s.label}</div>
+                  {cfg.partnerStyle===s.id&&<div style={{marginLeft:'auto',color:'#4caf50',fontSize:16}}>✓</div>}
+                </button>
+              ))}
+              {cfg.partnerStyle&&(
+                <button onClick={onPlay} style={{
+                  marginTop:10,background:'linear-gradient(135deg,#27ae60,#1e8449)',
+                  border:'none',borderRadius:16,padding:'15px',
+                  fontSize:16,fontWeight:900,color:'white',cursor:'pointer',
+                  letterSpacing:1,boxShadow:'0 4px 16px rgba(39,174,96,.4)',
+                }}>
+                  🃏 JOUER
+                </button>
               )}
-            </button>
-          ))}
+            </>
+          )}
 
-          {/* Bouton lancer */}
-          <button onClick={onPlay} style={{
-            marginTop:10,
-            background:'linear-gradient(135deg,#27ae60,#1e8449)',
-            border:'none',borderRadius:16,padding:'16px',
-            fontSize:16,fontWeight:900,color:'white',cursor:'pointer',
-            letterSpacing:1,
-            boxShadow:'0 4px 16px rgba(39,174,96,.4)',
-          }}>
-            🃏 JOUER
-          </button>
         </>}
 
         {/* ─── ONGLET OPTIONS ─── */}
