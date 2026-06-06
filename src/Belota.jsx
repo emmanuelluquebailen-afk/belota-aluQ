@@ -36,7 +36,7 @@ const cs=(c,t)=>c.s===t?TS[c.r]:NS[c.r];
 const cp=(c,t)=>c.s===t?TP[c.r]:NP[c.r];
 const nxt=p=>(p+1)%4;
 
-const PW=82,PH=116;   // cartes du pli
+const PW=68,PH=96;   // cartes du pli
 const HW=72,HH=104;  // cartes de la main
 const AI_DELAY=1300, SHOW_TRICK_MS=2500, BID_DELAY=900;
 
@@ -358,7 +358,8 @@ function Hand({hand,okIds,onPlay,trump}){
       {sorted.map((card,i)=>{
         const ok=hasOk?ids.has(card.id):undefined;
         return(
-          <div key={card.id} onClick={ok?()=>onPlay(card):undefined}
+          <div key={card.id}
+            onClick={ok?(e)=>{e.stopPropagation();onPlay(card);}:undefined}
             style={{
               position:'absolute',left:i*STEP,bottom:0,
               width:HW,height:HH,
@@ -367,7 +368,7 @@ function Hand({hand,okIds,onPlay,trump}){
               transition:'transform .12s ease-out',
               cursor:ok?'pointer':'default',
             }}>
-            <Crd card={card} ok={ok} W={HW} H={HH} onClick={()=>onPlay(card)}/>
+            <Crd card={card} ok={ok} W={HW} H={HH}/>
           </div>
         );
       })}
@@ -586,41 +587,60 @@ function App(){
         active={G.cur===3&&!G.waiting} dealer={G.dealer===3}
         style={{position:'absolute',top:'44%',right:'2%',transform:'translateY(-50%)',zIndex:10}}/>
 
-      {/* ════════════ ZONE DE PLI ════════════
-          - max 4 cartes de G.trick (ordre de jeu)
-          - centrées, empilées, sans rotation
-          ═══════════════════════════════════════ */}
+      {/* ══════ ZONE DE PLI EN CROIX ══════
+          Nord en haut, Ouest gauche, Est droite,
+          Vous en bas — superposées au centre
+          ════════════════════════════════════════ */}
       {(()=>{
-        const cards=(G.trick||[]).slice(0,4); // max 4
+        const cards=(G.trick||[]).slice(0,4);
         if(!cards.length)return null;
-        const OFF=60, CW=PW+(cards.length-1)*OFF;
+        // Chaque carte posée par son joueur à sa position en croix
+        const byP={};
+        cards.forEach(t=>{byP[t.p]=t.c;});
+        // Positions dans le conteneur (croix)
+        // Conteneur : 3*PW × 3*PH centré sur l'écran
+        const CW=PW*2.6, CH=PH*2.4;
+        const pos={
+          2:{left:CW/2-PW/2, top:0,          zIndex:1}, // Nord — haut
+          1:{left:0,          top:CH/2-PH/2,  zIndex:2}, // Ouest — gauche
+          3:{left:CW-PW,      top:CH/2-PH/2,  zIndex:3}, // Est — droite
+          0:{left:CW/2-PW/2,  top:CH-PH,      zIndex:4}, // Vous — bas
+        };
         return(
           <div style={{
             position:'absolute',
-            top:'10%', left:'50%',
+            top:'50%', left:'50%',
+            marginTop:-(CH/2+40),
             marginLeft:-CW/2,
-            width:CW, height:PH,
+            width:CW, height:CH,
             zIndex:200, pointerEvents:'none',
           }}>
-            {cards.map((t,i)=>(
-              <div key={`${t.p}-${i}`} style={{
-                position:'absolute',
-                left:i*OFF, top:0, zIndex:i+1,
-                filter:G.waiting&&G.winner===t.p
-                  ?'drop-shadow(0 0 12px #ffd54f)'
-                  :'drop-shadow(0 3px 8px rgba(0,0,0,.5))',
-              }}>
-                <Crd card={t.c} W={PW} H={PH}/>
-              </div>
-            ))}
+            {[2,1,3,0].map(p=>{
+              if(!byP[p])return null;
+              const pp=pos[p];
+              return(
+                <div key={p} style={{
+                  position:'absolute',
+                  left:pp.left, top:pp.top,
+                  zIndex:pp.zIndex,
+                  filter:G.waiting&&G.winner===p
+                    ?'drop-shadow(0 0 14px #ffd54f)'
+                    :'drop-shadow(0 3px 10px rgba(0,0,0,.55))',
+                }}>
+                  <Crd card={byP[p]} W={PW} H={PH}/>
+                </div>
+              );
+            })}
             {G.waiting&&G.winner!==null&&(
               <div style={{
-                position:'absolute',top:PH+10,
-                left:'50%',transform:'translateX(-50%)',
-                background:'rgba(0,0,0,.85)',border:'1.5px solid #ffd54f',
-                borderRadius:20,padding:'4px 18px',
-                fontSize:13,color:'#ffd54f',fontWeight:'bold',
-                whiteSpace:'nowrap',zIndex:10,
+                position:'absolute',
+                top:CH+8, left:'50%',
+                transform:'translateX(-50%)',
+                background:'rgba(0,0,0,.85)',
+                border:'1.5px solid #ffd54f',
+                borderRadius:20, padding:'4px 18px',
+                fontSize:13, color:'#ffd54f', fontWeight:'bold',
+                whiteSpace:'nowrap', zIndex:10,
               }}>
                 {PN[G.winner]} remporte ✓
               </div>
