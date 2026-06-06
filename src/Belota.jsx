@@ -377,7 +377,7 @@ function Hand({hand,okIds,onPlay,trump}){
 }
 
 // ── App ───────────────────────────────────────────────────────────────────────
-function App(){
+function App({cfg,onMenu}){
   const[G,setG]=useState(()=>init());
   const timer=useRef(null);
 
@@ -462,8 +462,9 @@ function App(){
     </div>
   );
 
+  const tc=cfg&&cfg.tableColor||'#1b5e20';
   const TABLE={position:'fixed',inset:0,
-    background:'radial-gradient(ellipse at 50% 40%,#2e7d32 0%,#1b5e20 50%,#0d3b12 100%)',
+    background:`radial-gradient(ellipse at 50% 40%,${tc}cc 0%,${tc} 50%,${tc}aa 100%)`,
     fontFamily:'Georgia,serif',color:'white',overflow:'hidden',userSelect:'none'};
 
   const hand0=(G.hands[0]||[]).filter(c=>c&&c.id);
@@ -566,9 +567,13 @@ function App(){
       <div style={{position:'absolute',top:0,left:0,right:0,height:28,
         background:'rgba(0,0,0,.6)',display:'flex',justifyContent:'space-between',
         alignItems:'center',padding:'0 34px',zIndex:10}}>
-        <div style={{fontSize:11}}>
-          <span style={{color:ac,fontWeight:'bold'}}>{G.trump} {G.trump?SFR[G.trump]:''}</span>
-          <span style={{opacity:.5,fontSize:9}}> {G.tt===0?'V+N':'Adv.'}</span>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <button onClick={onMenu} style={{background:'none',border:'none',
+            color:'rgba(255,255,255,.55)',fontSize:11,cursor:'pointer',padding:0}}>
+            ← Menu
+          </button>
+          <span style={{color:ac,fontWeight:'bold',fontSize:11}}>{G.trump} {G.trump?SFR[G.trump]:''}</span>
+          <span style={{opacity:.5,fontSize:9}}>{G.tt===0?'V+N':'Adv.'}</span>
         </div>
         <div style={{fontSize:12,color:G.waiting?'#ffd54f':'rgba(255,255,255,.9)',fontWeight:'bold'}}>
           {G.ann||`Pli ${G.done.length+1}/8`}
@@ -719,6 +724,245 @@ function passBtn(){
     fontSize:13,cursor:'pointer',fontWeight:'normal',boxShadow:'0 2px 8px rgba(0,0,0,.4)'};
 }
 
+// ══════════════════════════════════════════════════
+// 🎴  SPLASH SCREEN
+// ══════════════════════════════════════════════════
+function SplashScreen({onDone}){
+  useEffect(()=>{const t=setTimeout(onDone,2200);return()=>clearTimeout(t);},[]);
+  return(
+    <div style={{
+      position:'fixed',inset:0,
+      background:'linear-gradient(135deg,#1a5c24 0%,#0d3b14 60%,#061e0a 100%)',
+      display:'flex',flexDirection:'column',
+      alignItems:'center',justifyContent:'center',
+      gap:20,
+    }}>
+      <div style={{
+        animation:'splashIn .7s ease-out',
+        display:'flex',flexDirection:'column',alignItems:'center',gap:16,
+      }}>
+        <img src="/belota-icon.png" alt="BELOTA"
+          style={{width:110,height:110,borderRadius:24,
+            boxShadow:'0 8px 32px rgba(0,0,0,.6)'}}
+          onError={e=>{e.target.style.display='none';}}/>
+        <div style={{
+          fontSize:42,fontWeight:900,color:'white',
+          fontFamily:'Georgia,serif',letterSpacing:4,
+          textShadow:'0 2px 12px rgba(0,0,0,.5)',
+        }}>BELOTA</div>
+        <div style={{fontSize:13,color:'rgba(255,255,255,.5)',letterSpacing:2}}>
+          JEU DE BELOTE
+        </div>
+      </div>
+      <style>{`
+        @keyframes splashIn{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
+      `}</style>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════
+// 🎮  MENU PRINCIPAL
+// ══════════════════════════════════════════════════
+const DIFFICULTIES=[
+  {id:'facile',  label:'Facile',        dot:'#27ae60', desc:'IA aléatoire · Idéal pour apprendre'},
+  {id:'normal',  label:'Normal',        dot:'#f39c12', desc:'IA standard · Jeu équilibré'},
+  {id:'difficile',label:'Difficile',   dot:'#e74c3c', desc:'IA agressive · Pour les confirmés'},
+  {id:'expert',  label:'Expert',        dot:'#2c3e50', desc:'IA optimale · Sans pitié'},
+];
+const TABLE_COLORS=[
+  {id:'#1b5e20', label:'Vert'},
+  {id:'#1a3a8a', label:'Bleu'},
+  {id:'#6b1a1a', label:'Bordeaux'},
+  {id:'#2c3e50', label:'Ardoise'},
+];
+
+function MenuScreen({cfg,setCfg,onPlay}){
+  const[tab,setTab]=useState('play'); // 'play'|'options'|'stats'
+  return(
+    <div style={{
+      position:'fixed',inset:0,
+      background:'linear-gradient(160deg,#1a5c24 0%,#0d3b14 100%)',
+      display:'flex',flexDirection:'column',
+      alignItems:'center',fontFamily:'Georgia,serif',
+      color:'white',overflowY:'auto',
+      paddingBottom:20,
+    }}>
+      {/* Logo */}
+      <div style={{display:'flex',flexDirection:'column',alignItems:'center',
+        paddingTop:40,paddingBottom:20,gap:10}}>
+        <img src="/belota-icon.png" alt="BELOTA"
+          style={{width:80,height:80,borderRadius:18,boxShadow:'0 4px 16px rgba(0,0,0,.5)'}}
+          onError={e=>{e.target.style.display='none';}}/>
+        <div style={{fontSize:28,fontWeight:900,letterSpacing:3,
+          textShadow:'0 2px 8px rgba(0,0,0,.4)'}}>BELOTA</div>
+        <div style={{fontSize:11,opacity:.5,letterSpacing:2}}>JEU DE BELOTE FRANÇAIS</div>
+      </div>
+
+      {/* Onglets */}
+      <div style={{display:'flex',gap:4,background:'rgba(0,0,0,.3)',
+        borderRadius:20,padding:4,marginBottom:20,width:'90%',maxWidth:420}}>
+        {[['play','🃏 Jouer'],['options','⚙️ Options'],['stats','📊 Stats']].map(([id,label])=>(
+          <button key={id} onClick={()=>setTab(id)} style={{
+            flex:1,border:'none',borderRadius:16,
+            padding:'8px 4px',fontSize:12,cursor:'pointer',fontWeight:'bold',
+            background:tab===id?'rgba(255,255,255,.15)':'transparent',
+            color:tab===id?'white':'rgba(255,255,255,.5)',
+            transition:'all .2s',
+          }}>{label}</button>
+        ))}
+      </div>
+
+      <div style={{width:'90%',maxWidth:420,display:'flex',flexDirection:'column',gap:10}}>
+
+        {/* ─── ONGLET JOUER ─── */}
+        {tab==='play'&&<>
+          <div style={{fontSize:11,opacity:.5,letterSpacing:1,marginBottom:4,textAlign:'center'}}>
+            DIFFICULTÉ
+          </div>
+          {DIFFICULTIES.map(d=>(
+            <button key={d.id} onClick={()=>{setCfg(c=>({...c,difficulty:d.id}));}} style={{
+              background:cfg.difficulty===d.id
+                ?'rgba(255,255,255,.18)':'rgba(0,0,0,.25)',
+              border:cfg.difficulty===d.id
+                ?'2px solid rgba(255,255,255,.4)':'2px solid rgba(255,255,255,.08)',
+              borderRadius:14,padding:'14px 16px',cursor:'pointer',
+              display:'flex',alignItems:'center',gap:14,textAlign:'left',
+              transition:'all .15s',
+            }}>
+              <div style={{width:18,height:18,borderRadius:'50%',
+                background:d.dot,flexShrink:0,
+                boxShadow:`0 0 8px ${d.dot}88`}}/>
+              <div>
+                <div style={{fontSize:15,fontWeight:'bold',color:'white',marginBottom:2}}>
+                  {d.label}
+                </div>
+                <div style={{fontSize:11,color:'rgba(255,255,255,.55)'}}>
+                  {d.desc}
+                </div>
+              </div>
+              {cfg.difficulty===d.id&&(
+                <div style={{marginLeft:'auto',color:'#4caf50',fontSize:18}}>✓</div>
+              )}
+            </button>
+          ))}
+
+          {/* Bouton lancer */}
+          <button onClick={onPlay} style={{
+            marginTop:10,
+            background:'linear-gradient(135deg,#27ae60,#1e8449)',
+            border:'none',borderRadius:16,padding:'16px',
+            fontSize:16,fontWeight:900,color:'white',cursor:'pointer',
+            letterSpacing:1,
+            boxShadow:'0 4px 16px rgba(39,174,96,.4)',
+          }}>
+            🃏 JOUER
+          </button>
+        </>}
+
+        {/* ─── ONGLET OPTIONS ─── */}
+        {tab==='options'&&<>
+          {/* Couleur du tapis */}
+          <div style={{background:'rgba(0,0,0,.25)',borderRadius:14,padding:16}}>
+            <div style={{fontSize:12,opacity:.6,marginBottom:12,letterSpacing:1}}>
+              COULEUR DU TAPIS
+            </div>
+            <div style={{display:'flex',gap:10,justifyContent:'center'}}>
+              {TABLE_COLORS.map(tc=>(
+                <button key={tc.id} onClick={()=>setCfg(c=>({...c,tableColor:tc.id}))} style={{
+                  width:44,height:44,borderRadius:'50%',
+                  background:tc.id,border:'none',cursor:'pointer',
+                  outline:cfg.tableColor===tc.id?`3px solid white`:'3px solid transparent',
+                  outlineOffset:2,
+                  boxShadow:'0 2px 8px rgba(0,0,0,.4)',
+                  transition:'all .15s',
+                }} title={tc.label}/>
+              ))}
+            </div>
+          </div>
+
+          {/* Règles */}
+          <div style={{background:'rgba(0,0,0,.25)',borderRadius:14,padding:16,
+            display:'flex',flexDirection:'column',gap:12}}>
+            <div style={{fontSize:12,opacity:.6,letterSpacing:1}}>RÈGLES</div>
+
+            {/* Annonces */}
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <div>
+                <div style={{fontSize:14,fontWeight:'bold'}}>Belote / Rebelote</div>
+                <div style={{fontSize:11,opacity:.5}}>Annonce Roi + Dame atout (+20 pts)</div>
+              </div>
+              <Toggle val={cfg.annonces} onToggle={()=>setCfg(c=>({...c,annonces:!c.annonces}))}/>
+            </div>
+
+            {/* Valet forcé */}
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <div>
+                <div style={{fontSize:14,fontWeight:'bold'}}>Valet forcé</div>
+                <div style={{fontSize:11,opacity:.5}}>Obliger à jouer le Valet atout en premier</div>
+              </div>
+              <Toggle val={cfg.valetForce} onToggle={()=>setCfg(c=>({...c,valetForce:!c.valetForce}))}/>
+            </div>
+          </div>
+        </>}
+
+        {/* ─── ONGLET STATS ─── */}
+        {tab==='stats'&&<>
+          <div style={{background:'rgba(0,0,0,.25)',borderRadius:14,padding:20,
+            textAlign:'center'}}>
+            <div style={{fontSize:40,marginBottom:8}}>📊</div>
+            <div style={{fontSize:14,opacity:.6}}>Statistiques bientôt disponibles</div>
+          </div>
+        </>}
+
+        {/* Infos */}
+        <div style={{textAlign:'center',marginTop:8,fontSize:10,opacity:.3}}>
+          BELOTA · aluQ innovation group · v1.0
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Toggle({val,onToggle}){
+  return(
+    <div onClick={onToggle} style={{
+      width:46,height:26,borderRadius:13,
+      background:val?'#27ae60':'rgba(255,255,255,.2)',
+      position:'relative',cursor:'pointer',
+      transition:'background .2s',flexShrink:0,
+    }}>
+      <div style={{
+        position:'absolute',
+        top:3,left:val?22:3,
+        width:20,height:20,borderRadius:'50%',
+        background:'white',
+        boxShadow:'0 1px 4px rgba(0,0,0,.3)',
+        transition:'left .2s',
+      }}/>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════
+// 🚀  POINT D'ENTRÉE
+// ══════════════════════════════════════════════════
+function BelotaRoot(){
+  const[screen,setScreen]=useState('SPLASH');
+  const[cfg,setCfg]=useState({
+    difficulty:'normal',
+    tableColor:'#1b5e20',
+    annonces:true,
+    valetForce:false,
+  });
+
+  if(screen==='SPLASH') return <SplashScreen onDone={()=>setScreen('MENU')}/>;
+  if(screen==='MENU')   return(
+    <MenuScreen cfg={cfg} setCfg={setCfg} onPlay={()=>setScreen('GAME')}/>
+  );
+  return <App cfg={cfg} onMenu={()=>setScreen('MENU')}/>;
+}
+
 export default function Belota(){
-  return <EB><App/></EB>;
+  return <EB><BelotaRoot/></EB>;
 }
