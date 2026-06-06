@@ -1012,19 +1012,21 @@ function App({cfg,names,onMenu}){
         (G.trick||[]).slice(0,4).forEach(t=>{byP[t.p]=t.c;});
         if(!Object.keys(byP).length)return null;
 
-        const CW=Math.round(PW*2.6);  // ~161px
-        const CH=Math.round(PH*2.22); // ~196px
-        // Positions de chaque carte dans le conteneur
+        // Croix serrée : juste sous le label Nord, ne déborde pas sur la main
+        // PW=72 PH=105 → CW=144 CH=166, top:63
+        const CPW=72, CPH=105;
+        const CW=CPW*2;    // 144px — Ouest/Est proches
+        const CH=CPH*1.58; // ~166px — Nord/Vous serrés
         const pos={
-          2:{l:Math.round(CW/2-PW/2), t:0               },// Nord — haut centre
-          1:{l:0,                      t:Math.round(CH/2-PH/2)},// Ouest — gauche
-          3:{l:CW-PW,                  t:Math.round(CH/2-PH/2)},// Est — droite
-          0:{l:Math.round(CW/2-PW/2), t:CH-PH            },// Vous — bas centre
+          2:{l:Math.round(CW/2-CPW/2), t:0},
+          1:{l:0,                       t:Math.round(CH/2-CPH/2)},
+          3:{l:CW-CPW,                  t:Math.round(CH/2-CPH/2)},
+          0:{l:Math.round(CW/2-CPW/2),  t:Math.round(CH-CPH)},
         };
         return(
           <div style={{
             position:'absolute',
-            top:82,          /* descendu vers le centre */
+            top:63,   /* juste sous le label partenaire */
             left:'50%',
             marginLeft:-CW/2,
             width:CW, height:CH,
@@ -1042,7 +1044,7 @@ function App({cfg,names,onMenu}){
                     ?'drop-shadow(0 0 14px #ffd54f)'
                     :'drop-shadow(0 3px 10px rgba(0,0,0,.55))',
                 }}>
-                  <Crd card={byP[p]} W={PW} H={PH}/>
+                  <Crd card={byP[p]} W={CPW} H={CPH}/>
                 </div>
               );
             })}
