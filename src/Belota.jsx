@@ -170,27 +170,93 @@ function aiSuit(hand,ex){
 }
 
 // ── IA JEU — jouer une carte ──────────────────────────────────────────────────
+
+// Helpers
+const lowest =mv=>mv.reduce((b,c)=>cs(c,'__')<cs(b,'__')?c:b); // pas utilisé directement
+const lowestBy=(mv,t)=>mv.reduce((b,c)=>cs(c,t)<cs(b,t)?c:b);
+const highestBy=(mv,t)=>mv.reduce((b,c)=>cs(c,t)>cs(b,t)?c:b);
+const nonTrump=(mv,t)=>mv.filter(c=>c.s!==t);
+const isTrump=(c,t)=>c.s===t;
+
+// ── DÉBUTANT : carte légale aléatoire ────────────────────────────────────────
 function aiCardDebutant(hand,trick,trump){
-  // Débutant : joue une carte légale aléatoire
-  const mv=legal(hand,trick||[],trump,999);
+  const mv=legal(hand,trick||[],trump,99);
   if(!mv.length)return hand[0];
   return mv[Math.floor(Math.random()*mv.length)];
 }
-function aiCardExpert(hand,trick,trump,player){
-  const mv=legal(hand,trick||[],trump,player);if(!mv.length)return hand[0];
+
+// ── INTERMÉDIAIRE & EXPERT : logique belote correcte ─────────────────────────
+function aiCardSmart(hand,trick,trump,player){
+  const mv=legal(hand,trick||[],trump,player);
+  if(!mv.length)return hand[0];
   const par=(player+2)%4;
+
+  // ── Entame (je commence le pli) ───────────────────────────────────────────
   if(!trick||!trick.length){
-    const j=mv.find(c=>c.s===trump&&c.r==='J');if(j)return j;
-    const nt=mv.filter(c=>c.s!==trump);
-    if(nt.length)return nt.reduce((b,c)=>cs(c,trump)>cs(b,trump)?c:b);
-    return mv.reduce((b,c)=>cs(c,trump)<cs(b,trump)?c:b);
+    // Jouer un honneur hors-atout en premier (As, 10 si sûr)
+    const nt=nonTrump(mv,trump);
+    if(nt.length){
+      // Privilégier les As hors-atout
+      const as=nt.find(c=>c.r==='A');
+      if(as)return as;
+      return highestBy(nt,trump); // meilleur hors-atout
+    }
+    // Que des atouts : jouer le plus faible pour ne pas gaspiller
+    return lowestBy(mv,trump);
   }
+
+  // ── Suivi de pli ──────────────────────────────────────────────────────────
   const w=tWin(trick,trump);
-  return w===par?mv.reduce((b,c)=>cs(c,trump)<cs(b,trump)?c:b):mv.reduce((b,c)=>cs(c,trump)>cs(b,trump)?c:b);
+  const partnerWinning=w===par;
+  const lead=trick[0].c.s;
+  const mustFollowSuit=mv.some(c=>c.s===lead);
+  const mustCut=!mustFollowSuit&&mv.some(c=>isTrump(c,trump));
+
+  // ── Partenaire gagne le pli ───────────────────────────────────────────────
+  if(partnerWinning){
+    // Ne PAS couper sur la main de son partenaire
+    // Jouer la carte hors-atout avec le plus de points (passer des points)
+    const nt=nonTrump(mv,trump);
+    if(nt.length){
+      // Passer le 10 ou l'As si possible (pour que le partenaire marque)
+      const honor=nt.filter(c=>c.r==='10'||c.r==='A');
+      if(honor.length)return highestBy(honor,trump);
+      return lowestBy(nt,trump); // sinon petite carte
+    }
+    // Que des atouts légaux → pisser avec le plus petit
+    return lowestBy(mv,trump);
+  }
+
+  // ── Adversaire gagne le pli ───────────────────────────────────────────────
+  if(mustFollowSuit){
+    // Suivre la couleur : jouer la plus haute si on peut gagner, sinon la plus petite
+    const canWin=mv.some(c=>cs(c,trump)>cs(trick.reduce((b,t)=>cs(t.c,trump)>cs(b.c,trump)?t:b).c,trump));
+    return canWin?highestBy(mv,trump):lowestBy(mv,trump);
+  }
+
+  if(mustCut){
+    // Couper : on joue un atout supérieur à celui déjà posé si possible
+    const trumpCards=mv.filter(c=>isTrump(c,trump));
+    // Vérifier s'il y a déjà un atout dans le pli
+    const topTrick=trick.filter(t=>isTrump(t.c,trump));
+    if(topTrick.length){
+      // Suratout : jouer atout supérieur si possible
+      const best=topTrick.reduce((b,t)=>TS[t.c.r]>TS[b.c.r]?t:b);
+      const overcut=trumpCards.filter(c=>TS[c.r]>TS[best.c.r]);
+      if(overcut.length)return highestBy(overcut,trump); // sur-couper
+      return lowestBy(trumpCards,trump); // pisser avec le plus petit (obligé)
+    }
+    // Pas encore d'atout : couper avec le meilleur atout
+    return highestBy(trumpCards,trump);
+  }
+
+  // Défausse (ni la couleur ni atout disponible légalement)
+  return lowestBy(mv,trump);
 }
+
 function aiCard(hand,trick,trump,player,diff){
   if(diff==='debutant')return aiCardDebutant(hand,trick,trump);
-  return aiCardExpert(hand,trick,trump,player); // intermediaire + expert
+  return aiCardSmart(hand,trick,trump,player); // intermediaire + expert
 }
 
 
@@ -294,7 +360,8 @@ function doPlay(G,player,card){
 function resolve(G){
   const win=G.winner;
   const nd=[...G.done,{winner:win,cards:G.snap.filter(c=>c&&c.s)}];
-  const base={...G,trick:[],snap:[null,null,null,null],waiting:false,winner:null,done:nd,phase:'PLAY',lw:win,ann:'',cur:win};
+  const annDone=nd.length>=1; // masquer les annonces après le 1er pli
+  const base={...G,trick:[],snap:[null,null,null,null],waiting:false,winner:null,done:nd,phase:'PLAY',lw:win,ann:'',cur:win,annDone};
   return nd.length===8?calcR(base):base;
 }
 function calcR(G){
@@ -787,11 +854,7 @@ function App({cfg,onMenu}){
         <div style={{fontSize:12,color:G.waiting?'#ffd54f':'rgba(255,255,255,.9)',fontWeight:'bold',
           display:'flex',flexDirection:'column',alignItems:'center',gap:1}}>
           <span>{G.ann||`Pli ${G.done.length+1}/8`}</span>
-          {!G.annDone&&G.done.length===0&&(G.annCombos||[])[0]?.length>0&&(
-            <span style={{fontSize:9,color:'#ffd54f',opacity:.9}}>
-              🃏 {((G.annCombos||[])[0]||[]).map(c=>c.label).join(' · ')}
-            </span>
-          )}
+
         </div>
         <div style={{fontSize:11}}>
           <span style={{color:'#4caf50',fontWeight:'bold'}}>{G.scores[0]}</span>
@@ -811,6 +874,45 @@ function App({cfg,onMenu}){
       <PL name="Est" n={(G.hands[3]||[]).filter(c=>c&&c.id).length}
         active={G.cur===3&&!G.waiting} dealer={G.dealer===3}
         style={{position:'absolute',top:'44%',right:'13%',transform:'translateY(-50%)',zIndex:10}}/>
+
+      {/* ══════ ANNONCES PREMIER PLI ══════
+          Affiche tierce/cinquante/cent/carré pour chaque joueur
+          pendant le 1er pli si cfg.combinaisons activé            */}
+      {cfg?.combinaisons&&!G.annDone&&G.done.length===0&&G.phase==='PLAY'&&(
+        <div style={{
+          position:'absolute',
+          top:32,left:'50%',
+          transform:'translateX(-50%)',
+          zIndex:300,
+          display:'flex',flexDirection:'column',
+          alignItems:'center',gap:4,
+          pointerEvents:'none',
+        }}>
+          {[0,1,2,3].map(p=>{
+            const combos=(G.annCombos||[])[p]||[];
+            if(!combos.length)return null;
+            const isUs=team(p)===0;
+            return(
+              <div key={p} style={{
+                background:isUs?'rgba(39,174,96,.92)':'rgba(192,57,43,.92)',
+                border:`1px solid ${isUs?'#2ecc71':'#e74c3c'}`,
+                borderRadius:12,
+                padding:'3px 12px',
+                fontSize:11,
+                color:'white',
+                fontWeight:'bold',
+                whiteSpace:'nowrap',
+                boxShadow:'0 2px 8px rgba(0,0,0,.4)',
+              }}>
+                {PN[p]} : {combos.map(c=>c.label).join(' · ')}
+                <span style={{opacity:.7,marginLeft:6}}>
+                  +{combos.reduce((s,c)=>s+c.pts,0)} pts
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* ══════ ZONE DE PLI EN CROIX ══════
           Centrée entre barre top (28px) et main (~252px)
@@ -1013,9 +1115,11 @@ const DIFFICULTIES=[
 ];
 const TABLE_COLORS=[
   {id:'#1b5e20', label:'Vert'},
-  {id:'#1a3a8a', label:'Bleu'},
-  {id:'#6b1a1a', label:'Bordeaux'},
-  {id:'#2c3e50', label:'Ardoise'},
+  {id:'#00838f', label:'Cyan'},
+  {id:'#0277bd', label:'Bleu'},
+  {id:'#00695c', label:'Turquoise'},
+  {id:'#558b2f', label:'Vert clair'},
+  {id:'#6a1f8a', label:'Violet'},
 ];
 
 function MenuScreen({cfg,setCfg,onPlay}){
@@ -1110,16 +1214,20 @@ function MenuScreen({cfg,setCfg,onPlay}){
             <div style={{fontSize:12,opacity:.6,marginBottom:12,letterSpacing:1}}>
               COULEUR DU TAPIS
             </div>
-            <div style={{display:'flex',gap:10,justifyContent:'center'}}>
+            <div style={{display:'flex',flexWrap:'wrap',gap:10,justifyContent:'center'}}>
               {TABLE_COLORS.map(tc=>(
-                <button key={tc.id} onClick={()=>setCfg(c=>({...c,tableColor:tc.id}))} style={{
-                  width:44,height:44,borderRadius:'50%',
-                  background:tc.id,border:'none',cursor:'pointer',
-                  outline:cfg.tableColor===tc.id?`3px solid white`:'3px solid transparent',
-                  outlineOffset:2,
-                  boxShadow:'0 2px 8px rgba(0,0,0,.4)',
-                  transition:'all .15s',
-                }} title={tc.label}/>
+                <div key={tc.id} style={{display:'flex',flexDirection:'column',
+                  alignItems:'center',gap:3}}>
+                  <button onClick={()=>setCfg(c=>({...c,tableColor:tc.id}))} style={{
+                    width:42,height:42,borderRadius:'50%',
+                    background:tc.id,border:'none',cursor:'pointer',
+                    outline:cfg.tableColor===tc.id?'3px solid white':'3px solid transparent',
+                    outlineOffset:2,
+                    boxShadow:'0 2px 8px rgba(0,0,0,.4)',
+                    transition:'all .15s',
+                  }}/>
+                  <span style={{fontSize:9,opacity:.6,color:'white'}}>{tc.label}</span>
+                </div>
               ))}
             </div>
           </div>
