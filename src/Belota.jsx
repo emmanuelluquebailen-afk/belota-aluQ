@@ -1289,7 +1289,7 @@ function MenuScreen({cfg,setCfg,onPlay}){
           </div>
           {[
             {id:'prudent',   emoji:'🛡️', label:'Prudent',      desc:'Joue sûr, économise les atouts'},
-            {id:'actif',     emoji:'⚡', label:'Actif',        desc:'Jeu équilibré, s'adapte'},
+            {id:"actif", emoji:"⚡", label:"David — Actif", desc:"Jeu équilibré, bien dosé"},
             {id:'temeraire', emoji:'🔥', label:'Tête brûlée',  desc:'Attaque fort, prend des risques'},
           ].map(s=>(
             <button key={s.id} onClick={()=>setCfg(c=>({...c,partnerStyle:s.id}))} style={{
