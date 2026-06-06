@@ -736,6 +736,8 @@ function SplashScreen({onDone}){
       display:'flex',flexDirection:'column',
       alignItems:'center',justifyContent:'center',
       gap:20,
+      paddingTop:'env(safe-area-inset-top)',
+      paddingBottom:'env(safe-area-inset-bottom)',
     }}>
       <div style={{
         animation:'splashIn .7s ease-out',
@@ -784,9 +786,11 @@ function MenuScreen({cfg,setCfg,onPlay}){
       position:'fixed',inset:0,
       background:'linear-gradient(160deg,#1a5c24 0%,#0d3b14 100%)',
       display:'flex',flexDirection:'column',
-      alignItems:'center',fontFamily:'Georgia,serif',
+      alignItems:'center',justifyContent:'center',
+      fontFamily:'Georgia,serif',
       color:'white',overflowY:'auto',
-      paddingBottom:20,
+      paddingTop:'max(env(safe-area-inset-top),20px)',
+      paddingBottom:'max(env(safe-area-inset-bottom),20px)',
     }}>
       {/* Logo */}
       <div style={{display:'flex',flexDirection:'column',alignItems:'center',
