@@ -608,7 +608,7 @@ function App(){
         return(
           <div style={{
             position:'absolute',
-            top:55,          /* centre visuel à 55+CH/2=153px ✓ */
+            top:82,          /* descendu vers le centre */
             left:'50%',
             marginLeft:-CW/2,
             width:CW, height:CH,
@@ -630,20 +630,19 @@ function App(){
                 </div>
               );
             })}
-            {/* Badge gagnant centré */}
+            {/* Badge gagnant — à gauche du pli */}
             {G.waiting&&G.winner!==null&&(
               <div style={{
                 position:'absolute',
-                top:CH/2-14, left:'50%',
-                transform:'translateX(-50%)',
+                top:CH/2-14, left:-145,
                 background:'rgba(0,0,0,.88)',
                 border:'1.5px solid #ffd54f',
-                borderRadius:20, padding:'4px 16px',
+                borderRadius:20, padding:'4px 14px',
                 fontSize:12, color:'#ffd54f', fontWeight:'bold',
                 whiteSpace:'nowrap', zIndex:10,
                 pointerEvents:'none',
               }}>
-                {PN[G.winner]} remporte ✓
+                {PN[G.winner]} ✓
               </div>
             )}
           </div>
@@ -683,15 +682,22 @@ function EmptySlot({W,H}){
 }
 function PL({name,n,active,dealer,style={}}){
   return(
-    <div style={{textAlign:'center',...style}}>
-      <div style={{fontSize:active?12:10,fontWeight:active?'bold':'normal',
+    <div style={{display:'flex',alignItems:'center',gap:5,...style}}>
+      <div style={{
+        fontSize:active?12:10,fontWeight:active?'bold':'normal',
         color:active?'#ffd54f':'rgba(255,255,255,.7)',
-        textShadow:'0 1px 4px rgba(0,0,0,.9)',marginBottom:2}}>
+        textShadow:'0 1px 4px rgba(0,0,0,.9)',
+        whiteSpace:'nowrap',
+      }}>
         {active?'▼ ':''}{name}{dealer?' 🔴':''}
       </div>
-      <div style={{background:active?'rgba(46,125,50,.7)':'rgba(0,0,0,.45)',
-        borderRadius:20,padding:'2px 10px',fontSize:11,display:'inline-block',
-        border:'1px solid rgba(255,255,255,.2)'}}>
+      <div style={{
+        background:active?'rgba(46,125,50,.7)':'rgba(0,0,0,.45)',
+        borderRadius:14,padding:'2px 8px',fontSize:10,
+        border:'1px solid rgba(255,255,255,.2)',
+        whiteSpace:'nowrap',
+        color:'rgba(255,255,255,.85)',
+      }}>
         {n}🂠
       </div>
     </div>
