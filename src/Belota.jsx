@@ -998,7 +998,7 @@ function App({cfg,names,onMenu}){
           const pTeam=team(p);
           const wins=G.annWinTeam===pTeam;
           const best=combos.reduce((b,c)=>c.pts>b.pts?c:b,combos[0]);
-          const FW=30,FH=44,STEP=18;
+          const FW=38,FH=54,STEP=22;
           let fanCards=[];
           if(best.type==='carre'){
             fanCards=SUITS.map(s=>({r:best.rank,s,id:`ann${best.rank}${s}`}));
@@ -1013,14 +1013,14 @@ function App({cfg,names,onMenu}){
           }
           const n=fanCards.length;
           const fanW=FW+(n-1)*STEP;
-          // Position selon le joueur
+          // Position : au-dessus du label de chaque joueur
           const pos=p===2
-            ?{top:58,left:'50%',transform:'translateX(-50%)'}  // Nord — centré haut
+            ?{top:58,left:'50%',transform:'translateX(-50%)'}    // Nord — centré haut
             :p===1
-            ?{top:'38%',left:8}                                 // Ouest — gauche
+            ?{top:'calc(44% - 110px)',left:8}                    // Ouest — au-dessus du label
             :p===3
-            ?{top:'38%',right:8}                                // Est — droite
-            :{top:'38%',left:8};                                // Vous — gauche
+            ?{top:'calc(44% - 110px)',right:8}                   // Est — au-dessus du label
+            :{bottom:148,left:8};                                 // Vous — gauche bas
           return(
             <div key={p} style={{
               position:'absolute',...pos,
@@ -1375,7 +1375,9 @@ function MenuScreen({cfg,setCfg,onPlay}){
           </>}
 
           <div style={{textAlign:'center',marginTop:8,fontSize:10,opacity:.3}}>
-            BELOTA · aluQ innovation group · v1.0
+          <div style={{textAlign:"center",marginTop:8,fontSize:10,opacity:.3,color:"white"}}>
+            aluQ ENTERTAINMENT
+          </div>
           </div>
         </>}
 
@@ -1445,7 +1447,6 @@ function MenuScreen({cfg,setCfg,onPlay}){
 
         {/* Infos */}
         <div style={{textAlign:'center',marginTop:8,fontSize:10,opacity:.3}}>
-          BELOTA · aluQ innovation group · v1.0
         </div>
       </div>
     </div>
