@@ -724,8 +724,10 @@ function App({cfg,names,onMenu}){
       })
     );
   },[]);
-  const[ls,setLs]=useState(()=>typeof window!=='undefined'&&window.innerWidth>window.innerHeight);
-  useEffect(()=>{const u=()=>setLs(window.innerWidth>window.innerHeight);window.addEventListener('resize',u);return()=>window.removeEventListener('resize',u);},[]);
+  // iPad/tablette : écran >=768px → toujours autorisé (portrait ou paysage)
+  const isTablet=typeof window!=='undefined'&&(window.innerWidth>=768||window.innerHeight>=768);
+  const[ls,setLs]=useState(()=>typeof window!=='undefined'&&(window.innerWidth>window.innerHeight||isTablet));
+  useEffect(()=>{const u=()=>setLs(window.innerWidth>window.innerHeight||window.innerWidth>=768||window.innerHeight>=768);window.addEventListener('resize',u);return()=>window.removeEventListener('resize',u);},[]);
 
   useEffect(()=>{
     if(!G.waiting)return;
@@ -809,7 +811,7 @@ function App({cfg,names,onMenu}){
 
   const tc=cfg&&cfg.tableColor||'#1b5e20';
   const TABLE={position:'fixed',inset:0,
-    background:`radial-gradient(ellipse at 50% 40%,${tc}cc 0%,${tc} 50%,${tc}aa 100%)`,
+    background:`radial-gradient(ellipse at 50% 40%,${tc}ee 0%,${tc}bb 55%,${tc}99 100%)`,
     fontFamily:'Georgia,serif',color:'white',overflow:'hidden',userSelect:'none'};
 
   // Noms affichés (prénoms pour IA, "Vous" pour joueur)
@@ -1422,7 +1424,7 @@ function BelotaRoot(){
   const[screen,setScreen]=useState('SPLASH');
   const[cfg,setCfg]=useState({
     difficulty:null,
-    tableColor:'#1b5e20',
+    tableColor:'#00838f',
     combinaisons:false,
     valetForce:false,
     partnerStyle:'actif',
