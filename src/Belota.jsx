@@ -1080,9 +1080,20 @@ function App({cfg,names,onMenu}){
         (G.trick||[]).slice(0,4).forEach(t=>{byP[t.p]=t.c;});
         if(!Object.keys(byP).length)return null;
 
-        const CPW=80, CPH=116;
+        // Taille des cartes du pli adaptée à l'écran
+        const screenH=window.innerHeight;
+        const screenW=window.innerWidth;
+        const isLarge=screenW>=1024||screenH>=768;
+        const CPW=isLarge?96:80, CPH=isLarge?138:116;
         const CW=CPW*2;
         const CH=CPH*1.58;
+
+        // Zone disponible : top=65px (barre+label), bottom=screenH-155px (main)
+        const zoneTop=65;
+        const zoneBot=screenH-(HH+16+8+20); // main + padding
+        const zoneCenter=(zoneTop+zoneBot)/2;
+        const trickTop=Math.round(zoneCenter-CH/2);
+
         const pos={
           2:{l:Math.round(CW/2-CPW/2), t:0},
           1:{l:0,                       t:Math.round(CH/2-CPH/2)},
@@ -1092,7 +1103,7 @@ function App({cfg,names,onMenu}){
         return(
           <div style={{
             position:'absolute',
-            top:63,
+            top:trickTop,
             left:'50%',
             marginLeft:-CW/2,
             width:CW,height:CH,
@@ -1117,7 +1128,7 @@ function App({cfg,names,onMenu}){
             {G.waiting&&G.winner!==null&&(
               <div style={{
                 position:'absolute',
-                top:CH/2-14,left:-145,
+                top:CH/2-14,left:isLarge?-165:-145,
                 background:'rgba(0,0,0,.88)',
                 border:'1.5px solid #ffd54f',
                 borderRadius:20,padding:'4px 14px',
