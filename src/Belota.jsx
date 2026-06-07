@@ -52,8 +52,8 @@ function genNames(){
   return{ouest:n1,nord:n2,est:n3};
 }
 
-const PW=70,PH=100;   // cartes du pli
-const HW=86,HH=124;  // cartes de la main
+const PW=80,PH=115;   // cartes du pli
+const HW=95,HH=137;  // cartes de la main
 const AI_DELAY=1300, SHOW_TRICK_MS=2500, BID_DELAY=900;
 
 // ── Tri ───────────────────────────────────────────────────────────────────────
@@ -1168,7 +1168,7 @@ function App({cfg,names,onMenu}){
 
         // Croix serrée : juste sous le label Nord, ne déborde pas sur la main
         // PW=72 PH=105 → CW=144 CH=166, top:63
-        const CPW=80, CPH=116;
+        const CPW=90, CPH=130;
         const CW=CPW*2;    // 144px — Ouest/Est proches
         const CH=CPH*1.58; // ~166px — Nord/Vous serrés
         const pos={
