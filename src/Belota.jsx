@@ -775,7 +775,7 @@ function App({cfg,names,onMenu}){
         if(prev.br===1){if(aiTake(hand,prev.flip.s,prev.flip,1,diff))return take(prev.flip.s);}
         else{const s=aiSuit(hand,prev.flip.s);if(s&&aiTake(hand,s,prev.flip,2,diff))return take(s);}
         const nc=prev.bc+1;
-        if(nc>=4){if(prev.br===1)return{...prev,br:2,bi:prev.fp,bc:0};const nd=deal(prev.fp);return{...prev,...nd,br:1,bi:prev.fp,bc:0,trump:null};}
+        if(nc>=4){if(prev.br===1)return{...prev,br:2,bi:prev.fp,bc:0};const nd=nxt(prev.dealer);const nfp=nxt(nd);const deal2=deal(nfp);return{...prev,...deal2,dealer:nd,fp:nfp,br:1,bi:nfp,bc:0,trump:null};}
         return{...prev,bi:nxt(prev.bi),bc:nc};
       });
     },BID_DELAY);
@@ -809,7 +809,7 @@ function App({cfg,names,onMenu}){
     }
     setG(prev=>{
       const nc=prev.bc+1;
-      if(nc>=4){if(prev.br===1)return{...prev,br:2,bi:prev.fp,bc:0};const nd=deal(prev.fp);return{...prev,...nd,br:1,bi:prev.fp,bc:0,trump:null};}
+      if(nc>=4){if(prev.br===1)return{...prev,br:2,bi:prev.fp,bc:0};const nd=nxt(prev.dealer);const nfp=nxt(nd);const deal2=deal(nfp);return{...prev,...deal2,dealer:nd,fp:nfp,br:1,bi:nfp,bc:0,trump:null};}
       return{...prev,bi:nxt(prev.bi),bc:nc};
     });
   }
