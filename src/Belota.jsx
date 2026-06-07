@@ -1013,14 +1013,15 @@ function App({cfg,names,onMenu}){
           }
           const n=fanCards.length;
           const fanW=FW+(n-1)*STEP;
-          // Position : au-dessus du label de chaque joueur
+          // Position : directement au-dessus du label de chaque joueur
+          const fanH=FH+30; // hauteur totale éventail+label
           const pos=p===2
-            ?{top:58,left:'50%',transform:'translateX(-50%)'}    // Nord — centré haut
+            ?{top:58,left:'50%',transform:'translateX(-50%)'}  // Nord — centré haut
             :p===1
-            ?{top:'calc(44% - 110px)',left:8}                    // Ouest — au-dessus du label
+            ?{top:`calc(44% - ${fanH+14}px)`,left:'8%'}        // Ouest — au-dessus label gauche
             :p===3
-            ?{top:'calc(44% - 110px)',right:8}                   // Est — au-dessus du label
-            :{bottom:148,left:8};                                 // Vous — gauche bas
+            ?{top:`calc(44% - ${fanH+14}px)`,right:'8%'}       // Est — au-dessus label droite
+            :{top:`calc(44% - ${fanH+14}px)`,left:'8%'};       // Vous — gauche
           return(
             <div key={p} style={{
               position:'absolute',...pos,
