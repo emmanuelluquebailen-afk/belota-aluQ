@@ -990,50 +990,67 @@ function App({cfg,names,onMenu}){
         active={G.cur===3&&!G.waiting} dealer={G.dealer===3}
         style={{position:'absolute',top:'44%',right:'13%',transform:'translateY(-50%)',zIndex:10}}/>
 
-      {/* ══════ ANNONCES PREMIER PLI ══════
-          Affiche tierce/cinquante/cent/carré pour chaque joueur
-          pendant le 1er pli si cfg.combinaisons activé            */}
-      {cfg?.combinaisons&&!G.annDone&&G.done.length===0&&G.phase==='PLAY'&&(
+      {/* ANNONCES EN ÉVENTAIL — disparaît dès la 1ère carte jouée */}
+      {cfg?.combinaisons&&!G.annDone&&G.done.length===0&&G.phase==='PLAY'&&G.trick.length===0&&(
         <div style={{
-          position:'absolute',
-          top:32,left:'50%',
-          transform:'translateX(-50%)',
-          zIndex:300,
-          display:'flex',flexDirection:'column',
-          alignItems:'center',gap:4,
-          pointerEvents:'none',
+          position:'absolute',top:32,left:'50%',transform:'translateX(-50%)',
+          zIndex:300,display:'flex',flexDirection:'row',gap:16,
+          alignItems:'flex-end',pointerEvents:'none',
         }}>
           {[0,1,2,3].map(p=>{
             const combos=(G.annCombos||[])[p]||[];
             if(!combos.length)return null;
             const pTeam=team(p);
             const wins=G.annWinTeam===pTeam;
+            const best=combos.reduce((b,c)=>c.pts>b.pts?c:b,combos[0]);
+            // Construire les cartes de l'annonce
+            const FW=22,FH=32;
+            let fanCards=[];
+            if(best.type==='carre'){
+              fanCards=SUITS.map(s=>({r:best.rank,s,id:`ann${best.rank}${s}`}));
+            } else {
+              // Extraire rang de départ depuis le label ex: "Tierce (Q→A♠)"
+              const match=best.label.match(/\(([^→]+)→/);
+              const startRank=match?match[1]:'7';
+              const startIdx=ANN_ORDER.indexOf(startRank);
+              const len=best.type==='tierce'?3:best.type==='cinquante'?4:5;
+              fanCards=Array.from({length:len},(_,i)=>({
+                r:ANN_ORDER[Math.min(startIdx+i,7)],
+                s:best.suit,
+                id:`ann${p}${i}`
+              }));
+            }
+            const n=fanCards.length;
+            const STEP=14;
             return(
-              <div key={p} style={{
-                background:wins
-                  ?(pTeam===0?'rgba(39,174,96,.92)':'rgba(192,57,43,.92)')
-                  :'rgba(80,80,80,.85)',
-                border:`1px solid ${wins?(pTeam===0?'#2ecc71':'#e74c3c'):'rgba(255,255,255,.2)'}`,
-                borderRadius:12,
-                padding:'3px 14px',
-                fontSize:11,
-                color:wins?'white':'rgba(255,255,255,.55)',
-                fontWeight:'bold',
-                whiteSpace:'nowrap',
-                boxShadow:'0 2px 8px rgba(0,0,0,.4)',
-                textDecoration:wins?'none':'line-through',
-              }}>
-                {pName(p)} : {combos.map(c=>c.label).join(' · ')}
-                {wins&&(
-                  <span style={{opacity:.8,marginLeft:6}}>
-                    +{combos.reduce((s,c)=>s+c.pts,0)} pts
-                  </span>
-                )}
-                {!wins&&(
-                  <span style={{opacity:.5,marginLeft:6,fontWeight:'normal'}}>
-                    annulée
-                  </span>
-                )}
+              <div key={p} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
+                {/* Éventail */}
+                <div style={{position:'relative',width:FW+(n-1)*STEP,height:FH+16}}>
+                  {fanCards.map((c,i)=>{
+                    const angle=(i-(n-1)/2)*10;
+                    return(
+                      <div key={c.id} style={{
+                        position:'absolute',left:i*STEP,top:0,
+                        width:FW,height:FH,
+                        transform:`rotate(${angle}deg)`,
+                        transformOrigin:'50% 100%',
+                        zIndex:i+1,
+                        filter:wins?'none':'grayscale(80%) opacity(.45)',
+                      }}>
+                        <Crd card={c} W={FW} H={FH}/>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Nom + pts */}
+                <div style={{
+                  background:wins?(pTeam===0?'rgba(39,174,96,.9)':'rgba(192,57,43,.9)'):'rgba(50,50,50,.8)',
+                  borderRadius:8,padding:'2px 8px',fontSize:9,fontWeight:'bold',
+                  color:wins?'white':'rgba(255,255,255,.35)',
+                  textDecoration:wins?'none':'line-through',whiteSpace:'nowrap',
+                }}>
+                  {pName(p)}{wins?` +${combos.reduce((s,c)=>s+c.pts,0)}pts`:''}
+                </div>
               </div>
             );
           })}
