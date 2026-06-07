@@ -1344,6 +1344,7 @@ function SplashScreen({onDone}){
           JEU DE BELOTE
         </div>
         <div style={{fontSize:11,color:'rgba(255,255,255,.3)',letterSpacing:1,marginTop:4}}>
+          by aluQ ENTERTAINMENT
         </div>
       </div>
       <style>{`
@@ -1400,14 +1401,24 @@ function MenuScreen({cfg,setCfg,onPlay}){
       {/* Onglets */}
       <div style={{display:'flex',gap:4,background:'rgba(0,0,0,.3)',
         borderRadius:20,padding:4,marginBottom:20,width:'90%',maxWidth:420}}>
-        {[['play','🃏'],['options','⚙️'],['stats','📊'],['avis','💬'],['info','ℹ️']].map(([id,label])=>(
+        {[
+          ['play',  '🃏','Jouer'],
+          ['options','⚙️','Règles'],
+          ['stats', '📊','Stats'],
+          ['avis',  '💬','Avis'],
+          ['info',  'ℹ️','Info'],
+        ].map(([id,icon,label])=>(
           <button key={id} onClick={()=>setTab(id)} style={{
             flex:1,border:'none',borderRadius:16,
-            padding:'8px 4px',fontSize:12,cursor:'pointer',fontWeight:'bold',
+            padding:'5px 2px',cursor:'pointer',
             background:tab===id?'rgba(255,255,255,.15)':'transparent',
-            color:tab===id?'white':'rgba(255,255,255,.5)',
+            color:tab===id?'white':'rgba(255,255,255,.45)',
             transition:'all .2s',
-          }}>{label}</button>
+            display:'flex',flexDirection:'column',alignItems:'center',gap:1,
+          }}>
+            <span style={{fontSize:17}}>{icon}</span>
+            <span style={{fontSize:9,fontWeight:'bold',letterSpacing:.2}}>{label}</span>
+          </button>
         ))}
       </div>
 
