@@ -996,12 +996,15 @@ function App({cfg,names,onMenu}){
       {/* Labels joueurs */}
       <PL name={pName(2)} n={(G.hands[2]||[]).filter(c=>c&&c.id).length}
         active={G.cur===2&&!G.waiting} dealer={G.dealer===2}
+        trump={G.taker===2?G.trump:null}
         style={{position:'absolute',top:32,left:'50%',transform:'translateX(-50%)',zIndex:10}}/>
       <PL name={pName(1)} n={(G.hands[1]||[]).filter(c=>c&&c.id).length}
         active={G.cur===1&&!G.waiting} dealer={G.dealer===1}
+        trump={G.taker===1?G.trump:null}
         style={{position:'absolute',top:'44%',left:'13%',transform:'translateY(-50%)',zIndex:10}}/>
       <PL name={pName(3)} n={(G.hands[3]||[]).filter(c=>c&&c.id).length}
         active={G.cur===3&&!G.waiting} dealer={G.dealer===3}
+        trump={G.taker===3?G.trump:null}
         style={{position:'absolute',top:'44%',right:'13%',transform:'translateY(-50%)',zIndex:10}}/>
 
       {/* ANNONCES */}
@@ -1176,7 +1179,7 @@ function App({cfg,names,onMenu}){
 }
 
 // ── Utilitaires ───────────────────────────────────────────────────────────────
-function PL({name,n,active,dealer,style={}}){
+function PL({name,n,active,dealer,trump,style={}}){
   return(
     <div style={{display:'flex',alignItems:'center',gap:5,...style}}>
       <div style={{
@@ -1185,7 +1188,7 @@ function PL({name,n,active,dealer,style={}}){
         textShadow:'0 1px 4px rgba(0,0,0,.9)',
         whiteSpace:'nowrap',
       }}>
-        {active?'▼ ':''}{name}{dealer?' 🔴':''}
+        {active?'▼ ':''}{name}{dealer?' 🔴':''}{trump?<span style={{marginLeft:4,fontSize:active?12:10,color:RED(trump)?'#ff8a80':'#80cbc4'}}>{trump}</span>:null}
       </div>
       <div style={{
         background:active?'rgba(46,125,50,.7)':'rgba(0,0,0,.45)',
