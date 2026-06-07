@@ -1745,36 +1745,30 @@ function BelotaRoot(){
   const[updateReady,setUpdateReady]=useState(false);
   const newWorkerRef=useRef(null);
 
-  // Détection mise à jour PWA (compatible vite-plugin-pwa)
+  // Détection mise à jour — compare le hash du bundle JS Vite
   useEffect(()=>{
-    if(!('serviceWorker' in navigator))return;
-    let reg;
-    navigator.serviceWorker.getRegistration().then(r=>{
-      if(!r)return;
-      reg=r;
-      // Vérifier toutes les 60s
-      const iv=setInterval(()=>r.update().catch(()=>{}),60000);
-      r.addEventListener('updatefound',()=>{
-        const nw=r.installing;if(!nw)return;
-        nw.addEventListener('statechange',()=>{
-          if(nw.state==='installed'&&navigator.serviceWorker.controller){
-            newWorkerRef.current=nw;
-            setUpdateReady(true);
-          }
-        });
-      });
-      return()=>clearInterval(iv);
-    });
-    // Recharger si nouveau SW prend le contrôle
-    navigator.serviceWorker.addEventListener('controllerchange',()=>{
-      window.location.reload();
-    });
+    async function checkUpdate(){
+      try{
+        const r=await fetch('/',{cache:'no-store'});
+        const html=await r.text();
+        // Extraire le hash du bundle principal
+        const m=html.match(/src="[^"]*\/index-([^"]+)\.js"/);
+        if(!m)return;
+        const newHash=m[1];
+        const savedHash=localStorage.getItem('belota_build_hash');
+        if(savedHash&&savedHash!==newHash){
+          setUpdateReady(true); // nouvelle version détectée
+        }
+        localStorage.setItem('belota_build_hash',newHash);
+      }catch(e){}
+    }
+    // Vérifier au démarrage et toutes les 2 minutes
+    checkUpdate();
+    const iv=setInterval(checkUpdate,120000);
+    return()=>clearInterval(iv);
   },[]);
 
-  function applyUpdate(){
-    if(newWorkerRef.current)newWorkerRef.current.postMessage({type:'SKIP_WAITING'});
-    else window.location.reload();
-  }
+  function applyUpdate(){window.location.reload();}
   function startGame(){setNames(genNames());setScreen('GAME');}
 
   return(
