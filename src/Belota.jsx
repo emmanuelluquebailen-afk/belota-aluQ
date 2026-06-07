@@ -1298,7 +1298,7 @@ function MenuScreen({cfg,setCfg,onPlay}){
       {/* Onglets */}
       <div style={{display:'flex',gap:4,background:'rgba(0,0,0,.3)',
         borderRadius:20,padding:4,marginBottom:20,width:'90%',maxWidth:420}}>
-        {[['play','🃏 Jouer'],['options','⚙️ Options'],['stats','📊 Stats']].map(([id,label])=>(
+        {[['play','🃏 Jouer'],['options','⚙️ Options'],['stats','📊 Stats'],['info','ℹ️']].map(([id,label])=>(
           <button key={id} onClick={()=>setTab(id)} style={{
             flex:1,border:'none',borderRadius:16,
             padding:'8px 4px',fontSize:12,cursor:'pointer',fontWeight:'bold',
