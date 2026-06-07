@@ -1302,8 +1302,8 @@ function MenuScreen({cfg,setCfg,onPlay}){
         <div style={{fontSize:11,opacity:.5,letterSpacing:2}}>JEU DE BELOTE FRANÇAIS</div>
       </div>
 
-      {/* Onglets */}
-      <div style={{display:'flex',gap:4,background:'rgba(0,0,0,.3)',
+      {/* Onglets — masqués sur l'écran info */}
+      <div style={{display:tab==='info'?'none':'flex',gap:4,background:'rgba(0,0,0,.3)',
         borderRadius:20,padding:4,marginBottom:20,width:'90%',maxWidth:420}}>
         {[
           ['play',  '🃏','Jouer'],
