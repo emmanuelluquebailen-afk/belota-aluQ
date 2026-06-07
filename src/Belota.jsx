@@ -1314,14 +1314,14 @@ function MenuScreen({cfg,setCfg,onPlay}){
         ].map(([id,icon,label])=>(
           <button key={id} onClick={()=>setTab(id)} style={{
             flex:1,border:'none',borderRadius:16,
-            padding:'5px 2px',cursor:'pointer',
+            padding:'8px 2px',cursor:'pointer',
             background:tab===id?'rgba(255,255,255,.15)':'transparent',
             color:tab===id?'white':'rgba(255,255,255,.45)',
             transition:'all .2s',
             display:'flex',flexDirection:'column',alignItems:'center',gap:1,
           }}>
-            <span style={{fontSize:17}}>{icon}</span>
-            <span style={{fontSize:9,fontWeight:'bold',letterSpacing:.2}}>{label}</span>
+            <span style={{fontSize:26}}>{icon}</span>
+            <span style={{fontSize:11,fontWeight:'bold',letterSpacing:.2}}>{label}</span>
           </button>
         ))}
       </div>
