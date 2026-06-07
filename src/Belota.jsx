@@ -1344,7 +1344,6 @@ function SplashScreen({onDone}){
           JEU DE BELOTE
         </div>
         <div style={{fontSize:11,color:'rgba(255,255,255,.3)',letterSpacing:1,marginTop:4}}>
-          by aluQ ENTERTAINMENT
         </div>
       </div>
       <style>{`
@@ -1480,7 +1479,6 @@ function MenuScreen({cfg,setCfg,onPlay}){
 
           <div style={{textAlign:'center',marginTop:8,fontSize:10,opacity:.3}}>
           <div style={{textAlign:"center",marginTop:8,fontSize:10,opacity:.3,color:"white"}}>
-            aluQ ENTERTAINMENT
           </div>
           </div>
         </>}
@@ -1693,9 +1691,6 @@ function MenuScreen({cfg,setCfg,onPlay}){
           </div>
         </>}
 
-        <div style={{textAlign:'center',marginTop:8,fontSize:10,opacity:.3}}>
-          aluQ ENTERTAINMENT
-        </div>
       </div>
     </div>
   );
@@ -1739,22 +1734,30 @@ function BelotaRoot(){
   const[updateReady,setUpdateReady]=useState(false);
   const newWorkerRef=useRef(null);
 
-  // Détection mise à jour PWA
+  // Détection mise à jour PWA (compatible vite-plugin-pwa)
   useEffect(()=>{
     if(!('serviceWorker' in navigator))return;
-    navigator.serviceWorker.ready.then(reg=>{
-      const iv=setInterval(()=>reg.update(),30000);
-      reg.addEventListener('updatefound',()=>{
-        const nw=reg.installing;if(!nw)return;
+    let reg;
+    navigator.serviceWorker.getRegistration().then(r=>{
+      if(!r)return;
+      reg=r;
+      // Vérifier toutes les 60s
+      const iv=setInterval(()=>r.update().catch(()=>{}),60000);
+      r.addEventListener('updatefound',()=>{
+        const nw=r.installing;if(!nw)return;
         nw.addEventListener('statechange',()=>{
           if(nw.state==='installed'&&navigator.serviceWorker.controller){
-            newWorkerRef.current=nw;setUpdateReady(true);
+            newWorkerRef.current=nw;
+            setUpdateReady(true);
           }
         });
       });
       return()=>clearInterval(iv);
     });
-    navigator.serviceWorker.addEventListener('controllerchange',()=>window.location.reload());
+    // Recharger si nouveau SW prend le contrôle
+    navigator.serviceWorker.addEventListener('controllerchange',()=>{
+      window.location.reload();
+    });
   },[]);
 
   function applyUpdate(){
