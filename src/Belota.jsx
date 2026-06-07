@@ -991,7 +991,7 @@ function App({cfg,names,onMenu}){
         style={{position:'absolute',top:'44%',right:'13%',transform:'translateY(-50%)',zIndex:10}}/>
 
       {/* ANNONCES — positionnées près de chaque joueur */}
-      {cfg?.combinaisons&&!G.annDone&&G.done.length===0&&G.phase==='PLAY'&&G.trick.length===0&&
+      {cfg?.combinaisons&&!G.annDone&&G.done.length===0&&G.phase==='PLAY'&&
         [0,1,2,3].map(p=>{
           const combos=(G.annCombos||[])[p]||[];
           if(!combos.length)return null;
