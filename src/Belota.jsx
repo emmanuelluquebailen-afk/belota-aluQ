@@ -1467,13 +1467,62 @@ function MenuScreen({cfg,setCfg,onPlay}){
         </>}
 
         {/* ─── ONGLET STATS ─── */}
-        {tab==='stats'&&<>
-          <div style={{background:'rgba(0,0,0,.25)',borderRadius:14,padding:20,
-            textAlign:'center'}}>
-            <div style={{fontSize:40,marginBottom:8}}>📊</div>
-            <div style={{fontSize:14,opacity:.6}}>Statistiques bientôt disponibles</div>
-          </div>
-        </>}
+        {tab==='stats'&&(()=>{
+          let st={total:{m:0,mg:0,pp:0,pg:0},prudent:{m:0,mg:0,pp:0,pg:0},actif:{m:0,mg:0,pp:0,pg:0},temeraire:{m:0,mg:0,pp:0,pg:0}};
+          try{const s=localStorage.getItem('belota_stats');if(s)st={...st,...JSON.parse(s)};}catch(e){}
+          const pct=(a,b)=>b>0?Math.round(a/b*100):0;
+          const StatRow=({label,val,sub})=>(
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',
+              padding:'8px 0',borderBottom:'1px solid rgba(255,255,255,.07)'}}>
+              <div style={{fontSize:13,color:'rgba(255,255,255,.7)'}}>{label}</div>
+              <div style={{textAlign:'right'}}>
+                <span style={{fontSize:15,fontWeight:'bold',color:'white'}}>{val}</span>
+                {sub&&<span style={{fontSize:11,color:'rgba(255,255,255,.4)',marginLeft:6}}>{sub}</span>}
+              </div>
+            </div>
+          );
+          const partners=[
+            {id:'prudent',  emoji:'🛡️', name:'Denis'},
+            {id:'actif',    emoji:'⚡', name:'David'},
+            {id:'temeraire',emoji:'🔥', name:'Juan'},
+          ];
+          return(<>
+            {/* Global */}
+            <div style={{background:'rgba(0,0,0,.25)',borderRadius:14,padding:16}}>
+              <div style={{fontSize:12,opacity:.5,letterSpacing:1,marginBottom:10}}>GLOBAL</div>
+              <StatRow label="Manches jouées" val={st.total.m} sub={`${st.total.mg} gagnées · ${pct(st.total.mg,st.total.m)}%`}/>
+              <StatRow label="Parties jouées" val={st.total.pp} sub={`${st.total.pg} gagnées · ${pct(st.total.pg,st.total.pp)}%`}/>
+            </div>
+            {/* Par partenaire */}
+            <div style={{background:'rgba(0,0,0,.25)',borderRadius:14,padding:16}}>
+              <div style={{fontSize:12,opacity:.5,letterSpacing:1,marginBottom:10}}>PAR PARTENAIRE</div>
+              {partners.map(p=>{
+                const s=st[p.id]||{m:0,mg:0,pp:0,pg:0};
+                return(
+                  <div key={p.id} style={{marginBottom:12}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
+                      <span style={{fontSize:16}}>{p.emoji}</span>
+                      <span style={{fontSize:13,fontWeight:'bold',color:'white'}}>{p.name}</span>
+                    </div>
+                    <StatRow label="Manches" val={s.m} sub={`${s.mg} gagnées · ${pct(s.mg,s.m)}%`}/>
+                    <StatRow label="Parties"  val={s.pp} sub={`${s.pg} gagnées · ${pct(s.pg,s.pp)}%`}/>
+                  </div>
+                );
+              })}
+            </div>
+            {/* Reset */}
+            <button onClick={()=>{
+              if(window.confirm('Effacer toutes les statistiques ?')){
+                localStorage.removeItem('belota_stats');
+                setTab('play');setTimeout(()=>setTab('stats'),50);
+              }
+            }} style={{
+              background:'none',border:'1px solid rgba(255,100,100,.3)',
+              borderRadius:10,padding:'8px 16px',fontSize:11,
+              color:'rgba(255,100,100,.6)',cursor:'pointer',alignSelf:'center',
+            }}>🗑 Réinitialiser les stats</button>
+          </>);
+        })()}
 
         {/* ─── ONGLET AVIS ─── */}
         {tab==='avis'&&<>
