@@ -1188,7 +1188,7 @@ function PL({name,n,active,dealer,trump,style={}}){
         textShadow:'0 1px 4px rgba(0,0,0,.9)',
         whiteSpace:'nowrap',
       }}>
-        {active?'▼ ':''}{name}{dealer?' 🔴':''}{trump?<span style={{marginLeft:4,fontSize:active?12:10,color:RED(trump)?'#ff8a80':'#80cbc4'}}>{trump}</span>:null}
+        {active?'▼ ':''}{name}{dealer?' 🔴':''}{trump?<span style={{marginLeft:5,fontSize:18,color:RED(trump)?'#ff8a80':'#80cbc4',lineHeight:1}}>{trump}</span>:null}
       </div>
       <div style={{
         background:active?'rgba(46,125,50,.7)':'rgba(0,0,0,.45)',
