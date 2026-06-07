@@ -1257,71 +1257,71 @@ function MenuScreen({cfg,setCfg,onPlay}){
 
         {/* ─── ONGLET JOUER ─── */}
         {tab==='play'&&<>
-          <div style={{fontSize:11,opacity:.5,letterSpacing:1,marginBottom:4,textAlign:'center'}}>
-            DIFFICULTÉ
+
+          {/* ÉTAPE 1 : Difficulté — cachée dès qu'un niveau est choisi */}
+          {!cfg.difficulty&&<>
+            <div style={{fontSize:11,opacity:.5,letterSpacing:1,marginBottom:8,textAlign:'center'}}>
+              DIFFICULTÉ
+            </div>
+            {DIFFICULTIES.map(d=>(
+              <button key={d.id} onClick={()=>setCfg(c=>({...c,difficulty:d.id}))} style={{
+                background:'rgba(0,0,0,.25)',
+                border:'2px solid rgba(255,255,255,.08)',
+                borderRadius:14,padding:'13px 16px',cursor:'pointer',
+                display:'flex',alignItems:'center',gap:14,textAlign:'left',transition:'all .15s',
+              }}>
+                <div style={{width:16,height:16,borderRadius:'50%',background:d.dot,flexShrink:0}}/>
+                <div style={{fontSize:15,fontWeight:'bold',color:'white'}}>{d.label}</div>
+              </button>
+            ))}
+          </>}
+
+          {/* ÉTAPE 2 : Partenaire seul — apparaît après le niveau */}
+          {cfg.difficulty&&<>
+            <div style={{display:'flex',alignItems:'center',marginBottom:8}}>
+              <button onClick={()=>setCfg(c=>({...c,difficulty:null,partnerStyle:null}))} style={{
+                background:'none',border:'none',color:'rgba(255,255,255,.5)',
+                fontSize:13,cursor:'pointer',padding:0,
+              }}>← Niveau</button>
+              <div style={{margin:'0 auto',fontSize:13,fontWeight:'bold',color:'rgba(255,255,255,.8)'}}>
+                {DIFFICULTIES.find(d=>d.id===cfg.difficulty)?.label}
+              </div>
+              <div style={{width:60}}/>
+            </div>
+            <div style={{fontSize:11,opacity:.5,letterSpacing:1,marginBottom:8,textAlign:'center'}}>
+              CHOIX DU PARTENAIRE
+            </div>
+            {[
+              {id:'prudent',   emoji:'🛡️', label:'Denis'},
+              {id:'actif',     emoji:'⚡', label:'David'},
+              {id:'temeraire', emoji:'🔥', label:'Juan'},
+            ].map(s=>(
+              <button key={s.id} onClick={()=>setCfg(c=>({...c,partnerStyle:s.id}))} style={{
+                background:cfg.partnerStyle===s.id?'rgba(255,255,255,.18)':'rgba(0,0,0,.25)',
+                border:cfg.partnerStyle===s.id?'2px solid rgba(255,255,255,.4)':'2px solid rgba(255,255,255,.08)',
+                borderRadius:14,padding:'13px 16px',cursor:'pointer',
+                display:'flex',alignItems:'center',gap:12,textAlign:'left',transition:'all .15s',
+              }}>
+                <span style={{fontSize:22}}>{s.emoji}</span>
+                <div style={{fontSize:15,fontWeight:'bold',color:'white'}}>{s.label}</div>
+                {cfg.partnerStyle===s.id&&<div style={{marginLeft:'auto',color:'#4caf50',fontSize:16}}>✓</div>}
+              </button>
+            ))}
+            {cfg.partnerStyle&&(
+              <button onClick={onPlay} style={{
+                marginTop:8,background:'linear-gradient(135deg,#27ae60,#1e8449)',
+                border:'none',borderRadius:16,padding:'15px',
+                fontSize:16,fontWeight:900,color:'white',cursor:'pointer',
+                letterSpacing:1,boxShadow:'0 4px 16px rgba(39,174,96,.4)',
+              }}>
+                🃏 JOUER
+              </button>
+            )}
+          </>}
+
+          <div style={{textAlign:'center',marginTop:8,fontSize:10,opacity:.3}}>
+            BELOTA · aluQ innovation group · v1.0
           </div>
-          {DIFFICULTIES.map(d=>(
-            <button key={d.id} onClick={()=>{setCfg(c=>({...c,difficulty:d.id}));}} style={{
-              background:cfg.difficulty===d.id
-                ?'rgba(255,255,255,.18)':'rgba(0,0,0,.25)',
-              border:cfg.difficulty===d.id
-                ?'2px solid rgba(255,255,255,.4)':'2px solid rgba(255,255,255,.08)',
-              borderRadius:14,padding:'14px 16px',cursor:'pointer',
-              display:'flex',alignItems:'center',gap:14,textAlign:'left',
-              transition:'all .15s',
-            }}>
-              <div style={{width:18,height:18,borderRadius:'50%',
-                background:d.dot,flexShrink:0,
-                boxShadow:`0 0 8px ${d.dot}88`}}/>
-              <div>
-                <div style={{fontSize:15,fontWeight:'bold',color:'white',marginBottom:2}}>
-                  {d.label}
-                </div>
-                <div style={{fontSize:11,color:'rgba(255,255,255,.55)'}}>
-                  {d.desc}
-                </div>
-              </div>
-              {cfg.difficulty===d.id&&(
-                <div style={{marginLeft:'auto',color:'#4caf50',fontSize:18}}>✓</div>
-              )}
-            </button>
-          ))}
-
-          {/* Partenaire — apparaît APRÈS avoir choisi le niveau */}
-          {cfg.difficulty&&(
-            <>
-              <div style={{fontSize:11,opacity:.5,letterSpacing:1,margin:'14px 0 6px',textAlign:'center'}}>
-                PARTENAIRE · Nord
-              </div>
-              {[
-                {id:'prudent',   emoji:'🛡️', label:'Denis'},
-                {id:'actif',     emoji:'⚡', label:'David'},
-                {id:'temeraire', emoji:'🔥', label:'Juan'},
-              ].map(s=>(
-                <button key={s.id} onClick={()=>setCfg(c=>({...c,partnerStyle:s.id}))} style={{
-                  background:cfg.partnerStyle===s.id?'rgba(255,255,255,.18)':'rgba(0,0,0,.25)',
-                  border:cfg.partnerStyle===s.id?'2px solid rgba(255,255,255,.4)':'2px solid rgba(255,255,255,.08)',
-                  borderRadius:14,padding:'12px 16px',cursor:'pointer',
-                  display:'flex',alignItems:'center',gap:12,textAlign:'left',transition:'all .15s',
-                }}>
-                  <span style={{fontSize:22}}>{s.emoji}</span>
-                  <div style={{fontSize:14,fontWeight:'bold',color:'white',marginLeft:4}}>{s.label}</div>
-                  {cfg.partnerStyle===s.id&&<div style={{marginLeft:'auto',color:'#4caf50',fontSize:16}}>✓</div>}
-                </button>
-              ))}
-              {cfg.partnerStyle&&(
-                <button onClick={onPlay} style={{
-                  marginTop:10,background:'linear-gradient(135deg,#27ae60,#1e8449)',
-                  border:'none',borderRadius:16,padding:'15px',
-                  fontSize:16,fontWeight:900,color:'white',cursor:'pointer',
-                  letterSpacing:1,boxShadow:'0 4px 16px rgba(39,174,96,.4)',
-                }}>
-                  🃏 JOUER
-                </button>
-              )}
-            </>
-          )}
-
         </>}
 
         {/* ─── ONGLET OPTIONS ─── */}
