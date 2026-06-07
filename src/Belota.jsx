@@ -160,19 +160,54 @@ function aiTakeIntermediaire(hand,suit,flip,round){
   return false;
 }
 
-// ── IA EXPERT — enchères (logique originale, la plus forte) ──────────────────
-function aiTakeExpert(hand,suit,round){
-  const tc=hand.filter(c=>c.s===suit);
-  return round===1
-    ?(tc.some(c=>c.r==='J')||(tc.length>=3&&tc.some(c=>c.r==='9'))||tc.length>=4)
-    :(tc.some(c=>c.r==='J')||tc.length>=3);
+// ── IA EXPERT — enchères (traduit du code Python fourni) ─────────────────────
+const EVAL_AT_EXP={J:30,'9':25,A:12,'10':10,K:5,Q:4,'8':1,'7':0};
+const EVAL_NS_EXP={A:10,'10':8,K:3,Q:2,J:1,'9':0,'8':0,'7':0};
+
+function evalMainExpert(hand,suit,flip){
+  const main=flip?[...hand,flip]:hand;
+  let score=0,nbAt=0,nbAs=0,nbDix=0;
+  const rep={'♠':0,'♥':0,'♦':0,'♣':0};
+  for(const c of main){
+    if(!c||!c.s)continue;
+    rep[c.s]=(rep[c.s]||0)+1;
+    if(c.s===suit){nbAt++;score+=(EVAL_AT_EXP[c.r]||0);}
+    else{score+=(EVAL_NS_EXP[c.r]||0);if(c.r==='A')nbAs++;if(c.r==='10')nbDix++;}
+  }
+  // Bonus/malus atouts
+  if(nbAt>=5)score+=25;else if(nbAt===4)score+=15;else if(nbAt===3)score+=5;else score-=15;
+  // Valet et 9
+  const aV=main.some(c=>c.r==='J'&&c.s===suit);
+  const a9=main.some(c=>c.r==='9'&&c.s===suit);
+  if(aV)score+=20; if(a9)score+=12; if(aV&&a9)score+=20;
+  // As maîtres + Dix protégés
+  score+=nbAs*5+nbDix*3;
+  // Chicanes et singletons hors-atout
+  for(const s of SUITS){
+    if(s===suit)continue;
+    if((rep[s]||0)===0)score+=8;
+    else if((rep[s]||0)===1)score+=5;
+  }
+  return score;
+}
+
+function aiTakeExpert(hand,suit,flip,round,scores){
+  // Tour 1 : évaluer avec la carte retournée | Tour 2 : sans flip
+  const score=evalMainExpert(hand,suit,round===1?flip:null);
+  const [sNous,sAdv]=scores||[0,0];
+  let seuil=round===1?70:60; // Tour 2 : seuil abaissé à 60
+                              // → mieux vaut prendre que laisser l'adversaire choisir
+  // Gestion du score de partie
+  if(sAdv>=900&&sAdv>sNous)seuil-=15; // adversaire proche de 1000 → prend plus tôt
+  else if(sNous>=900)seuil+=10;        // on est en avance → joue safe
+  return score>=seuil;
 }
 
 // ── Dispatcher enchères selon difficulté ─────────────────────────────────────
-function aiTake(hand,suit,flip,round,diff){
+function aiTake(hand,suit,flip,round,diff,scores){
   if(diff==='debutant')     return aiTakeDebutant(hand,suit,flip,round);
   if(diff==='intermediaire')return aiTakeIntermediaire(hand,suit,flip,round);
-  return aiTakeExpert(hand,suit,round); // expert (défaut)
+  return aiTakeExpert(hand,suit,flip,round,scores); // expert
 }
 
 function aiSuit(hand,ex){
