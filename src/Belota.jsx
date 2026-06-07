@@ -1272,7 +1272,10 @@ const TABLE_COLORS=[
 ];
 
 function MenuScreen({cfg,setCfg,onPlay}){
-  const[tab,setTab]=useState('play'); // 'play'|'options'|'stats'
+  const[tab,setTab]=useState('play');
+  const[avis,setAvis]=useState({
+    stars:0, fluide:'', ia:'', bugs:'', aime:'', change:'', multi:'', sent:false
+  }); // 'play'|'options'|'stats'
   return(
     <div style={{
       position:'fixed',inset:0,
@@ -1298,7 +1301,7 @@ function MenuScreen({cfg,setCfg,onPlay}){
       {/* Onglets */}
       <div style={{display:'flex',gap:4,background:'rgba(0,0,0,.3)',
         borderRadius:20,padding:4,marginBottom:20,width:'90%',maxWidth:420}}>
-        {[['play','🃏 Jouer'],['options','⚙️ Options'],['stats','📊 Stats'],['info','ℹ️']].map(([id,label])=>(
+        {[['play','🃏'],['options','⚙️'],['stats','📊'],['avis','💬'],['info','ℹ️']].map(([id,label])=>(
           <button key={id} onClick={()=>setTab(id)} style={{
             flex:1,border:'none',borderRadius:16,
             padding:'8px 4px',fontSize:12,cursor:'pointer',fontWeight:'bold',
@@ -1446,6 +1449,116 @@ function MenuScreen({cfg,setCfg,onPlay}){
           </div>
         </>}
 
+        {/* ─── ONGLET AVIS ─── */}
+        {tab==='avis'&&<>
+          {avis.sent?(
+            <div style={{background:'rgba(0,0,0,.25)',borderRadius:14,padding:30,textAlign:'center'}}>
+              <div style={{fontSize:40,marginBottom:12}}>🙏</div>
+              <div style={{fontSize:16,fontWeight:'bold',color:'white',marginBottom:8}}>Merci pour votre avis !</div>
+              <div style={{fontSize:12,opacity:.6,marginBottom:20}}>Votre retour a bien été envoyé.</div>
+              <button onClick={()=>{setAvis({stars:0,fluide:'',ia:'',bugs:'',aime:'',change:'',multi:'',sent:false});setTab('play');}}
+                style={{background:'rgba(255,255,255,.12)',border:'1px solid rgba(255,255,255,.2)',
+                  borderRadius:20,padding:'8px 24px',fontSize:13,color:'white',cursor:'pointer'}}>
+                ← Retour
+              </button>
+            </div>
+          ):(
+            <div style={{display:'flex',flexDirection:'column',gap:10}}>
+              {/* Étoiles */}
+              <div style={{background:'rgba(0,0,0,.25)',borderRadius:14,padding:14}}>
+                <div style={{fontSize:11,opacity:.5,marginBottom:8}}>NOTE GLOBALE</div>
+                <div style={{display:'flex',gap:8,justifyContent:'center'}}>
+                  {[1,2,3,4,5].map(n=>(
+                    <span key={n} onClick={()=>setAvis(a=>({...a,stars:n}))}
+                      style={{fontSize:28,cursor:'pointer',opacity:n<=avis.stars?1:.3,transition:'opacity .15s'}}>
+                      ⭐
+                    </span>
+                  ))}
+                </div>
+              </div>
+              {/* Fluidité */}
+              <div style={{background:'rgba(0,0,0,.25)',borderRadius:14,padding:14}}>
+                <div style={{fontSize:11,opacity:.5,marginBottom:8}}>LE JEU EST FLUIDE SUR MON APPAREIL</div>
+                <div style={{display:'flex',gap:8}}>
+                  {['Oui','Non','Parfois'].map(v=>(
+                    <button key={v} onClick={()=>setAvis(a=>({...a,fluide:v}))} style={{
+                      flex:1,padding:'8px 4px',borderRadius:10,border:'none',cursor:'pointer',fontSize:12,fontWeight:'bold',
+                      background:avis.fluide===v?'#27ae60':'rgba(255,255,255,.1)',
+                      color:avis.fluide===v?'white':'rgba(255,255,255,.6)',
+                    }}>{v}</button>
+                  ))}
+                </div>
+              </div>
+              {/* IA */}
+              <div style={{background:'rgba(0,0,0,.25)',borderRadius:14,padding:14}}>
+                <div style={{fontSize:11,opacity:.5,marginBottom:8}}>L IA EST...</div>
+                <div style={{display:'flex',gap:6}}>
+                  {['Trop facile','Équilibrée','Trop forte'].map(v=>(
+                    <button key={v} onClick={()=>setAvis(a=>({...a,ia:v}))} style={{
+                      flex:1,padding:'8px 4px',borderRadius:10,border:'none',cursor:'pointer',fontSize:11,fontWeight:'bold',
+                      background:avis.ia===v?'#2980b9':'rgba(255,255,255,.1)',
+                      color:avis.ia===v?'white':'rgba(255,255,255,.6)',
+                    }}>{v}</button>
+                  ))}
+                </div>
+              </div>
+              {/* Bugs */}
+              <div style={{background:'rgba(0,0,0,.25)',borderRadius:14,padding:14}}>
+                <div style={{fontSize:11,opacity:.5,marginBottom:6}}>BUGS RENCONTRÉS</div>
+                <textarea value={avis.bugs} onChange={e=>setAvis(a=>({...a,bugs:e.target.value}))}
+                  placeholder="Décrivez un bug si vous en avez rencontré..."
+                  style={{width:'100%',background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',
+                    borderRadius:8,padding:'8px 10px',color:'white',fontSize:12,resize:'none',height:60,
+                    fontFamily:'inherit',boxSizing:'border-box'}}/>
+              </div>
+              {/* Aime */}
+              <div style={{background:'rgba(0,0,0,.25)',borderRadius:14,padding:14}}>
+                <div style={{fontSize:11,opacity:.5,marginBottom:6}}>CE QUE VOUS AIMEZ LE PLUS</div>
+                <textarea value={avis.aime} onChange={e=>setAvis(a=>({...a,aime:e.target.value}))}
+                  placeholder="Ce qui vous plaît dans le jeu..."
+                  style={{width:'100%',background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',
+                    borderRadius:8,padding:'8px 10px',color:'white',fontSize:12,resize:'none',height:60,
+                    fontFamily:'inherit',boxSizing:'border-box'}}/>
+              </div>
+              {/* Changerait */}
+              <div style={{background:'rgba(0,0,0,.25)',borderRadius:14,padding:14}}>
+                <div style={{fontSize:11,opacity:.5,marginBottom:6}}>CE QUE VOUS CHANGERIEZ</div>
+                <textarea value={avis.change} onChange={e=>setAvis(a=>({...a,change:e.target.value}))}
+                  placeholder="Vos suggestions..."
+                  style={{width:'100%',background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',
+                    borderRadius:8,padding:'8px 10px',color:'white',fontSize:12,resize:'none',height:60,
+                    fontFamily:'inherit',boxSizing:'border-box'}}/>
+              </div>
+              {/* Multijoueur */}
+              <div style={{background:'rgba(0,0,0,.25)',borderRadius:14,padding:14}}>
+                <div style={{fontSize:11,opacity:.5,marginBottom:8}}>JOUERIEZ-VOUS EN MULTIJOUEUR ?</div>
+                <div style={{display:'flex',gap:8}}>
+                  {['Oui','Non','Peut-être'].map(v=>(
+                    <button key={v} onClick={()=>setAvis(a=>({...a,multi:v}))} style={{
+                      flex:1,padding:'8px 4px',borderRadius:10,border:'none',cursor:'pointer',fontSize:12,fontWeight:'bold',
+                      background:avis.multi===v?'#8e44ad':'rgba(255,255,255,.1)',
+                      color:avis.multi===v?'white':'rgba(255,255,255,.6)',
+                    }}>{v}</button>
+                  ))}
+                </div>
+              </div>
+              {/* Bouton envoyer */}
+              <button onClick={()=>{
+                const body=`AVIS BELOTA%0A%0ANote: ${'⭐'.repeat(avis.stars)}%0AFluide: ${avis.fluide}%0AIA: ${avis.ia}%0AMultijoueur: ${avis.multi}%0A%0ABugs: ${avis.bugs||'(aucun)'}%0A%0ACe que j aime: ${avis.aime||'(vide)'}%0A%0ACe que je changerais: ${avis.change||'(vide)'}`;
+                window.open('mailto:emmanuel.luque.bailen@gmail.com?subject=Avis BELOTA&body='+body);
+                setAvis(a=>({...a,sent:true}));
+              }} style={{
+                background:'linear-gradient(135deg,#27ae60,#1e8449)',
+                border:'none',borderRadius:16,padding:'14px',
+                fontSize:15,fontWeight:900,color:'white',cursor:'pointer',
+                boxShadow:'0 4px 16px rgba(39,174,96,.4)',
+              }}>
+                📧 Envoyer mon avis
+              </button>
+            </div>
+          )}
+        </>}
+
         {/* ─── ONGLET INFO ─── */}
         {tab==='info'&&<>
           <div style={{
@@ -1511,6 +1624,8 @@ function Toggle({val,onToggle}){
 // ══════════════════════════════════════════════════
 // 🚀  POINT D'ENTRÉE
 // ══════════════════════════════════════════════════
+
+
 function BelotaRoot(){
   const[screen,setScreen]=useState('SPLASH');
   const[cfg,setCfg]=useState({
@@ -1521,15 +1636,65 @@ function BelotaRoot(){
     partnerStyle:'actif',
   });
   const[names,setNames]=useState(()=>genNames());
+  const[updateReady,setUpdateReady]=useState(false);
+  const newWorkerRef=useRef(null);
 
-  // Nouveaux prénoms à chaque partie
+  // Détection mise à jour PWA
+  useEffect(()=>{
+    if(!('serviceWorker' in navigator))return;
+    navigator.serviceWorker.ready.then(reg=>{
+      const iv=setInterval(()=>reg.update(),30000);
+      reg.addEventListener('updatefound',()=>{
+        const nw=reg.installing;if(!nw)return;
+        nw.addEventListener('statechange',()=>{
+          if(nw.state==='installed'&&navigator.serviceWorker.controller){
+            newWorkerRef.current=nw;setUpdateReady(true);
+          }
+        });
+      });
+      return()=>clearInterval(iv);
+    });
+    navigator.serviceWorker.addEventListener('controllerchange',()=>window.location.reload());
+  },[]);
+
+  function applyUpdate(){
+    if(newWorkerRef.current)newWorkerRef.current.postMessage({type:'SKIP_WAITING'});
+    else window.location.reload();
+  }
   function startGame(){setNames(genNames());setScreen('GAME');}
 
-  if(screen==='SPLASH') return <SplashScreen onDone={()=>setScreen('MENU')}/>;
-  if(screen==='MENU')   return(
-    <MenuScreen cfg={cfg} setCfg={setCfg} onPlay={startGame}/>
+  return(
+    <>
+      {screen==='SPLASH'&&<SplashScreen onDone={()=>setScreen('MENU')}/>}
+      {screen==='MENU'&&<MenuScreen cfg={cfg} setCfg={setCfg} onPlay={startGame}/>}
+      {screen==='GAME'&&<App cfg={cfg} names={names} onMenu={()=>setScreen('MENU')}/>}
+      {updateReady&&(
+        <div style={{
+          position:'fixed',bottom:0,left:0,right:0,zIndex:9999,
+          background:'linear-gradient(135deg,#1a5c24,#0d3b14)',
+          borderTop:'2px solid #27ae60',
+          padding:'12px 20px',
+          display:'flex',alignItems:'center',justifyContent:'space-between',
+          boxShadow:'0 -4px 20px rgba(0,0,0,.5)',
+          fontFamily:'Georgia,serif',
+        }}>
+          <div>
+            <div style={{fontSize:13,fontWeight:'bold',color:'white'}}>🆕 Mise à jour disponible</div>
+            <div style={{fontSize:11,color:'rgba(255,255,255,.6)'}}>Une nouvelle version de BELOTA est prête</div>
+          </div>
+          <button onClick={applyUpdate} style={{
+            background:'#27ae60',border:'none',borderRadius:20,
+            padding:'8px 18px',fontSize:13,fontWeight:'bold',
+            color:'white',cursor:'pointer',
+            boxShadow:'0 2px 8px rgba(39,174,96,.5)',
+            whiteSpace:'nowrap',
+          }}>
+            Mettre à jour
+          </button>
+        </div>
+      )}
+    </>
   );
-  return <App cfg={cfg} names={names} onMenu={()=>setScreen('MENU')}/>;
 }
 
 export default function Belota(){
