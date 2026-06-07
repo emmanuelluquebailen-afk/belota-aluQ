@@ -1446,8 +1446,42 @@ function MenuScreen({cfg,setCfg,onPlay}){
           </div>
         </>}
 
-        {/* Infos */}
+        {/* ─── ONGLET INFO ─── */}
+        {tab==='info'&&<>
+          <div style={{
+            background:'rgba(0,0,0,.25)',borderRadius:16,padding:30,
+            textAlign:'center',display:'flex',flexDirection:'column',
+            alignItems:'center',gap:14,
+          }}>
+            <img src="/belota-icon.png" alt="BELOTA"
+              style={{width:90,height:90,borderRadius:20,boxShadow:'0 4px 16px rgba(0,0,0,.5)'}}
+              onError={e=>{e.target.style.display='none';}}/>
+            <div style={{fontSize:26,fontWeight:900,letterSpacing:3,color:'white'}}>BELOTA</div>
+            <div style={{fontSize:11,color:'rgba(255,255,255,.5)',letterSpacing:2}}>JEU DE BELOTE FRANÇAIS</div>
+            <div style={{width:'80%',height:1,background:'rgba(255,255,255,.1)'}}/>
+            <div style={{width:'100%',display:'flex',flexDirection:'column',gap:8}}>
+              <div style={{background:'rgba(255,255,255,.07)',borderRadius:10,padding:'10px 16px',textAlign:'left'}}>
+                <div style={{fontSize:10,opacity:.5,marginBottom:2}}>PROPRIÉTÉ</div>
+                <div style={{fontSize:14,fontWeight:'bold',color:'white'}}>aluQ ENTERTAINMENT</div>
+              </div>
+              <div style={{background:'rgba(255,255,255,.07)',borderRadius:10,padding:'10px 16px',textAlign:'left'}}>
+                <div style={{fontSize:10,opacity:.5,marginBottom:2}}>DÉVELOPPÉ PAR</div>
+                <div style={{fontSize:14,fontWeight:'bold',color:'white'}}>Emmanuel Luque Bailen</div>
+              </div>
+              <div style={{background:'rgba(255,255,255,.07)',borderRadius:10,padding:'10px 16px',
+                fontSize:11,color:'rgba(255,255,255,.4)',textAlign:'center'}}>
+                © 2026 aluQ ENTERTAINMENT - Tous droits réservés
+              </div>
+            </div>
+            <button onClick={()=>setTab('play')} style={{
+              background:'rgba(255,255,255,.12)',border:'1px solid rgba(255,255,255,.2)',
+              borderRadius:20,padding:'8px 24px',fontSize:13,color:'white',cursor:'pointer',
+            }}>← Retour</button>
+          </div>
+        </>}
+
         <div style={{textAlign:'center',marginTop:8,fontSize:10,opacity:.3}}>
+          aluQ ENTERTAINMENT
         </div>
       </div>
     </div>
