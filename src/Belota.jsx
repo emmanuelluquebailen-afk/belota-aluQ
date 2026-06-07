@@ -1388,6 +1388,31 @@ function MenuScreen({cfg,setCfg,onPlay}){
               </button>
             )}
           </>}
+          {/* Bouton Reprendre si partie sauvegardée — visible sur les deux étapes */}
+          {(()=>{
+            try{
+              const saved=localStorage.getItem('belota_game');
+              if(saved){const g=JSON.parse(saved);if(g&&g.phase&&g.phase!=='MATCH_OVER'&&g.phase!=='OVER'&&g.phase!=='MANCHE_OVER')return(
+                <button onClick={onPlay} style={{
+                  marginTop:6,
+                  background:'linear-gradient(135deg,#1565c0,#0d47a1)',
+                  border:'2px solid rgba(255,255,255,.25)',
+                  borderRadius:14,padding:'13px 16px',cursor:'pointer',
+                  display:'flex',alignItems:'center',gap:14,textAlign:'left',
+                  width:'100%',
+                }}>
+                  <span style={{fontSize:24}}>▶️</span>
+                  <div>
+                    <div style={{fontSize:15,fontWeight:'bold',color:'white'}}>Reprendre la partie</div>
+                    <div style={{fontSize:11,color:'rgba(255,255,255,.5)'}}>
+                      Pli {(g.done||[]).length+1}/8 · {g.scores?`${g.scores[0]} — ${g.scores[1]}`:''}
+                    </div>
+                  </div>
+                </button>
+              );}
+            }catch(e){}
+            return null;
+          })()}
         </>}
 
         {/* ─── ONGLET OPTIONS ─── */}
