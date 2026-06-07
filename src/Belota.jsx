@@ -326,20 +326,36 @@ function aiCardPrudent(hand,trick,trump,player){
   return lowestBy(mv,trump);
 }
 
-// ── PARTENAIRE TÊTE BRÛLÉE ───────────────────────────────────────────────────
+// ── PARTENAIRE TÊTE BRÛLÉE — agressif mais pas stupide ─────────────────────
 function aiCardTemeraire(hand,trick,trump,player){
   const mv=legal(hand,trick||[],trump,player);
   if(!mv.length)return hand[0];
   const par=(player+2)%4;
+
   if(!trick||!trick.length){
+    // Entame : Valet d'abord, sinon meilleur hors-atout (pas As seul sans Valet)
     const j=mv.find(c=>c.s===trump&&c.r==='J');if(j)return j;
+    const nt=mv.filter(c=>c.s!==trump);
+    if(nt.length){
+      // Éviter de jouer As si on n'a qu'un seul atout et pas le Valet
+      const hasJ=hand.some(c=>c.r==='J'&&c.s===trump);
+      const atouts=hand.filter(c=>c.s===trump);
+      const safeCandidates=nt.filter(c=>!(c.r==='A'&&!hasJ&&atouts.length<=1));
+      if(safeCandidates.length)return highestBy(safeCandidates,trump);
+      return highestBy(nt,trump);
+    }
     return highestBy(mv,trump);
   }
+
   const w=tWin(trick,trump);
   if(w===par){
+    // Partenaire gagne → passer des points, NE PAS jouer atout
     const nt=mv.filter(c=>c.s!==trump);
-    if(nt.length){const hon=nt.filter(c=>c.r==='10'||c.r==='A');if(hon.length)return highestBy(hon,trump);}
+    if(nt.length){const hon=nt.filter(c=>c.r==='10'||c.r==='A');if(hon.length)return highestBy(hon,trump);return highestBy(nt,trump);}
+    return lowestBy(mv,trump); // obligé de jouer atout → le plus petit
   }
+
+  // Adversaire gagne → jouer fort MAIS seulement si ça peut battre
   return highestBy(mv,trump);
 }
 
@@ -441,7 +457,7 @@ function sumPts(allCombos,t){
   return s;
 }
 
-function init(scores,dealer){
+function init(scores,dealer,mw){
   const sc=scores||[0,0],dl=dealer!==undefined?dealer:3,fp=nxt(dl);
   const{hands,flip,rest}=deal(fp);
   return{phase:'BID',hands,flip,rest,dealer:dl,fp,trump:null,
@@ -449,7 +465,8 @@ function init(scores,dealer){
     trick:[],snap:[null,null,null,null],waiting:false,winner:null,
     done:[],cur:fp,scores:sc,ann:'',
     bB:[0,0],bH:null,bP:[0,0,0,0],result:null,lw:null,
-    annCombos:[[],[],[],[]],annPts:[0,0],annDone:false};
+    annCombos:[[],[],[],[]],annPts:[0,0],annDone:false,
+    mancheWins:mw||[0,0]};
 }
 function doPlay(G,player,card){
   if(G.waiting)return G;
@@ -500,8 +517,40 @@ function calcR(G){
   const annp=G.annPts||[0,0];
   rp=[rp[0]+annp[0],rp[1]+annp[1]];
   const ns2=[G.scores[0]+rp[0],G.scores[1]+rp[1]];
-  const go2=ns2[0]>=1000||ns2[1]>=1000;
-  return{...G,phase:go2?'END':'OVER',scores:ns2,result:{pts,rp,res,msg,detail,bB:[bB0,bB1]},ann:''};
+  // Manche gagnée si une équipe atteint 1000 pts
+  const mancheWinner=ns2[0]>=1000?0:ns2[1]>=1000?1:-1;
+  const mw=[...(G.mancheWins||[0,0])];
+  if(mancheWinner>=0)mw[mancheWinner]++;
+  const matchOver=mw[0]>=2||mw[1]>=2;
+  const phase=matchOver?'MATCH_OVER':mancheWinner>=0?'MANCHE_OVER':'OVER';
+  // Sauvegarder les stats si match terminé
+  if(matchOver){
+    try{
+      const sk='belota_stats';
+      let st=JSON.parse(localStorage.getItem(sk)||'{}');
+      const ps=G.cfg?.partnerStyle||'actif';
+      if(!st.total)st.total={m:0,mg:0,pp:0,pg:0};
+      if(!st[ps])st[ps]={m:0,mg:0,pp:0,pg:0};
+      st.total.pp=(st.total.pp||0)+1;
+      st[ps].pp=(st[ps].pp||0)+1;
+      if(mw[0]>=2){st.total.pg=(st.total.pg||0)+1;st[ps].pg=(st[ps].pg||0)+1;}
+      localStorage.setItem(sk,JSON.stringify(st));
+    }catch(e){}
+  }
+  if(mancheWinner>=0){
+    try{
+      const sk='belota_stats';
+      let st=JSON.parse(localStorage.getItem(sk)||'{}');
+      const ps=G.cfg?.partnerStyle||'actif';
+      if(!st.total)st.total={m:0,mg:0,pp:0,pg:0};
+      if(!st[ps])st[ps]={m:0,mg:0,pp:0,pg:0};
+      st.total.m=(st.total.m||0)+1;
+      st[ps].m=(st[ps].m||0)+1;
+      if(mancheWinner===0){st.total.mg=(st.total.mg||0)+1;st[ps].mg=(st[ps].mg||0)+1;}
+      localStorage.setItem(sk,JSON.stringify(st));
+    }catch(e){}
+  }
+  return{...G,phase,scores:ns2,mancheWins:mw,result:{pts,rp,res,msg,detail,bB:[bB0,bB1]},ann:''};
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -727,7 +776,22 @@ function Hand({hand,okIds,onPlay,trump}){
 
 // ── App ───────────────────────────────────────────────────────────────────────
 function App({cfg,names,onMenu}){
-  const[G,setG]=useState(()=>init());
+  // Charger partie sauvegardée si disponible
+  const[G,setG]=useState(()=>{
+    try{
+      const saved=localStorage.getItem('belota_game');
+      if(saved){const g=JSON.parse(saved);if(g&&g.phase&&g.phase!=='MATCH_OVER')return g;}
+    }catch(e){}
+    return init();
+  });
+  // Stocker cfg dans G pour accès dans calcR
+  useEffect(()=>{setG(p=>({...p,cfg}));},[cfg]);
+  // Sauvegarder à chaque changement d'état
+  useEffect(()=>{
+    try{
+      if(G.phase&&G.phase!=='SPLASH')localStorage.setItem('belota_game',JSON.stringify(G));
+    }catch(e){}
+  },[G]);
   const timer=useRef(null);
 
   // Valet forcé : si la carte retournée est un Valet → prise automatique par fp
@@ -746,7 +810,7 @@ function App({cfg,names,onMenu}){
       return{...prev,phase:'PLAY',trump:suit,taker:p,tt:team(p),cur:prev.fp,
         trick:[],snap:[null,null,null,null],waiting:false,winner:null,
         hands:nh,annCombos:ac,annPts:ar.pts,annWinTeam:ar.winTeam,annDone:false,
-        bH:prev.hands.map(h=>h.some(c=>c&&c.s===suit&&c.r==='K')&&h.some(c=>c&&c.s===suit&&c.r==='Q'))};
+        bH:nh.map(h=>h.some(c=>c&&c.s===suit&&c.r==='K')&&h.some(c=>c&&c.s===suit&&c.r==='Q'))};
     });
   },[G.phase,G.flip?.r,cfg?.valetForce]);
 
@@ -784,7 +848,7 @@ function App({cfg,names,onMenu}){
           return{...prev,phase:'PLAY',trump:suit,taker:p,tt:team(p),cur:prev.fp,
             trick:[],snap:[null,null,null,null],waiting:false,winner:null,
             hands:nh,annCombos:ac,annPts:ar.pts,annWinTeam:ar.winTeam,annDone:false,
-            bH:prev.hands.map(h=>h.some(c=>c&&c.s===suit&&c.r==='K')&&h.some(c=>c&&c.s===suit&&c.r==='Q'))};
+            bH:nh.map(h=>h.some(c=>c&&c.s===suit&&c.r==='K')&&h.some(c=>c&&c.s===suit&&c.r==='Q'))};
         };
         const diff=cfg?.difficulty||'intermediaire';
         if(prev.br===1){if(aiTake(hand,prev.flip.s,prev.flip,1,diff))return take(prev.flip.s);}
@@ -818,7 +882,7 @@ function App({cfg,names,onMenu}){
       return{...prev,phase:'PLAY',trump:suit,taker:0,tt:0,cur:prev.fp,
         trick:[],snap:[null,null,null,null],waiting:false,winner:null,
         hands:nh,annCombos:ac,annPts:ar.pts,annWinTeam:ar.winTeam,annDone:false,
-        bH:prev.hands.map(h=>h.some(c=>c&&c.s===suit&&c.r==='K')&&h.some(c=>c&&c.s===suit&&c.r==='Q'))};
+        bH:nh.map(h=>h.some(c=>c&&c.s===suit&&c.r==='K')&&h.some(c=>c&&c.s===suit&&c.r==='Q'))};
     });
       return;
     }
@@ -861,37 +925,72 @@ function App({cfg,names,onMenu}){
   const t1=G.done.filter(d=>team(d.winner)===1).length;
   const ac=G.trump&&RED(G.trump)?'#ff8a80':'#80cbc4';
 
-  if(G.phase==='OVER'||G.phase==='END'){
+  if(G.phase==='OVER'||G.phase==='MANCHE_OVER'||G.phase==='MATCH_OVER'){
     const r=G.result,nd=nxt(G.dealer);
+    const mw=G.mancheWins||[0,0];
+    const matchOver=G.phase==='MATCH_OVER';
+    const mancheOver=G.phase==='MANCHE_OVER';
+    const weWin=mw[0]>=2;
     return(
       <div style={{...TABLE,display:'flex',alignItems:'center',justifyContent:'center'}}>
-        <div style={{background:'rgba(0,0,0,.85)',borderRadius:16,padding:26,maxWidth:440,
-          width:'90%',textAlign:'center',border:'1px solid rgba(255,255,255,.15)'}}>
-          <div style={{fontSize:17,fontWeight:'bold',marginBottom:14}}>
-            {G.phase==='END'?'🏆 Partie terminée !':'✓ Fin de manche'}
+        <div style={{background:'rgba(0,0,0,.88)',borderRadius:18,padding:26,maxWidth:440,
+          width:'92%',textAlign:'center',border:'1px solid rgba(255,255,255,.15)'}}>
+
+          {/* Titre */}
+          <div style={{fontSize:17,fontWeight:'bold',marginBottom:10}}>
+            {matchOver?(weWin?'🏆 Vous gagnez le match !':'😔 Match perdu'):'✓ Fin de manche'}
           </div>
+
+          {/* Manches gagnées */}
+          {(mancheOver||matchOver)&&(
+            <div style={{display:'flex',justifyContent:'center',gap:20,marginBottom:12}}>
+              {[0,1].map(t=>(
+                <div key={t} style={{textAlign:'center'}}>
+                  <div style={{fontSize:10,opacity:.5}}>{t===0?'Vous+Nord':'Adv.'}</div>
+                  <div style={{fontSize:18,fontWeight:'bold',color:t===0?'#4caf50':'#ef5350'}}>
+                    {'⭐'.repeat(mw[t])}{'☆'.repeat(2-mw[t])}
+                  </div>
+                  <div style={{fontSize:11,opacity:.6}}>{mw[t]} manche{mw[t]>1?'s':''}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {r&&<>
-            <div style={{fontSize:15,fontWeight:'bold',color:'#ffd54f',marginBottom:5}}>{r.msg}</div>
-            <div style={{fontSize:11,opacity:.65,marginBottom:6}}>{r.detail}</div>
+            <div style={{fontSize:14,color:'#ffd54f',marginBottom:4}}>{r.msg}</div>
+            <div style={{fontSize:11,opacity:.6,marginBottom:8}}>{r.detail}</div>
             {(r.bB&&(r.bB[0]>0||r.bB[1]>0))&&(
-              <div style={{fontSize:11,color:'#ffd54f',marginBottom:10}}>
-                🏅 Belote+Rebelote : {r.bB[0]>0?`Vous+Nord +${r.bB[0]}pts`:''}{r.bB[1]>0?`Adv. +${r.bB[1]}pts`:''}
+              <div style={{fontSize:11,color:'#ffd54f',marginBottom:8}}>
+                🏅 {r.bB[0]>0?`Vous+Nord +${r.bB[0]}pts `:''}
+                   {r.bB[1]>0?`Adv. +${r.bB[1]}pts`:''}
               </div>
             )}
-            <div style={{display:'flex',justifyContent:'center',gap:36,marginBottom:14}}>
-              <div><div style={{fontSize:10,opacity:.55}}>Vous+Nord</div><div style={{color:'#4caf50',fontWeight:'bold',fontSize:22}}>+{r.rp[0]}</div></div>
-              <div><div style={{fontSize:10,opacity:.55}}>Ouest+Est</div><div style={{color:'#ef5350',fontWeight:'bold',fontSize:22}}>+{r.rp[1]}</div></div>
+            <div style={{display:'flex',justifyContent:'center',gap:24,marginBottom:10}}>
+              <div><div style={{fontSize:10,opacity:.5}}>Vous+Nord</div>
+                <div style={{color:'#4caf50',fontWeight:'bold',fontSize:20}}>+{r.rp[0]}</div></div>
+              <div><div style={{fontSize:10,opacity:.5}}>Adv.</div>
+                <div style={{color:'#ef5350',fontWeight:'bold',fontSize:20}}>+{r.rp[1]}</div></div>
             </div>
-            <div style={{fontSize:17,fontWeight:'bold',marginBottom:18}}>
+            <div style={{fontSize:15,fontWeight:'bold',marginBottom:16}}>
               <span style={{color:'#4caf50'}}>Vous+Nord {G.scores[0]}</span>
               <span style={{opacity:.3}}> — </span>
               <span style={{color:'#ef5350'}}>Adv. {G.scores[1]}</span>
             </div>
           </>}
-          {G.phase==='END'
-            ?<><div style={{fontSize:14,marginBottom:12}}>{G.scores[0]>=1000?'🎉 Vous gagnez !':'😔 Les adversaires gagnent.'}</div>
-              <Btn bg="#388e3c" onClick={()=>setG(init())}>Nouvelle partie</Btn></>
-            :<Btn bg="#1976d2" onClick={()=>setG(init(G.scores,nd))}>Manche suivante → Don: {PN[nd]}</Btn>}
+
+          {matchOver?(
+            <div style={{display:'flex',flexDirection:'column',gap:10}}>
+              <Btn bg="#388e3c" onClick={()=>setG(init([0,0],nd,[0,0]))}>🃏 Nouvelle partie</Btn>
+              <button onClick={onMenu} style={{background:'none',border:'1px solid rgba(255,255,255,.3)',
+                borderRadius:20,padding:'8px 16px',color:'rgba(255,255,255,.7)',cursor:'pointer',fontSize:13}}>
+                ← Menu principal
+              </button>
+            </div>
+          ):(
+            <Btn bg="#1976d2" onClick={()=>setG(init(mancheOver?[0,0]:G.scores,nd,mw))}>
+              {mancheOver?`Manche ${mw[0]+mw[1]+1}/3 →`:`Manche suivante →`} Don: {PN[nd]}
+            </Btn>
+          )}
         </div>
       </div>
     );
@@ -1013,15 +1112,15 @@ function App({cfg,names,onMenu}){
           }
           const n=fanCards.length;
           const fanW=FW+(n-1)*STEP;
-          // Position : directement au-dessus du label de chaque joueur
-          const fanH=FH+30; // hauteur totale éventail+label
+          // Positions selon joueur
+          const fanH=FH+30;
           const pos=p===2
-            ?{top:58,left:'50%',transform:'translateX(-50%)'}  // Nord — centré haut
+            ?{top:58,right:'8%'}                                // Nord — à droite de son nom
             :p===1
-            ?{top:`calc(44% - ${fanH+14}px)`,left:'8%'}        // Ouest — au-dessus label gauche
+            ?{top:`calc(44% - ${fanH+14}px)`,left:'8%'}        // Ouest — au-dessus label ✓
             :p===3
-            ?{top:`calc(44% - ${fanH+14}px)`,right:'8%'}       // Est — au-dessus label droite
-            :{bottom:10,left:8};                               // Vous — gauche niveau main
+            ?{top:'50%',right:'8%'}                             // Est — sous son nom (50% = niveau label)
+            :{bottom:10,left:8};                                // Vous — gauche ✓
           return(
             <div key={p} style={{
               position:'absolute',...pos,
@@ -1133,30 +1232,31 @@ function App({cfg,names,onMenu}){
           </div>
         </div>
       )}
-      {/* Bannière Belote / Rebelote — animation centrée */}
+      {/* Bannière Belote / Rebelote */}
       {G.ann&&G.ann.includes('elote')&&(
         <div style={{
           position:'absolute',
-          top:'38%',left:'50%',
+          top:'40%',left:'50%',
           transform:'translate(-50%,-50%)',
           zIndex:500,
-          background:'linear-gradient(135deg,rgba(180,120,0,.95),rgba(120,80,0,.95))',
+          background:'linear-gradient(135deg,rgba(180,120,0,.97),rgba(120,60,0,.97))',
           border:'2px solid #ffd54f',
-          borderRadius:16,
-          padding:'10px 28px',
-          fontSize:22,fontWeight:900,
+          borderRadius:18,
+          padding:'12px 32px',
+          fontSize:24,fontWeight:900,
           color:'#fff',
-          letterSpacing:2,
-          textShadow:'0 2px 8px rgba(0,0,0,.5)',
-          boxShadow:'0 4px 24px rgba(255,213,79,.5)',
-          animation:'beloteAnim .4s ease-out',
+          letterSpacing:3,
+          textShadow:'0 2px 8px rgba(0,0,0,.6)',
+          boxShadow:'0 6px 28px rgba(255,213,79,.6)',
+          animation:'beloteAnim .35s ease-out',
           pointerEvents:'none',
           whiteSpace:'nowrap',
         }}>
           {G.ann}
+          {G.bP&&G.bP[G.cur]===2&&<div style={{fontSize:13,textAlign:'center',opacity:.8,marginTop:4}}>+20 pts 🏅</div>}
         </div>
       )}
-      <style>{`@keyframes beloteAnim{from{opacity:0;transform:translate(-50%,-50%) scale(.7)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}`}</style>
+      <style>{`@keyframes beloteAnim{from{opacity:0;transform:translate(-50%,-50%) scale(.6)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}`}</style>
 
       {/* Main joueur */}
       <div style={{position:'absolute',bottom:8,left:0,right:0,zIndex:8,textAlign:'center'}}>
