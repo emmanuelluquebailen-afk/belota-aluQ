@@ -52,8 +52,8 @@ function genNames(){
   return{ouest:n1,nord:n2,est:n3};
 }
 
-const PW=85,PH=122;   // cartes du pli
-const HW=100,HH=145;  // cartes de la main
+const PW=70,PH=100;   // cartes du pli
+const HW=86,HH=124;  // cartes de la main
 const AI_DELAY=1300, SHOW_TRICK_MS=2500, BID_DELAY=900;
 
 // ── Tri ───────────────────────────────────────────────────────────────────────
@@ -496,26 +496,48 @@ function calcR(G){
   if(t0===8)pts=[250,0];else if(t0===0)pts=[0,250];
   else for(let i=0;i<8;i++){const d=G.done[i],tm=team(d.winner);pts[tm]+=d.cards.reduce((s,c)=>s+cp(c,G.trump),0);if(i===7)pts[tm]+=10;}
   const tt=G.tt,ot=1-tt;
-  let rp=[0,0],res;
-  if(pts[tt]>pts[ot]){res='ok';rp=[...pts];}
-  else if(pts[tt]===pts[ot]){res='litige';rp=tt===0?[0,162]:[162,0];}
-  else{res='chute';rp=tt===0?[0,162]:[162,0];}
   const bB0=G.bB[0],bB1=G.bB[1];
-  rp=[rp[0]+bB0,rp[1]+bB1];
+  const ann=G.annPts||[0,0];
+
+  // ── RÈGLE COMPLÈTE ───────────────────────────────────────────────────
+  // Total = plis(162) + belote + TOUTES les annonces des deux équipes
+  // Seuil = total / 2
+  // Si chute → adversaire prend TOUT (plis + toutes annonces)
+  // ─────────────────────────────────────────────────────────────────────
+  const totalT0=pts[0]+bB0+ann[0]; // total équipe 0
+  const totalT1=pts[1]+bB1+ann[1]; // total équipe 1
+  const grandTotal=totalT0+totalT1;
+
+  const totalTT=tt===0?totalT0:totalT1;
+  const totalOT=tt===0?totalT1:totalT0;
+
+  let rp=[0,0],res;
+  if(totalTT>totalOT){
+    // Preneur réussit : chacun garde ses points (plis + belote + annonces)
+    res='ok';
+    rp=[totalT0,totalT1];
+  } else if(totalTT===totalOT){
+    // Litige : TOUT va à l'adversaire du preneur
+    res='litige';
+    rp=tt===0?[0,grandTotal]:[grandTotal,0];
+  } else {
+    // Chute : TOUT va à l'adversaire (plis + toutes annonces)
+    res='chute';
+    rp=tt===0?[0,grandTotal]:[grandTotal,0];
+  }
+
   const ttn=tt===0?'Vous+Nord':'Ouest+Est',dtn=tt===0?'Ouest+Est':'Vous+Nord';
   let msg,detail;
-  // Détail : plis + belote + total
-  const mkDetail=(t0,t1)=>{
-    const b0=bB0>0?` +${bB0} Bel.`:'';
-    const b1=bB1>0?` +${bB1} Bel.`:'';
-    return `Vous+Nord ${t0}${b0} | Adv. ${t1}${b1}`;
+  const mkDetail=()=>{
+    const b0=bB0>0?` +${bB0}Bel`:'';
+    const b1=bB1>0?` +${bB1}Bel`:'';
+    const a0=ann[0]>0?` +${ann[0]}ann`:'';
+    const a1=ann[1]>0?` +${ann[1]}ann`:'';
+    return `V+N: ${pts[0]}${b0}${a0} pts | Adv: ${pts[1]}${b1}${a1} pts`;
   };
-  if(res==='ok'){msg=`✅ ${ttn} réussit !`;detail=mkDetail(pts[0],pts[1]);}
-  else if(res==='litige'){msg=`🟡 Litige — ${dtn} prend 162`;detail=mkDetail(pts[0],pts[1]);}
-  else{msg=`❌ CHUTE ! ${dtn} prend 162`;detail=mkDetail(pts[0],pts[1]);}
-  // Ajouter pts annonces (combinaisons)
-  const annp=G.annPts||[0,0];
-  rp=[rp[0]+annp[0],rp[1]+annp[1]];
+  if(res==='ok'){msg=`✅ ${ttn} réussit !`;detail=mkDetail();}
+  else if(res==='litige'){msg=`🟡 Litige — ${dtn} prend tout`;detail=mkDetail();}
+  else{msg=`❌ CHUTE ! ${dtn} prend tout (${grandTotal} pts)`;detail=mkDetail();}
   const ns2=[G.scores[0]+rp[0],G.scores[1]+rp[1]];
   // Manche gagnée si une équipe atteint 1000 pts
   const mancheWinner=ns2[0]>=1000?0:ns2[1]>=1000?1:-1;
@@ -1168,7 +1190,7 @@ function App({cfg,names,onMenu}){
 
         // Croix serrée : juste sous le label Nord, ne déborde pas sur la main
         // PW=72 PH=105 → CW=144 CH=166, top:63
-        const CPW=95, CPH=138;
+        const CPW=80, CPH=116;
         const CW=CPW*2;    // 144px — Ouest/Est proches
         const CH=CPH*1.58; // ~166px — Nord/Vous serrés
         const pos={
