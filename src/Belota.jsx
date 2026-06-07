@@ -111,20 +111,16 @@ function legal(hand,trick,trump,player){
 }
 
 // ── IA ENCHÈRES ──────────────────────────────────────────────────────────────
-// Valeurs atout pour évaluation
 const VALS_AT={J:20,'9':14,A:11,'10':10,K:4,Q:3,'8':0,'7':0};
 const VALS_NS={A:8,'10':6,K:4,Q:3,J:2,'9':1,'8':0,'7':0};
 
-// Force des atouts dans la main
 function forceAtouts(hand,suit){
   return hand.filter(c=>c.s===suit).reduce((s,c)=>s+(VALS_AT[c.r]||0),0);
 }
-// Évaluation globale de la main pour l'intermédiaire
 function evalMain(hand,suit){
   return hand.reduce((s,c)=>s+(c.s===suit?(VALS_AT[c.r]||0):(VALS_NS[c.r]||0)),0);
 }
 
-// ── IA DÉBUTANT — enchères (traduit depuis Python) ───────────────────────────
 function aiTakeDebutant(hand,suit,flip,round){
   const withFlip=round===1?[...hand,flip]:hand;
   const nbAtouts=withFlip.filter(c=>c.s===suit).length;
@@ -133,24 +129,18 @@ function aiTakeDebutant(hand,suit,flip,round){
   const a9Main=hand.some(c=>c.r==='9'&&c.s===suit);
   const valetTable=round===1&&flip.r==='J';
   const neufTable=round===1&&flip.r==='9';
-  // 1. Combo fort Valet + 9
   if((aValetMain||valetTable)&&(a9Main||neufTable))return true;
-  // 2. Force atouts élevée
   if(force>=35)return true;
-  // 3. Valet + support
   if((aValetMain||valetTable)&&nbAtouts>=2)return true;
-  // 4. Beaucoup d'atouts
   if(nbAtouts>=4)return true;
   return false;
 }
 
-// ── IA INTERMÉDIAIRE — enchères (traduit depuis Python) ──────────────────────
 function aiTakeIntermediaire(hand,suit,flip,round){
   const withFlip=round===1?[...hand,flip]:hand;
   let score=evalMain(hand,suit);
   const nbAtouts=withFlip.filter(c=>c.s===suit).length;
   const nbValets=withFlip.filter(c=>c.r==='J').length;
-  // Bonus/malus structurels
   if(nbAtouts>=5)score+=20;
   else if(nbAtouts<=2)score-=10;
   score+=nbValets*10;
@@ -160,7 +150,6 @@ function aiTakeIntermediaire(hand,suit,flip,round){
   return false;
 }
 
-// ── IA EXPERT — enchères (traduit du code Python fourni) ─────────────────────
 const EVAL_AT_EXP={J:30,'9':25,A:12,'10':10,K:5,Q:4,'8':1,'7':0};
 const EVAL_NS_EXP={A:10,'10':8,K:3,Q:2,J:1,'9':0,'8':0,'7':0};
 
@@ -174,15 +163,11 @@ function evalMainExpert(hand,suit,flip){
     if(c.s===suit){nbAt++;score+=(EVAL_AT_EXP[c.r]||0);}
     else{score+=(EVAL_NS_EXP[c.r]||0);if(c.r==='A')nbAs++;if(c.r==='10')nbDix++;}
   }
-  // Bonus/malus atouts
   if(nbAt>=5)score+=25;else if(nbAt===4)score+=15;else if(nbAt===3)score+=5;else score-=15;
-  // Valet et 9
   const aV=main.some(c=>c.r==='J'&&c.s===suit);
   const a9=main.some(c=>c.r==='9'&&c.s===suit);
   if(aV)score+=20; if(a9)score+=12; if(aV&&a9)score+=20;
-  // As maîtres + Dix protégés
   score+=nbAs*5+nbDix*3;
-  // Chicanes et singletons hors-atout
   for(const s of SUITS){
     if(s===suit)continue;
     if((rep[s]||0)===0)score+=8;
@@ -192,22 +177,18 @@ function evalMainExpert(hand,suit,flip){
 }
 
 function aiTakeExpert(hand,suit,flip,round,scores){
-  // Tour 1 : évaluer avec la carte retournée | Tour 2 : sans flip
   const score=evalMainExpert(hand,suit,round===1?flip:null);
   const [sNous,sAdv]=scores||[0,0];
-  let seuil=round===1?70:60; // Tour 2 : seuil abaissé à 60
-                              // → mieux vaut prendre que laisser l'adversaire choisir
-  // Gestion du score de partie
-  if(sAdv>=900&&sAdv>sNous)seuil-=15; // adversaire proche de 1000 → prend plus tôt
-  else if(sNous>=900)seuil+=10;        // on est en avance → joue safe
+  let seuil=round===1?70:60;
+  if(sAdv>=900&&sAdv>sNous)seuil-=15;
+  else if(sNous>=900)seuil+=10;
   return score>=seuil;
 }
 
-// ── Dispatcher enchères selon difficulté ─────────────────────────────────────
 function aiTake(hand,suit,flip,round,diff,scores){
   if(diff==='debutant')     return aiTakeDebutant(hand,suit,flip,round);
   if(diff==='intermediaire')return aiTakeIntermediaire(hand,suit,flip,round);
-  return aiTakeExpert(hand,suit,flip,round,scores); // expert
+  return aiTakeExpert(hand,suit,flip,round,scores);
 }
 
 function aiSuit(hand,ex){
@@ -220,92 +201,69 @@ function aiSuit(hand,ex){
   return best;
 }
 
-// ── IA JEU — jouer une carte ──────────────────────────────────────────────────
-
-// Helpers
-const lowest =mv=>mv.reduce((b,c)=>cs(c,'__')<cs(b,'__')?c:b); // pas utilisé directement
+// ── IA JEU ────────────────────────────────────────────────────────────────────
 const lowestBy=(mv,t)=>mv.reduce((b,c)=>cs(c,t)<cs(b,t)?c:b);
 const highestBy=(mv,t)=>mv.reduce((b,c)=>cs(c,t)>cs(b,t)?c:b);
 const nonTrump=(mv,t)=>mv.filter(c=>c.s!==t);
 const isTrump=(c,t)=>c.s===t;
 
-// ── DÉBUTANT : carte légale aléatoire ────────────────────────────────────────
 function aiCardDebutant(hand,trick,trump){
   const mv=legal(hand,trick||[],trump,99);
   if(!mv.length)return hand[0];
   return mv[Math.floor(Math.random()*mv.length)];
 }
 
-// ── INTERMÉDIAIRE & EXPERT : logique belote correcte ─────────────────────────
 function aiCardSmart(hand,trick,trump,player){
   const mv=legal(hand,trick||[],trump,player);
   if(!mv.length)return hand[0];
   const par=(player+2)%4;
 
-  // ── Entame (je commence le pli) ───────────────────────────────────────────
   if(!trick||!trick.length){
-    // Jouer un honneur hors-atout en premier (As, 10 si sûr)
     const nt=nonTrump(mv,trump);
     if(nt.length){
-      // Privilégier les As hors-atout
       const as=nt.find(c=>c.r==='A');
       if(as)return as;
-      return highestBy(nt,trump); // meilleur hors-atout
+      return highestBy(nt,trump);
     }
-    // Que des atouts : jouer le plus faible pour ne pas gaspiller
     return lowestBy(mv,trump);
   }
 
-  // ── Suivi de pli ──────────────────────────────────────────────────────────
   const w=tWin(trick,trump);
   const partnerWinning=w===par;
   const lead=trick[0].c.s;
   const mustFollowSuit=mv.some(c=>c.s===lead);
   const mustCut=!mustFollowSuit&&mv.some(c=>isTrump(c,trump));
 
-  // ── Partenaire gagne le pli ───────────────────────────────────────────────
   if(partnerWinning){
-    // Ne PAS couper sur la main de son partenaire
-    // Jouer la carte hors-atout avec le plus de points (passer des points)
     const nt=nonTrump(mv,trump);
     if(nt.length){
-      // Passer le 10 ou l'As si possible (pour que le partenaire marque)
       const honor=nt.filter(c=>c.r==='10'||c.r==='A');
       if(honor.length)return highestBy(honor,trump);
-      return lowestBy(nt,trump); // sinon petite carte
+      return lowestBy(nt,trump);
     }
-    // Que des atouts légaux → pisser avec le plus petit
     return lowestBy(mv,trump);
   }
 
-  // ── Adversaire gagne le pli ───────────────────────────────────────────────
   if(mustFollowSuit){
-    // Suivre la couleur : jouer la plus haute si on peut gagner, sinon la plus petite
     const canWin=mv.some(c=>cs(c,trump)>cs(trick.reduce((b,t)=>cs(t.c,trump)>cs(b.c,trump)?t:b).c,trump));
     return canWin?highestBy(mv,trump):lowestBy(mv,trump);
   }
 
   if(mustCut){
-    // Couper : on joue un atout supérieur à celui déjà posé si possible
     const trumpCards=mv.filter(c=>isTrump(c,trump));
-    // Vérifier s'il y a déjà un atout dans le pli
     const topTrick=trick.filter(t=>isTrump(t.c,trump));
     if(topTrick.length){
-      // Suratout : jouer atout supérieur si possible
       const best=topTrick.reduce((b,t)=>TS[t.c.r]>TS[b.c.r]?t:b);
       const overcut=trumpCards.filter(c=>TS[c.r]>TS[best.c.r]);
-      if(overcut.length)return highestBy(overcut,trump); // sur-couper
-      return lowestBy(trumpCards,trump); // pisser avec le plus petit (obligé)
+      if(overcut.length)return highestBy(overcut,trump);
+      return lowestBy(trumpCards,trump);
     }
-    // Pas encore d'atout : couper avec le meilleur atout
     return highestBy(trumpCards,trump);
   }
 
-  // Défausse (ni la couleur ni atout disponible légalement)
   return lowestBy(mv,trump);
 }
 
-// ── PARTENAIRE PRUDENT ───────────────────────────────────────────────────────
 function aiCardPrudent(hand,trick,trump,player){
   const mv=legal(hand,trick||[],trump,player);
   if(!mv.length)return hand[0];
@@ -326,18 +284,15 @@ function aiCardPrudent(hand,trick,trump,player){
   return lowestBy(mv,trump);
 }
 
-// ── PARTENAIRE TÊTE BRÛLÉE — agressif mais pas stupide ─────────────────────
 function aiCardTemeraire(hand,trick,trump,player){
   const mv=legal(hand,trick||[],trump,player);
   if(!mv.length)return hand[0];
   const par=(player+2)%4;
 
   if(!trick||!trick.length){
-    // Entame : Valet d'abord, sinon meilleur hors-atout (pas As seul sans Valet)
     const j=mv.find(c=>c.s===trump&&c.r==='J');if(j)return j;
     const nt=mv.filter(c=>c.s!==trump);
     if(nt.length){
-      // Éviter de jouer As si on n'a qu'un seul atout et pas le Valet
       const hasJ=hand.some(c=>c.r==='J'&&c.s===trump);
       const atouts=hand.filter(c=>c.s===trump);
       const safeCandidates=nt.filter(c=>!(c.r==='A'&&!hasJ&&atouts.length<=1));
@@ -349,13 +304,11 @@ function aiCardTemeraire(hand,trick,trump,player){
 
   const w=tWin(trick,trump);
   if(w===par){
-    // Partenaire gagne → passer des points, NE PAS jouer atout
     const nt=mv.filter(c=>c.s!==trump);
     if(nt.length){const hon=nt.filter(c=>c.r==='10'||c.r==='A');if(hon.length)return highestBy(hon,trump);return highestBy(nt,trump);}
-    return lowestBy(mv,trump); // obligé de jouer atout → le plus petit
+    return lowestBy(mv,trump);
   }
 
-  // Adversaire gagne → jouer fort MAIS seulement si ça peut battre
   return highestBy(mv,trump);
 }
 
@@ -375,11 +328,9 @@ const CARRE_PTS={J:200,'9':150,A:100,'10':100,K:100,Q:100};
 
 function detectCombos(hand){
   const res=[];
-  // Séquences par couleur
   for(const suit of SUITS){
     const idx=hand.filter(c=>c.s===suit).map(c=>ANN_ORDER.indexOf(c.r)).filter(i=>i>=0).sort((a,b)=>a-b);
     if(idx.length<3)continue;
-    // Trouver les suites consécutives
     let run=[idx[0]];
     for(let i=1;i<idx.length;i++){
       if(idx[i]===idx[i-1]+1){run.push(idx[i]);}
@@ -387,7 +338,6 @@ function detectCombos(hand){
     }
     processRun(run,suit,res);
   }
-  // Carrés (4 du même rang)
   for(const rank of Object.keys(CARRE_PTS)){
     if(hand.filter(c=>c.r===rank).length===4){
       res.push({type:'carre',rank,pts:CARRE_PTS[rank],
@@ -418,11 +368,6 @@ function bestCombo(combos){
   return combos.reduce((b,c)=>c.topVal>b.topVal?c:b);
 }
 
-// Compare deux combos selon les règles belote :
-// 1. topVal plus élevé gagne (carrés > suites, suite haute > suite basse)
-// 2. À égalité → l'équipe preneuse (taker) est prioritaire
-// compareCombo retourne >0 si a gagne, <0 si b gagne
-// Le tiebreak est géré dans resolveAnnonces via takerTeam
 function compareCombo(a,b){
   if(!a&&!b)return 0;
   if(!a)return -1;
@@ -441,7 +386,6 @@ function resolveAnnonces(allCombos,taker,trump){
   if(!teamBest[0]&&!teamBest[1])return{winner:-1,pts:[0,0],winTeam:-1};
   if(!teamBest[0])return{winner:1,pts:[0,sumPts(allCombos,1)],winTeam:1};
   if(!teamBest[1])return{winner:0,pts:[sumPts(allCombos,0),0],winTeam:0};
-  // Comparaison finale — égalité → équipe preneuse prioritaire
   const cmp=compareCombo(teamBest[0],teamBest[1]);
   const winTeam=cmp>0?0:cmp<0?1:takerTeam;
   const pts=[0,0];
@@ -486,7 +430,7 @@ function doPlay(G,player,card){
 function resolve(G){
   const win=G.winner;
   const nd=[...G.done,{winner:win,cards:G.snap.filter(c=>c&&c.s)}];
-  const annDone=nd.length>=1; // masquer les annonces après le 1er pli
+  const annDone=nd.length>=1;
   const base={...G,trick:[],snap:[null,null,null,null],waiting:false,winner:null,done:nd,phase:'PLAY',lw:win,ann:'',cur:win,annDone};
   return nd.length===8?calcR(base):base;
 }
@@ -499,13 +443,8 @@ function calcR(G){
   const bB0=G.bB[0],bB1=G.bB[1];
   const ann=G.annPts||[0,0];
 
-  // ── RÈGLE COMPLÈTE ───────────────────────────────────────────────────
-  // Total = plis(162) + belote + TOUTES les annonces des deux équipes
-  // Seuil = total / 2
-  // Si chute → adversaire prend TOUT (plis + toutes annonces)
-  // ─────────────────────────────────────────────────────────────────────
-  const totalT0=pts[0]+bB0+ann[0]; // total équipe 0
-  const totalT1=pts[1]+bB1+ann[1]; // total équipe 1
+  const totalT0=pts[0]+bB0+ann[0];
+  const totalT1=pts[1]+bB1+ann[1];
   const grandTotal=totalT0+totalT1;
 
   const totalTT=tt===0?totalT0:totalT1;
@@ -513,15 +452,12 @@ function calcR(G){
 
   let rp=[0,0],res;
   if(totalTT>totalOT){
-    // Preneur réussit : chacun garde ses points (plis + belote + annonces)
     res='ok';
     rp=[totalT0,totalT1];
   } else if(totalTT===totalOT){
-    // Litige : TOUT va à l'adversaire du preneur
     res='litige';
     rp=tt===0?[0,grandTotal]:[grandTotal,0];
   } else {
-    // Chute : TOUT va à l'adversaire (plis + toutes annonces)
     res='chute';
     rp=tt===0?[0,grandTotal]:[grandTotal,0];
   }
@@ -539,13 +475,11 @@ function calcR(G){
   else if(res==='litige'){msg=`🟡 Litige — ${dtn} prend tout`;detail=mkDetail();}
   else{msg=`❌ CHUTE ! ${dtn} prend tout (${grandTotal} pts)`;detail=mkDetail();}
   const ns2=[G.scores[0]+rp[0],G.scores[1]+rp[1]];
-  // Manche gagnée si une équipe atteint 1000 pts
   const mancheWinner=ns2[0]>=1000?0:ns2[1]>=1000?1:-1;
   const mw=[...(G.mancheWins||[0,0])];
   if(mancheWinner>=0)mw[mancheWinner]++;
   const matchOver=mw[0]>=2||mw[1]>=2;
   const phase=matchOver?'MATCH_OVER':mancheWinner>=0?'MANCHE_OVER':'OVER';
-  // Sauvegarder les stats si match terminé
   if(matchOver){
     try{
       const sk='belota_stats';
@@ -576,60 +510,27 @@ function calcR(G){
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// 🃏  CARTES FRANÇAISES — design propre et lisible
+// 🃏  CARTES — images PNG pour toutes les cartes (7/8/9/10/J/Q/K) + As dessiné
 // ══════════════════════════════════════════════════════════════════════════════
 
-// Positions pip standard (% zone centrale x, y)
-// Colonnes à 28% et 72%, lignes équiréparties
-const PIPS_DEF = {
-  '7':  [[28,15],[72,15],[28,38],[72,38],[50,50],[28,73],[72,73]],
-  '8':  [[28,13],[72,13],[28,35],[72,35],[28,65],[72,65],[28,87],[72,87]],
-  '9':  [[28,13],[72,13],[28,34],[72,34],[50,50],[28,66],[72,66],[28,87],[72,87]],
-  '10': [[28,12],[72,12],[50,26],[28,39],[72,39],[28,61],[72,61],[50,74],[28,88],[72,88]],
-};
-
-// Couleurs officielles
 const COL_SUIT = s => RED(s) ? '#C0392B' : '#1a1a1a';
 
-// ── Pips ──────────────────────────────────────────────────────────────────────
-function PipCard({suit,rank,W,H}){
-  const pips=PIPS_DEF[rank];
-  if(!pips)return null;
-  const col=COL_SUIT(suit);
-  const fs=W<50?9:W<65?11:14;
-  const mTop=H*0.20, mBot=H*0.20, mSide=W*0.12;
-  const zW=W-mSide*2, zH=H-mTop-mBot;
-  return(
-    <div style={{position:'absolute',inset:0,overflow:'hidden',pointerEvents:'none'}}>
-      {pips.map(([px,py],i)=>{
-        const x=mSide+zW*px/100;
-        const y=mTop+zH*py/100;
-        const inv=py>55;
-        return(
-          <div key={i} style={{
-            position:'absolute',
-            left:x,top:y,
-            fontSize:fs,color:col,lineHeight:1,
-            transform:`translate(-50%,-50%)${inv?' rotate(180deg)':''}`,
-            userSelect:'none',
-          }}>{suit}</div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ── Figures — vraies cartes (images PNG) ────────────────────────────────────
-const RANK_NAME = {J:'valet', Q:'dame', K:'roi'};
+// Noms pour la construction des URLs PNG
+// Figures : "valet de coeur.png" | Numériques : "7 de carreau.png"
+const RANK_NAME = {
+  J:'valet', Q:'dame', K:'roi',
+  '7':'7', '8':'8', '9':'9', '10':'10'
+};
 const SUIT_NAME = {'♠':'pique','♥':'coeur','♦':'carreau','♣':'trefle'};
 
-function FaceCard({suit,rank,W,H}){
+// ── Carte avec image PNG (figures + numériques 7/8/9/10) ─────────────────────
+function PngCard({suit,rank,W,H}){
   const src=`/${RANK_NAME[rank]} de ${SUIT_NAME[suit]}.png`;
   const isRed=RED(suit);
   const col=COL_SUIT(suit);
-  // Fallback si l'image ne charge pas
-  const [err,setErr]=useState(false);
+  const[err,setErr]=useState(false);
   if(err){
+    // Fallback dessiné si l'image est absente
     const bg=isRed?'#fff0f0':'#f0f0ff';
     const bigFs=Math.round(H*0.24);
     const rankFs=Math.round(H*0.16);
@@ -648,8 +549,8 @@ function FaceCard({suit,rank,W,H}){
       onError={()=>setErr(true)}
       style={{
         position:'absolute',
-        top:0, left:0,
-        width:'100%', height:'100%',
+        top:0,left:0,
+        width:'100%',height:'100%',
         objectFit:'fill',
         borderRadius:'inherit',
         display:'block',
@@ -658,7 +559,7 @@ function FaceCard({suit,rank,W,H}){
   );
 }
 
-// ── As ────────────────────────────────────────────────────────────────────────
+// ── As — dessiné (pas de PNG pour l'As) ──────────────────────────────────────
 function AceCard({suit,W,H}){
   const col=COL_SUIT(suit);
   const fs=Math.round(W*0.52);
@@ -669,7 +570,6 @@ function AceCard({suit,W,H}){
       pointerEvents:'none',
     }}>
       <div style={{position:'relative',display:'flex',alignItems:'center',justifyContent:'center'}}>
-        {/* Deux cercles décoratifs concentriques */}
         {[0.72,0.95].map((r,i)=>(
           <div key={i} style={{
             position:'absolute',
@@ -694,34 +594,36 @@ function Crd({card,ok,W=54,H=76,onClick}){
   if(!card||!card.s)return null;
   const isRed=RED(card.s);
   const col=COL_SUIT(card.s);
-  // Taille de l'index coin proportionnelle
   const idxRank=W<46?8:W<58?10:12;
   const idxSuit=W<46?7:W<58?9:11;
-  const isFace=['J','Q','K'].includes(card.r);
+
+  // Toutes les cartes sauf l'As utilisent une image PNG
+  const isPng=['J','Q','K','7','8','9','10'].includes(card.r);
+  const isAce=card.r==='A';
 
   return(
     <div onClick={ok?onClick:undefined} style={{
-      width:W, height:H,
+      width:W,height:H,
       borderRadius:Math.max(3,Math.round(W*0.07)),
       position:'relative',
       background:'#ffffff',
       flexShrink:0,
-      border: ok
-        ? `2.5px solid #27ae60`
-        : `1.5px solid ${isRed?'#e8c8c8':'#c8c8e8'}`,
-      boxShadow: ok
-        ? '0 0 0 2px rgba(39,174,96,.35), 0 4px 16px rgba(0,0,0,.5)'
-        : '0 2px 8px rgba(0,0,0,.38), 0 1px 3px rgba(0,0,0,.2)',
-      cursor: ok?'pointer':'default',
-      opacity: ok===false ? 0.42 : 1,
-      filter: ok===false ? 'grayscale(40%)' : 'none',
+      border:ok
+        ?`2.5px solid #27ae60`
+        :`1.5px solid ${isRed?'#e8c8c8':'#c8c8e8'}`,
+      boxShadow:ok
+        ?'0 0 0 2px rgba(39,174,96,.35), 0 4px 16px rgba(0,0,0,.5)'
+        :'0 2px 8px rgba(0,0,0,.38), 0 1px 3px rgba(0,0,0,.2)',
+      cursor:ok?'pointer':'default',
+      opacity:ok===false?0.42:1,
+      filter:ok===false?'grayscale(40%)':'none',
       overflow:'hidden',
     }}>
-      {/* Figures : image PNG plein cadre, pas d'indices (ils sont dans l'image) */}
-      {isFace && <FaceCard suit={card.s} rank={card.r} W={W} H={H}/>}
+      {/* PNG : image plein cadre — les index sont dans l'image */}
+      {isPng && <PngCard suit={card.s} rank={card.r} W={W} H={H}/>}
 
-      {/* Autres cartes : indices de coins + contenu central */}
-      {!isFace && <>
+      {/* As : dessiné avec index de coins */}
+      {isAce && <>
         {/* Index haut-gauche */}
         <div style={{
           position:'absolute',top:2,left:W<50?2:3,
@@ -737,11 +639,7 @@ function Crd({card,ok,W=54,H=76,onClick}){
             {card.s}
           </span>
         </div>
-
-        {/* Contenu central */}
-        {card.r==='A' && <AceCard suit={card.s} W={W} H={H}/>}
-        {PIPS_DEF[card.r] && <PipCard suit={card.s} rank={card.r} W={W} H={H}/>}
-
+        <AceCard suit={card.s} W={W} H={H}/>
         {/* Index bas-droite (inversé) */}
         <div style={{
           position:'absolute',bottom:2,right:W<50?2:3,
@@ -798,7 +696,6 @@ function Hand({hand,okIds,onPlay,trump}){
 
 // ── App ───────────────────────────────────────────────────────────────────────
 function App({cfg,names,onMenu}){
-  // Charger partie sauvegardée si disponible
   const[G,setG]=useState(()=>{
     try{
       const saved=localStorage.getItem('belota_game');
@@ -806,9 +703,7 @@ function App({cfg,names,onMenu}){
     }catch(e){}
     return init();
   });
-  // Stocker cfg dans G pour accès dans calcR
   useEffect(()=>{setG(p=>({...p,cfg}));},[cfg]);
-  // Sauvegarder à chaque changement d'état
   useEffect(()=>{
     try{
       if(G.phase&&G.phase!=='SPLASH')localStorage.setItem('belota_game',JSON.stringify(G));
@@ -816,13 +711,11 @@ function App({cfg,names,onMenu}){
   },[G]);
   const timer=useRef(null);
 
-  // Valet forcé : si la carte retournée est un Valet → prise automatique par fp
+  // Valet forcé
   useEffect(()=>{
     if(!cfg?.valetForce)return;
     if(G.phase!=='BID'||G.flip?.r!=='J')return;
-    // Prise automatique immédiate par le premier joueur (fp)
     const p=G.fp;
-    const hand=G.hands[p].filter(c=>c&&c.id);
     const suit=G.flip.s;
     const nh=complete(G.hands,G.flip,G.rest,p);
     const ac=nh.map(h=>detectCombos(h));
@@ -836,16 +729,22 @@ function App({cfg,names,onMenu}){
     });
   },[G.phase,G.flip?.r,cfg?.valetForce]);
 
-  // Préchargement des 12 images de figures au démarrage → zéro latence ensuite
+  // Préchargement de toutes les images PNG
   useEffect(()=>{
+    // Figures
     ['valet','dame','roi'].forEach(r=>
       ['coeur','pique','carreau','trefle'].forEach(s=>{
-        const img=new Image();
-        img.src=`/${r} de ${s}.png`;
+        const img=new Image();img.src=`/${r} de ${s}.png`;
+      })
+    );
+    // Numériques
+    ['7','8','9','10'].forEach(r=>
+      ['coeur','pique','carreau','trefle'].forEach(s=>{
+        const img=new Image();img.src=`/${r} de ${s}.png`;
       })
     );
   },[]);
-  // iPad/tablette : écran >=768px → toujours autorisé (portrait ou paysage)
+
   const isTablet=typeof window!=='undefined'&&(window.innerWidth>=768||window.innerHeight>=768);
   const[ls,setLs]=useState(()=>typeof window!=='undefined'&&(window.innerWidth>window.innerHeight||isTablet));
   useEffect(()=>{const u=()=>setLs(window.innerWidth>window.innerHeight||window.innerWidth>=768||window.innerHeight>=768);window.addEventListener('resize',u);return()=>window.removeEventListener('resize',u);},[]);
@@ -935,8 +834,6 @@ function App({cfg,names,onMenu}){
     background:`radial-gradient(ellipse at 50% 40%,${tc}ee 0%,${tc}bb 55%,${tc}99 100%)`,
     fontFamily:'Georgia,serif',color:'white',overflow:'hidden',userSelect:'none'};
 
-  // Noms affichés (prénoms pour IA, "Vous" pour joueur)
-  // Prénom du partenaire (Nord) fixé selon son style
   const partnerName=cfg?.partnerStyle==='prudent'?'Denis':cfg?.partnerStyle==='temeraire'?'Juan':'David';
   const pName=p=>p===0?'Vous':p===1?(names?.ouest||'Ouest'):p===2?partnerName:(names?.est||'Est');
   const hand0=(G.hands[0]||[]).filter(c=>c&&c.id);
@@ -958,17 +855,16 @@ function App({cfg,names,onMenu}){
         <div style={{background:'rgba(0,0,0,.88)',borderRadius:18,padding:26,maxWidth:440,
           width:'92%',textAlign:'center',border:'1px solid rgba(255,255,255,.15)'}}>
 
-          {/* Titre */}
           <div style={{fontSize:17,fontWeight:'bold',marginBottom:10}}>
             {matchOver?(weWin?'🏆 Vous gagnez le match !':'😔 Match perdu'):'✓ Fin de manche'}
           </div>
 
-          {/* Manches gagnées */}
           {(mancheOver||matchOver)&&(
             <div style={{display:'flex',justifyContent:'center',gap:20,marginBottom:12}}>
               {[0,1].map(t=>(
                 <div key={t} style={{textAlign:'center'}}>
-                  <div style={{fontSize:10,opacity:.5}}>{t===0?'Vous+Nord':'Adv.'}</div>
+                  <div style={{fontSize:10,opacity:.5}}>{t===0?'Vous+Nord':'Adv.'}
+                  </div>
                   <div style={{fontSize:18,fontWeight:'bold',color:t===0?'#4caf50':'#ef5350'}}>
                     {'⭐'.repeat(mw[t])}{'☆'.repeat(2-mw[t])}
                   </div>
@@ -1039,7 +935,6 @@ function App({cfg,names,onMenu}){
           style={{position:'absolute',top:'46%',left:'13%',transform:'translateY(-50%)',zIndex:5}}/>
         <PL name={pName(3)} n={(G.hands[3]||[]).length} active={G.bi===3} dealer={G.dealer===3}
           style={{position:'absolute',top:'46%',right:'13%',transform:'translateY(-50%)',zIndex:5}}/>
-        {/* Carte retournée centrée */}
         <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-68%)',zIndex:5}}>
           <Crd card={G.flip} W={82} H={118}/>
         </div>
@@ -1070,7 +965,6 @@ function App({cfg,names,onMenu}){
   }
 
   // ── JEU
-  // Cartes du pli en cascade superposée (style vrai jeu de belote)
   return(
     <div style={TABLE}>
       <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}`}</style>
@@ -1090,7 +984,6 @@ function App({cfg,names,onMenu}){
         <div style={{fontSize:12,color:G.waiting?'#ffd54f':'rgba(255,255,255,.9)',fontWeight:'bold',
           display:'flex',flexDirection:'column',alignItems:'center',gap:1}}>
           <span>{G.ann||`Pli ${G.done.length+1}/8`}</span>
-
         </div>
         <div style={{fontSize:11}}>
           <span style={{color:'#4caf50',fontWeight:'bold'}}>{G.scores[0]}</span>
@@ -1111,7 +1004,7 @@ function App({cfg,names,onMenu}){
         active={G.cur===3&&!G.waiting} dealer={G.dealer===3}
         style={{position:'absolute',top:'44%',right:'13%',transform:'translateY(-50%)',zIndex:10}}/>
 
-      {/* ANNONCES — positionnées près de chaque joueur */}
+      {/* ANNONCES */}
       {cfg?.combinaisons&&!G.annDone&&G.done.length===0&&G.phase==='PLAY'&&
         [0,1,2,3].map(p=>{
           const combos=(G.annCombos||[])[p]||[];
@@ -1134,15 +1027,14 @@ function App({cfg,names,onMenu}){
           }
           const n=fanCards.length;
           const fanW=FW+(n-1)*STEP;
-          // Positions selon joueur
           const fanH=FH+30;
           const pos=p===2
-            ?{top:58,right:'8%'}                                // Nord — à droite de son nom
+            ?{top:58,right:'8%'}
             :p===1
-            ?{top:`calc(44% - ${fanH+14}px)`,left:'8%'}        // Ouest — au-dessus label ✓
+            ?{top:`calc(44% - ${fanH+14}px)`,left:'8%'}
             :p===3
-            ?{top:'50%',right:'8%'}                             // Est — sous son nom (50% = niveau label)
-            :{bottom:10,left:8};                                // Vous — gauche ✓
+            ?{top:'50%',right:'8%'}
+            :{bottom:10,left:8};
           return(
             <div key={p} style={{
               position:'absolute',...pos,
@@ -1179,20 +1071,15 @@ function App({cfg,names,onMenu}){
         })
       }
 
-      {/* ══════ ZONE DE PLI EN CROIX ══════
-          Centrée entre barre top (28px) et main (~252px)
-          Centre cible : ~155px. CW=161 CH=196
-          ═══════════════════════════════════════ */}
+      {/* ZONE DE PLI EN CROIX */}
       {(()=>{
         const byP={};
         (G.trick||[]).slice(0,4).forEach(t=>{byP[t.p]=t.c;});
         if(!Object.keys(byP).length)return null;
 
-        // Croix serrée : juste sous le label Nord, ne déborde pas sur la main
-        // PW=72 PH=105 → CW=144 CH=166, top:63
         const CPW=80, CPH=116;
-        const CW=CPW*2;    // 144px — Ouest/Est proches
-        const CH=CPH*1.58; // ~166px — Nord/Vous serrés
+        const CW=CPW*2;
+        const CH=CPH*1.58;
         const pos={
           2:{l:Math.round(CW/2-CPW/2), t:0},
           1:{l:0,                       t:Math.round(CH/2-CPH/2)},
@@ -1202,11 +1089,11 @@ function App({cfg,names,onMenu}){
         return(
           <div style={{
             position:'absolute',
-            top:63,   /* juste sous le label partenaire */
+            top:63,
             left:'50%',
             marginLeft:-CW/2,
-            width:CW, height:CH,
-            zIndex:200, pointerEvents:'none',
+            width:CW,height:CH,
+            zIndex:200,pointerEvents:'none',
           }}>
             {[2,1,3,0].map(p=>{
               if(!byP[p])return null;
@@ -1214,7 +1101,7 @@ function App({cfg,names,onMenu}){
               return(
                 <div key={p} style={{
                   position:'absolute',
-                  left:pp.l, top:pp.t,
+                  left:pp.l,top:pp.t,
                   zIndex:p===0?4:p===3?3:p===1?2:1,
                   filter:G.waiting&&G.winner===p
                     ?'drop-shadow(0 0 14px #ffd54f)'
@@ -1224,16 +1111,15 @@ function App({cfg,names,onMenu}){
                 </div>
               );
             })}
-            {/* Badge gagnant — à gauche du pli */}
             {G.waiting&&G.winner!==null&&(
               <div style={{
                 position:'absolute',
-                top:CH/2-14, left:-145,
+                top:CH/2-14,left:-145,
                 background:'rgba(0,0,0,.88)',
                 border:'1.5px solid #ffd54f',
-                borderRadius:20, padding:'4px 14px',
-                fontSize:12, color:'#ffd54f', fontWeight:'bold',
-                whiteSpace:'nowrap', zIndex:10,
+                borderRadius:20,padding:'4px 14px',
+                fontSize:12,color:'#ffd54f',fontWeight:'bold',
+                whiteSpace:'nowrap',zIndex:10,
                 pointerEvents:'none',
               }}>
                 {PN[G.winner]} ✓
@@ -1243,7 +1129,7 @@ function App({cfg,names,onMenu}){
         );
       })()}
 
-      {/* Indicateur tour — seulement quand c'est au joueur */}
+      {/* Indicateur tour */}
       {!G.waiting&&myTurn&&(
         <div style={{position:'absolute',bottom:128,left:'50%',transform:'translateX(-50%)',
           zIndex:50,whiteSpace:'nowrap'}}>
@@ -1254,6 +1140,7 @@ function App({cfg,names,onMenu}){
           </div>
         </div>
       )}
+
       {/* Bannière Belote / Rebelote */}
       {G.ann&&G.ann.includes('elote')&&(
         <div style={{
@@ -1289,11 +1176,6 @@ function App({cfg,names,onMenu}){
 }
 
 // ── Utilitaires ───────────────────────────────────────────────────────────────
-function EmptySlot({W,H}){
-  return <div style={{width:W,height:H,borderRadius:4,
-    border:'1px dashed rgba(255,255,255,.12)',
-    background:'rgba(255,255,255,.03)'}}/>;
-}
 function PL({name,n,active,dealer,style={}}){
   return(
     <div style={{display:'flex',alignItems:'center',gap:5,...style}}>
@@ -1396,8 +1278,8 @@ const TABLE_COLORS=[
 function MenuScreen({cfg,setCfg,onPlay}){
   const[tab,setTab]=useState('play');
   const[avis,setAvis]=useState({
-    stars:0, fluide:'', ia:'', bugs:'', aime:'', change:'', multi:'', sent:false
-  }); // 'play'|'options'|'stats'
+    stars:0,fluide:'',ia:'',bugs:'',aime:'',change:'',multi:'',sent:false
+  });
   return(
     <div style={{
       position:'fixed',inset:0,
@@ -1448,8 +1330,6 @@ function MenuScreen({cfg,setCfg,onPlay}){
 
         {/* ─── ONGLET JOUER ─── */}
         {tab==='play'&&<>
-
-          {/* ÉTAPE 1 : Difficulté — cachée dès qu'un niveau est choisi */}
           {!cfg.difficulty&&<>
             <div style={{fontSize:11,opacity:.5,letterSpacing:1,marginBottom:8,textAlign:'center'}}>
               DIFFICULTÉ
@@ -1467,7 +1347,6 @@ function MenuScreen({cfg,setCfg,onPlay}){
             ))}
           </>}
 
-          {/* ÉTAPE 2 : Partenaire seul — apparaît après le niveau */}
           {cfg.difficulty&&<>
             <div style={{display:'flex',alignItems:'center',marginBottom:8}}>
               <button onClick={()=>setCfg(c=>({...c,difficulty:null,partnerStyle:null}))} style={{
@@ -1509,16 +1388,10 @@ function MenuScreen({cfg,setCfg,onPlay}){
               </button>
             )}
           </>}
-
-          <div style={{textAlign:'center',marginTop:8,fontSize:10,opacity:.3}}>
-          <div style={{textAlign:"center",marginTop:8,fontSize:10,opacity:.3,color:"white"}}>
-          </div>
-          </div>
         </>}
 
         {/* ─── ONGLET OPTIONS ─── */}
         {tab==='options'&&<>
-          {/* Couleur du tapis */}
           <div style={{background:'rgba(0,0,0,.25)',borderRadius:14,padding:16}}>
             <div style={{fontSize:12,opacity:.6,marginBottom:12,letterSpacing:1}}>
               COULEUR DU TAPIS
@@ -1541,12 +1414,10 @@ function MenuScreen({cfg,setCfg,onPlay}){
             </div>
           </div>
 
-          {/* Règles */}
           <div style={{background:'rgba(0,0,0,.25)',borderRadius:14,padding:16,
             display:'flex',flexDirection:'column',gap:12}}>
             <div style={{fontSize:12,opacity:.6,letterSpacing:1}}>RÈGLES</div>
 
-            {/* Combinaisons */}
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
               <div style={{flex:1,marginRight:12}}>
                 <div style={{fontSize:14,fontWeight:'bold'}}>Combinaisons</div>
@@ -1557,12 +1428,11 @@ function MenuScreen({cfg,setCfg,onPlay}){
               <Toggle val={cfg.combinaisons} onToggle={()=>setCfg(c=>({...c,combinaisons:!c.combinaisons}))}/>
             </div>
 
-            {/* Valet forcé */}
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
               <div style={{flex:1,marginRight:12}}>
                 <div style={{fontSize:14,fontWeight:'bold'}}>Valet forcé</div>
                 <div style={{fontSize:11,opacity:.5,lineHeight:1.5}}>
-                  Si la carte retournée est un Valet, 
+                  Si la carte retournée est un Valet,
                   le premier joueur la prend d'office
                 </div>
               </div>
@@ -1595,7 +1465,6 @@ function MenuScreen({cfg,setCfg,onPlay}){
             </div>
           ):(
             <div style={{display:'flex',flexDirection:'column',gap:10}}>
-              {/* Étoiles */}
               <div style={{background:'rgba(0,0,0,.25)',borderRadius:14,padding:14}}>
                 <div style={{fontSize:11,opacity:.5,marginBottom:8}}>NOTE GLOBALE</div>
                 <div style={{display:'flex',gap:8,justifyContent:'center'}}>
@@ -1607,7 +1476,6 @@ function MenuScreen({cfg,setCfg,onPlay}){
                   ))}
                 </div>
               </div>
-              {/* Fluidité */}
               <div style={{background:'rgba(0,0,0,.25)',borderRadius:14,padding:14}}>
                 <div style={{fontSize:11,opacity:.5,marginBottom:8}}>LE JEU EST FLUIDE SUR MON APPAREIL</div>
                 <div style={{display:'flex',gap:8}}>
@@ -1620,7 +1488,6 @@ function MenuScreen({cfg,setCfg,onPlay}){
                   ))}
                 </div>
               </div>
-              {/* IA */}
               <div style={{background:'rgba(0,0,0,.25)',borderRadius:14,padding:14}}>
                 <div style={{fontSize:11,opacity:.5,marginBottom:8}}>L IA EST...</div>
                 <div style={{display:'flex',gap:6}}>
@@ -1633,7 +1500,6 @@ function MenuScreen({cfg,setCfg,onPlay}){
                   ))}
                 </div>
               </div>
-              {/* Bugs */}
               <div style={{background:'rgba(0,0,0,.25)',borderRadius:14,padding:14}}>
                 <div style={{fontSize:11,opacity:.5,marginBottom:6}}>BUGS RENCONTRÉS</div>
                 <textarea value={avis.bugs} onChange={e=>setAvis(a=>({...a,bugs:e.target.value}))}
@@ -1642,7 +1508,6 @@ function MenuScreen({cfg,setCfg,onPlay}){
                     borderRadius:8,padding:'8px 10px',color:'white',fontSize:12,resize:'none',height:60,
                     fontFamily:'inherit',boxSizing:'border-box'}}/>
               </div>
-              {/* Aime */}
               <div style={{background:'rgba(0,0,0,.25)',borderRadius:14,padding:14}}>
                 <div style={{fontSize:11,opacity:.5,marginBottom:6}}>CE QUE VOUS AIMEZ LE PLUS</div>
                 <textarea value={avis.aime} onChange={e=>setAvis(a=>({...a,aime:e.target.value}))}
@@ -1651,7 +1516,6 @@ function MenuScreen({cfg,setCfg,onPlay}){
                     borderRadius:8,padding:'8px 10px',color:'white',fontSize:12,resize:'none',height:60,
                     fontFamily:'inherit',boxSizing:'border-box'}}/>
               </div>
-              {/* Changerait */}
               <div style={{background:'rgba(0,0,0,.25)',borderRadius:14,padding:14}}>
                 <div style={{fontSize:11,opacity:.5,marginBottom:6}}>CE QUE VOUS CHANGERIEZ</div>
                 <textarea value={avis.change} onChange={e=>setAvis(a=>({...a,change:e.target.value}))}
@@ -1660,7 +1524,6 @@ function MenuScreen({cfg,setCfg,onPlay}){
                     borderRadius:8,padding:'8px 10px',color:'white',fontSize:12,resize:'none',height:60,
                     fontFamily:'inherit',boxSizing:'border-box'}}/>
               </div>
-              {/* Multijoueur */}
               <div style={{background:'rgba(0,0,0,.25)',borderRadius:14,padding:14}}>
                 <div style={{fontSize:11,opacity:.5,marginBottom:8}}>JOUERIEZ-VOUS EN MULTIJOUEUR ?</div>
                 <div style={{display:'flex',gap:8}}>
@@ -1673,7 +1536,6 @@ function MenuScreen({cfg,setCfg,onPlay}){
                   ))}
                 </div>
               </div>
-              {/* Bouton envoyer */}
               <button onClick={()=>{
                 const body=`AVIS BELOTA%0A%0ANote: ${'⭐'.repeat(avis.stars)}%0AFluide: ${avis.fluide}%0AIA: ${avis.ia}%0AMultijoueur: ${avis.multi}%0A%0ABugs: ${avis.bugs||'(aucun)'}%0A%0ACe que j aime: ${avis.aime||'(vide)'}%0A%0ACe que je changerais: ${avis.change||'(vide)'}`;
                 window.open('mailto:emmanuel.luque.bailen@gmail.com?subject=Avis BELOTA&body='+body);
@@ -1752,8 +1614,6 @@ function Toggle({val,onToggle}){
 // ══════════════════════════════════════════════════
 // 🚀  POINT D'ENTRÉE
 // ══════════════════════════════════════════════════
-
-
 function BelotaRoot(){
   const[screen,setScreen]=useState('SPLASH');
   const[cfg,setCfg]=useState({
@@ -1765,26 +1625,20 @@ function BelotaRoot(){
   });
   const[names,setNames]=useState(()=>genNames());
   const[updateReady,setUpdateReady]=useState(false);
-  const newWorkerRef=useRef(null);
 
-  // Détection mise à jour — compare le hash du bundle JS Vite
   useEffect(()=>{
     async function checkUpdate(){
       try{
         const r=await fetch('/',{cache:'no-store'});
         const html=await r.text();
-        // Extraire le hash du bundle principal
         const m=html.match(/src="[^"]*\/index-([^"]+)\.js"/);
         if(!m)return;
         const newHash=m[1];
         const savedHash=localStorage.getItem('belota_build_hash');
-        if(savedHash&&savedHash!==newHash){
-          setUpdateReady(true); // nouvelle version détectée
-        }
+        if(savedHash&&savedHash!==newHash){setUpdateReady(true);}
         localStorage.setItem('belota_build_hash',newHash);
       }catch(e){}
     }
-    // Vérifier au démarrage et toutes les 2 minutes
     checkUpdate();
     const iv=setInterval(checkUpdate,120000);
     return()=>clearInterval(iv);
