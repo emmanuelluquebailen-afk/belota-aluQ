@@ -1021,7 +1021,7 @@ function App({cfg,names,onMenu}){
             ?{top:`calc(44% - ${fanH+14}px)`,left:'8%'}        // Ouest — au-dessus label gauche
             :p===3
             ?{top:`calc(44% - ${fanH+14}px)`,right:'8%'}       // Est — au-dessus label droite
-            :{bottom:130,left:8};                              // Vous — gauche à côté du jeu
+            :{bottom:10,left:8};                               // Vous — gauche niveau main
           return(
             <div key={p} style={{
               position:'absolute',...pos,
