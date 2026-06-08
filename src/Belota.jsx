@@ -1019,7 +1019,7 @@ function App({cfg,names,onMenu}){
             <div style={{display:'flex',justifyContent:'center',gap:20,marginBottom:12}}>
               {[0,1].map(t=>(
                 <div key={t} style={{textAlign:'center'}}>
-                  <div style={{fontSize:10,opacity:.5}}>{t===0?'Nous':'Eux'}
+                  <div style={{fontSize:10,opacity:.5}}>{t===0?'Nous':'Eux'}</div>
                   <div style={{fontSize:18,fontWeight:'bold',color:t===0?'#4caf50':'#ef5350'}}>
                     {'⭐'.repeat(mw[t])}{'☆'.repeat(2-mw[t])}
                   </div>
