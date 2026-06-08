@@ -1706,6 +1706,7 @@ function MenuScreen({cfg,setCfg,onPlay}){
             })()}
           </>}
 
+        </>}
         {/* ─── ONGLET OPTIONS ─── */}
         {tab==='options'&&<>
           <div style={{background:'rgba(0,0,0,.25)',borderRadius:14,padding:16}}>
