@@ -1106,6 +1106,23 @@ function App({cfg,names,onMenu}){
               <Btn bg="#1976d2" onClick={()=>setG(init(mancheOver?[0,0]:G.scores,nd,mw))}>
                 {mancheOver?`Manche ${mw[0]+mw[1]+1}/3 →`:`Manche suivante →`}
               </Btn>
+              <button onClick={()=>{
+                try{
+                  const sk='belota_stats';
+                  let st=JSON.parse(localStorage.getItem(sk)||'{}');
+                  const ps=G.cfg?.partnerStyle||'actif';
+                  if(!st.total)st.total={m:0,mg:0,pp:0,pg:0,pa:0};
+                  if(!st[ps])st[ps]={m:0,mg:0,pp:0,pg:0,pa:0};
+                  st.total.pa=(st.total.pa||0)+1;
+                  st[ps].pa=(st[ps].pa||0)+1;
+                  localStorage.setItem(sk,JSON.stringify(st));
+                }catch(e){}
+                localStorage.removeItem('belota_game');
+                onMenu();
+              }} style={{background:'none',border:'1px solid rgba(255,100,100,.3)',
+                borderRadius:20,padding:'8px 16px',color:'rgba(255,100,100,.6)',cursor:'pointer',fontSize:13}}>
+                🗑 Abandonner
+              </button>
               <button onClick={onMenu} style={{background:'none',border:'1px solid rgba(255,255,255,.3)',
                 borderRadius:20,padding:'8px 16px',color:'rgba(255,255,255,.7)',cursor:'pointer',fontSize:13}}>
                 ← Menu principal
@@ -1620,7 +1637,7 @@ function MenuScreen({cfg,setCfg,onPlay}){
                   }}>
                     <span style={{fontSize:24}}>▶️</span>
                     <div>
-                      <div style={{fontSize:15,fontWeight:'bold',color:'white'}}>Reprendre la partie</div>
+                      <div style={{fontSize:15,fontWeight:'bold',color:'white'}}>Reprendre la manche</div>
                       <div style={{fontSize:11,color:'rgba(255,255,255,.5)'}}>
                         Pli {(g.done||[]).length+1}/8 · {g.scores?`${g.scores[0]} — ${g.scores[1]}`:''}
                       </div>
