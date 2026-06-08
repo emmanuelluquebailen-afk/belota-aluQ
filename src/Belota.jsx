@@ -1102,9 +1102,15 @@ function App({cfg,names,onMenu}){
               </button>
             </div>
           ):(
-            <Btn bg="#1976d2" onClick={()=>setG(init(mancheOver?[0,0]:G.scores,nd,mw))}>
-              {mancheOver?`Manche ${mw[0]+mw[1]+1}/3 →`:`Manche suivante →`} Don: {PN[nd]}
-            </Btn>
+            <div style={{display:'flex',flexDirection:'column',gap:10}}>
+              <Btn bg="#1976d2" onClick={()=>setG(init(mancheOver?[0,0]:G.scores,nd,mw))}>
+                {mancheOver?`Manche ${mw[0]+mw[1]+1}/3 →`:`Manche suivante →`} Don: {PN[nd]}
+              </Btn>
+              <button onClick={onMenu} style={{background:'none',border:'1px solid rgba(255,255,255,.3)',
+                borderRadius:20,padding:'8px 16px',color:'rgba(255,255,255,.7)',cursor:'pointer',fontSize:13}}>
+                ← Menu principal
+              </button>
+            </div>
           )}
         </div>
       </div>
