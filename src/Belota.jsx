@@ -566,9 +566,16 @@ function doPlay(G,player,card){
   const ns=[...G.snap];ns[player]=card;
   let ann='',bb=[...G.bB],bp=[...G.bP];
   if(G.bH&&G.bH[player]&&card.s===G.trump&&(card.r==='K'||card.r==='Q')){
-    bp=[...bp];bp[player]++;
-    if(bp[player]===1)ann='Belote !';
-    if(bp[player]===2){ann='Rebelote !';bb=[...bb];bb[team(player)]+=20;}
+    const belge=(G.cfg?.beloteOrder||'francaise')==='belge';
+    if(belge){
+      // Belge : Roi obligatoire en premier
+      if(bp[player]===0&&card.r==='K'){bp=[...bp];bp[player]++;ann='Belote !';}
+      else if(bp[player]===1&&card.r==='Q'){bp=[...bp];bp[player]++;ann='Rebelote !';bb=[...bb];bb[team(player)]+=20;}
+    } else {
+      // Française : Dame ou Roi en premier, l'autre ensuite
+      if(bp[player]===0&&(card.r==='K'||card.r==='Q')){bp=[...bp];bp[player]++;ann='Belote !';}
+      else if(bp[player]===1&&(card.r==='K'||card.r==='Q')){bp=[...bp];bp[player]++;ann='Rebelote !';bb=[...bb];bb[team(player)]+=20;}
+    }
   }
   if(ns.filter(c=>c!==null).length<4)return{...G,hands:nh,trick:nt,snap:ns,cur:nxt(player),ann,bB:bb,bP:bp};
   const win=tWin(nt,G.trump);
@@ -1669,6 +1676,17 @@ function MenuScreen({cfg,setCfg,onPlay}){
               </div>
               <Toggle val={cfg.valetForce} onToggle={()=>setCfg(c=>({...c,valetForce:!c.valetForce}))}/>
             </div>
+
+            {/* Ordre Belote */}
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <div style={{flex:1,marginRight:12}}>
+                <div style={{fontSize:14,fontWeight:'bold'}}>Règle Belge 🇧🇪</div>
+                <div style={{fontSize:11,opacity:.5,lineHeight:1.5}}>
+                  Roi obligatoire en premier · Par défaut : D ou R (française)
+                </div>
+              </div>
+              <Toggle val={(cfg.beloteOrder||'francaise')==='belge'} onToggle={()=>setCfg(c=>({...c,beloteOrder:(c.beloteOrder||'francaise')==='belge'?'francaise':'belge'}))}/>
+            </div>
           </div>
         </>}
 
@@ -1901,6 +1919,7 @@ function BelotaRoot(){
     tableColor:'#00838f',
     combinaisons:false,
     valetForce:false,
+    beloteOrder:'francaise',
     partnerStyle:'actif',
   });
   const[names,setNames]=useState(()=>genNames());
