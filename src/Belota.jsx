@@ -207,118 +207,265 @@ const highestBy=(mv,t)=>mv.reduce((b,c)=>cs(c,t)>cs(b,t)?c:b);
 const nonTrump=(mv,t)=>mv.filter(c=>c.s!==t);
 const isTrump=(c,t)=>c.s===t;
 
+// ── DÉBUTANT : carte légale aléatoire ────────────────────────────────────────
 function aiCardDebutant(hand,trick,trump){
   const mv=legal(hand,trick||[],trump,99);
   if(!mv.length)return hand[0];
   return mv[Math.floor(Math.random()*mv.length)];
 }
 
-function aiCardSmart(hand,trick,trump,player){
+// ── Helpers stratégiques ─────────────────────────────────────────────────────
+
+// Valet "sec" = seul atout en main
+const valetSec=(hand,trump)=>hand.filter(c=>c.s===trump).length===1&&hand.some(c=>c.r==='J'&&c.s===trump);
+
+// On a le 10 de la même couleur qu'un As → appel légitime
+const has10ofSuit=(hand,suit)=>hand.some(c=>c.r==='10'&&c.s===suit);
+
+// Meilleur atout en main excluant le Valet (sauf si sec)
+function smallTrump(hand,trump){
+  const atouts=hand.filter(c=>c.s===trump);
+  if(!atouts.length)return null;
+  const sec=valetSec(hand,trump);
+  // Si Valet sec → on peut l'utiliser, sinon on l'exclut
+  const pool=sec?atouts:atouts.filter(c=>c.r!=='J');
+  if(!pool.length)return atouts.find(c=>c.r==='J')||null; // que le valet non-sec, on est obligé
+  return lowestBy(pool,trump);
+}
+
+// Vraie carte la plus petite hors-atout (jamais 10, As sauf appel)
+function safeDiscard(hand,trump,toPartner=false){
+  const nt=hand.filter(c=>c.s!==trump&&c.r!=='10');
+  if(!nt.length)return lowestBy(hand.filter(c=>c.s!==trump).length?hand.filter(c=>c.s!==trump):hand,trump);
+  // Éviter les As sauf appel (partenaire + on a le 10)
+  const noAce=nt.filter(c=>!(c.r==='A'&&!(toPartner&&has10ofSuit(hand,c.s))));
+  return lowestBy(noAce.length?noAce:nt,trump);
+}
+
+// Couleurs fortes des adversaires d'après annonces
+function strongSuitsAdv(annCombos,player){
+  const suits=new Set();
+  for(let p=0;p<4;p++){
+    if(team(p)===team(player))continue;
+    (annCombos||[])[p]?.forEach(c=>{if(c.suit)suits.add(c.suit);});
+  }
+  return suits;
+}
+
+// Couleurs fortes du partenaire d'après annonces
+function strongSuitsPar(annCombos,player){
+  const par=(player+2)%4;
+  const suits=new Set();
+  (annCombos||[])[par]?.forEach(c=>{if(c.suit)suits.add(c.suit);});
+  return suits;
+}
+
+// ── LOGIQUE PRINCIPALE (Intermédiaire + Expert) ───────────────────────────────
+function aiCardSmart(hand,trump,player,trick,taker,annCombos){
   const mv=legal(hand,trick||[],trump,player);
   if(!mv.length)return hand[0];
   const par=(player+2)%4;
+  const isTaker=taker===player;
+  const advStrong=strongSuitsAdv(annCombos,player);
+  const parStrong=strongSuitsPar(annCombos,player);
 
+  // ══ ENTAME (je commence le pli) ═══════════════════════════════════════════
   if(!trick||!trick.length){
-    const nt=nonTrump(mv,trump);
-    if(nt.length){
-      const as=nt.find(c=>c.r==='A');
-      if(as)return as;
-      return highestBy(nt,trump);
+
+    // ── JE SUIS LE PRENEUR → jouer atout ────────────────────────────────────
+    if(isTaker){
+      const atouts=mv.filter(c=>c.s===trump);
+      if(atouts.length){
+        // Valet en premier s'il est disponible
+        const valet=atouts.find(c=>c.r==='J');
+        if(valet)return valet;
+        // Sinon petit atout pour faire tomber les atouts adverses
+        return smallTrump(hand,trump)||lowestBy(atouts,trump);
+      }
     }
-    return lowestBy(mv,trump);
+
+    // ── JE NE SUIS PAS LE PRENEUR → jeter petit, jamais 10 ─────────────────
+    const nt=mv.filter(c=>c.s!==trump);
+    if(nt.length){
+      // Éviter couleurs fortes des adversaires
+      const safe=nt.filter(c=>!advStrong.has(c.s));
+      const pool=safe.length?safe:nt;
+      // Jouer As si on a le 10 (appel partenaire) — couleur forte du partenaire en priorité
+      const callSuit=[...parStrong].find(s=>pool.some(c=>c.r==='A'&&c.s===s)&&has10ofSuit(hand,s));
+      if(callSuit){const ace=pool.find(c=>c.r==='A'&&c.s===callSuit);if(ace)return ace;}
+      // Sinon : jamais de 10, jamais d'As sans le 10, jouer le plus petit
+      const noHonor=pool.filter(c=>c.r!=='10'&&!(c.r==='A'&&!has10ofSuit(hand,c.s)));
+      return lowestBy(noHonor.length?noHonor:pool,trump);
+    }
+    // Que des atouts → petit atout sans Valet sauf sec
+    return smallTrump(hand,trump)||lowestBy(mv,trump);
   }
 
+  // ══ SUIVI DE PLI ══════════════════════════════════════════════════════════
   const w=tWin(trick,trump);
   const partnerWinning=w===par;
   const lead=trick[0].c.s;
   const mustFollowSuit=mv.some(c=>c.s===lead);
   const mustCut=!mustFollowSuit&&mv.some(c=>isTrump(c,trump));
 
+  // ── PARTENAIRE GAGNE LE PLI ───────────────────────────────────────────────
   if(partnerWinning){
     const nt=nonTrump(mv,trump);
     if(nt.length){
-      const honor=nt.filter(c=>c.r==='10'||c.r==='A');
+      // Passer As si on a le 10 (on récupérera le 10 plus tard)
+      // ou passer le 10 si partenaire est sûr de gagner
+      const honor=nt.filter(c=>(c.r==='A'&&has10ofSuit(hand,c.s))||c.r==='10');
       if(honor.length)return highestBy(honor,trump);
-      return lowestBy(nt,trump);
+      // Sinon jeter le plus petit sans As ni 10
+      return safeDiscard(mv.filter(c=>c.s!==trump),trump,true)||lowestBy(nt,trump);
     }
-    return lowestBy(mv,trump);
+    // Que des atouts → pisser avec le plus petit, jamais le Valet sauf sec
+    return smallTrump(hand,trump)||lowestBy(mv,trump);
   }
 
+  // ── ADVERSAIRE GAGNE LE PLI ───────────────────────────────────────────────
+
+  // Suivre la couleur
   if(mustFollowSuit){
-    const canWin=mv.some(c=>cs(c,trump)>cs(trick.reduce((b,t)=>cs(t.c,trump)>cs(b.c,trump)?t:b).c,trump));
-    return canWin?highestBy(mv,trump):lowestBy(mv,trump);
+    const best=trick.reduce((b,t)=>cs(t.c,trump)>cs(b.c,trump)?t:b);
+    const canWin=mv.some(c=>cs(c,trump)>cs(best.c,trump));
+    if(canWin)return highestBy(mv,trump); // monter pour gagner
+    return lowestBy(mv,trump);            // jouer petit sinon
   }
 
+  // Couper
   if(mustCut){
     const trumpCards=mv.filter(c=>isTrump(c,trump));
+    // Ne jamais couper avec le Valet sauf s'il est sec
+    const noValet=trumpCards.filter(c=>c.r!=='J');
+    const pool=valetSec(hand,trump)?trumpCards:noValet.length?noValet:trumpCards;
     const topTrick=trick.filter(t=>isTrump(t.c,trump));
     if(topTrick.length){
       const best=topTrick.reduce((b,t)=>TS[t.c.r]>TS[b.c.r]?t:b);
-      const overcut=trumpCards.filter(c=>TS[c.r]>TS[best.c.r]);
-      if(overcut.length)return highestBy(overcut,trump);
-      return lowestBy(trumpCards,trump);
+      const overcut=pool.filter(c=>TS[c.r]>TS[best.c.r]);
+      if(overcut.length)return lowestBy(overcut,trump); // sur-couper avec le plus petit qui suffit
+      return lowestBy(pool,trump);
     }
-    return highestBy(trumpCards,trump);
+    return lowestBy(pool,trump); // couper avec le plus petit atout disponible
   }
 
-  return lowestBy(mv,trump);
+  // Défausse
+  return safeDiscard(mv,trump,false)||lowestBy(mv,trump);
 }
 
-function aiCardPrudent(hand,trick,trump,player){
-  const mv=legal(hand,trick||[],trump,player);
-  if(!mv.length)return hand[0];
-  const par=(player+2)%4;
-  if(!trick||!trick.length){
-    const nt=mv.filter(c=>c.s!==trump);
-    if(nt.length)return lowestBy(nt,trump);
-    return lowestBy(mv,trump);
-  }
-  const w=tWin(trick,trump);
-  if(w===par){
-    const nt=mv.filter(c=>c.s!==trump);
-    if(nt.length){const hon=nt.filter(c=>c.r==='10'||c.r==='A');if(hon.length)return highestBy(hon,trump);return lowestBy(nt,trump);}
-    return lowestBy(mv,trump);
-  }
-  const nt=mv.filter(c=>c.s!==trump);
-  if(nt.length)return highestBy(nt,trump);
-  return lowestBy(mv,trump);
-}
-
-function aiCardTemeraire(hand,trick,trump,player){
+// ── PARTENAIRE PRUDENT (Denis) ────────────────────────────────────────────────
+function aiCardPrudent(hand,trump,player,trick,taker,annCombos){
   const mv=legal(hand,trick||[],trump,player);
   if(!mv.length)return hand[0];
   const par=(player+2)%4;
 
   if(!trick||!trick.length){
-    const j=mv.find(c=>c.s===trump&&c.r==='J');if(j)return j;
+    // Prudent : jamais de risque, toujours petit, jamais atout sauf obligé
     const nt=mv.filter(c=>c.s!==trump);
     if(nt.length){
-      const hasJ=hand.some(c=>c.r==='J'&&c.s===trump);
-      const atouts=hand.filter(c=>c.s===trump);
-      const safeCandidates=nt.filter(c=>!(c.r==='A'&&!hasJ&&atouts.length<=1));
-      if(safeCandidates.length)return highestBy(safeCandidates,trump);
-      return highestBy(nt,trump);
+      const noHonor=nt.filter(c=>c.r!=='10'&&c.r!=='A'&&c.r!=='J');
+      return lowestBy(noHonor.length?noHonor:nt,trump);
     }
-    return highestBy(mv,trump);
+    return smallTrump(hand,trump)||lowestBy(mv,trump);
+  }
+
+  const w=tWin(trick,trump);
+  if(w===par){
+    // Partenaire gagne → passer points si possible
+    const nt=mv.filter(c=>c.s!==trump);
+    if(nt.length){
+      const honor=nt.filter(c=>(c.r==='A'&&has10ofSuit(hand,c.s))||c.r==='10');
+      if(honor.length)return highestBy(honor,trump);
+      return lowestBy(nt,trump);
+    }
+    return smallTrump(hand,trump)||lowestBy(mv,trump);
+  }
+
+  // Adversaire gagne
+  const mustFollowSuit=mv.some(c=>c.s===trick[0].c.s);
+  if(mustFollowSuit){
+    const best=trick.reduce((b,t)=>cs(t.c,trump)>cs(b.c,trump)?t:b);
+    const canWin=mv.some(c=>cs(c,trump)>cs(best.c,trump));
+    return canWin?highestBy(mv,trump):lowestBy(mv,trump);
+  }
+  const mustCut=mv.some(c=>isTrump(c,trump));
+  if(mustCut){
+    // Prudent : couper seulement si ça vaut le coup, jamais le Valet
+    const trumpCards=mv.filter(c=>isTrump(c,trump));
+    const noValet=trumpCards.filter(c=>c.r!=='J');
+    const pool=valetSec(hand,trump)?trumpCards:noValet.length?noValet:trumpCards;
+    return lowestBy(pool,trump);
+  }
+  return safeDiscard(mv,trump,false)||lowestBy(mv,trump);
+}
+
+// ── PARTENAIRE TÊTE BRÛLÉE (Juan) ────────────────────────────────────────────
+function aiCardTemeraire(hand,trump,player,trick,taker,annCombos){
+  const mv=legal(hand,trick||[],trump,player);
+  if(!mv.length)return hand[0];
+  const par=(player+2)%4;
+
+  if(!trick||!trick.length){
+    // Tête brûlée : joue Valet d'abord, puis As si a le 10, sinon fort
+    const atouts=mv.filter(c=>c.s===trump);
+    const valet=atouts.find(c=>c.r==='J');
+    if(valet)return valet;
+    const nt=mv.filter(c=>c.s!==trump);
+    if(nt.length){
+      // As si on a le 10 (appel)
+      const ace=nt.find(c=>c.r==='A'&&has10ofSuit(hand,c.s));
+      if(ace)return ace;
+      // Sinon le plus fort hors-As et 10
+      const noHonor=nt.filter(c=>c.r!=='10'&&c.r!=='A');
+      return highestBy(noHonor.length?noHonor:nt,trump);
+    }
+    // Que des atouts → Valet si sec, sinon le plus fort sans Valet
+    return smallTrump(hand,trump)||lowestBy(mv,trump);
   }
 
   const w=tWin(trick,trump);
   if(w===par){
     const nt=mv.filter(c=>c.s!==trump);
-    if(nt.length){const hon=nt.filter(c=>c.r==='10'||c.r==='A');if(hon.length)return highestBy(hon,trump);return highestBy(nt,trump);}
-    return lowestBy(mv,trump);
+    if(nt.length){
+      const honor=nt.filter(c=>(c.r==='A'&&has10ofSuit(hand,c.s))||c.r==='10');
+      if(honor.length)return highestBy(honor,trump);
+      return highestBy(nt,trump);
+    }
+    return smallTrump(hand,trump)||lowestBy(mv,trump);
   }
 
-  return highestBy(mv,trump);
+  // Adversaire gagne → jouer fort pour tenter de gagner
+  const mustFollowSuit=mv.some(c=>c.s===trick[0].c.s);
+  if(mustFollowSuit){
+    const best=trick.reduce((b,t)=>cs(t.c,trump)>cs(b.c,trump)?t:b);
+    const canWin=mv.some(c=>cs(c,trump)>cs(best.c,trump));
+    return canWin?highestBy(mv,trump):lowestBy(mv,trump);
+  }
+  const mustCut=mv.some(c=>isTrump(c,trump));
+  if(mustCut){
+    const trumpCards=mv.filter(c=>isTrump(c,trump));
+    // Tête brûlée coupe avec le plus fort, mais pas le Valet sauf sec
+    const noValet=trumpCards.filter(c=>c.r!=='J');
+    const pool=valetSec(hand,trump)?trumpCards:noValet.length?noValet:trumpCards;
+    const topTrick=trick.filter(t=>isTrump(t.c,trump));
+    if(topTrick.length){
+      const best=topTrick.reduce((b,t)=>TS[t.c.r]>TS[b.c.r]?t:b);
+      const overcut=pool.filter(c=>TS[c.r]>TS[best.c.r]);
+      if(overcut.length)return highestBy(overcut,trump);
+      return lowestBy(pool,trump);
+    }
+    return highestBy(pool,trump);
+  }
+  return safeDiscard(mv,trump,false)||lowestBy(mv,trump);
 }
 
-function aiCard(hand,trick,trump,player,diff,partnerStyle){
+function aiCard(hand,trick,trump,player,diff,partnerStyle,taker,annCombos){
   if(player===2&&partnerStyle){
-    if(partnerStyle==='prudent')   return aiCardPrudent(hand,trick,trump,player);
-    if(partnerStyle==='temeraire') return aiCardTemeraire(hand,trick,trump,player);
+    if(partnerStyle==='prudent')   return aiCardPrudent(hand,trump,player,trick,taker,annCombos);
+    if(partnerStyle==='temeraire') return aiCardTemeraire(hand,trump,player,trick,taker,annCombos);
   }
-  if(diff==='debutant')return aiCardDebutant(hand,trick,trump,player);
-  return aiCardSmart(hand,trick,trump,player);
+  if(diff==='debutant')return aiCardDebutant(hand,trick,trump);
+  return aiCardSmart(hand,trump,player,trick,taker,annCombos);
 }
 
 
@@ -788,7 +935,7 @@ function App({cfg,names,onMenu}){
       setG(prev=>{
         if(prev.phase!=='PLAY'||prev.cur===0||prev.waiting)return prev;
         const p=prev.cur,hand=prev.hands[p].filter(c=>c&&c.id);
-        return doPlay(prev,p,aiCard(hand,prev.trick||[],prev.trump,p,cfg?.difficulty||'intermediaire',cfg?.partnerStyle||'actif'));
+        return doPlay(prev,p,aiCard(hand,prev.trick||[],prev.trump,p,cfg?.difficulty||'intermediaire',cfg?.partnerStyle||'actif',prev.taker,prev.annCombos));
       });
     },AI_DELAY);
     return()=>clearTimeout(t);
