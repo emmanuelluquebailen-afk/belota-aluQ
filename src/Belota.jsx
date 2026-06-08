@@ -771,8 +771,8 @@ function Crd({card,ok,W=54,H=76,onClick}){
         ?'0 0 0 2px rgba(39,174,96,.35), 0 4px 16px rgba(0,0,0,.5)'
         :'0 2px 8px rgba(0,0,0,.38), 0 1px 3px rgba(0,0,0,.2)',
       cursor:ok?'pointer':'default',
-      opacity:ok===false?0.42:1,
-      filter:ok===false?'grayscale(40%)':'none',
+      opacity:ok===false?0.72:1,
+      filter:ok===false?'grayscale(20%)':'none',
       overflow:'hidden',
     }}>
       {/* PNG : image plein cadre — les index sont dans l'image */}
@@ -1398,7 +1398,7 @@ function PL({name,n,active,dealer,trump,style={}}){
         textShadow:'0 1px 4px rgba(0,0,0,.9)',
         whiteSpace:'nowrap',
       }}>
-        {active?'▼ ':''}{name}{dealer?' 🔴':''}{trump?<span style={{marginLeft:5,fontSize:18,color:RED(trump)?'#ff8a80':'#80cbc4',lineHeight:1}}>{trump}</span>:null}
+        {active?'▼ ':''}{name}{dealer?' 🔴':''}{trump?<span style={{marginLeft:5,fontSize:18,color:RED(trump)?'#ff8a80':'white',lineHeight:1}}>{trump}</span>:null}
       </div>
       <div style={{
         background:active?'rgba(46,125,50,.7)':'rgba(0,0,0,.45)',
