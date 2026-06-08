@@ -577,8 +577,10 @@ function doPlay(G,player,card){
 function resolve(G){
   const win=G.winner;
   const nd=[...G.done,{winner:win,cards:G.snap.filter(c=>c&&c.s)}];
-  const annDone=nd.length>=1;
-  const base={...G,trick:[],snap:[null,null,null,null],waiting:false,winner:null,done:nd,phase:'PLAY',lw:win,ann:'',cur:win,annDone};
+  const annDone=nd.length>=2;
+  // Au début du pli 2 : déclencher l'affichage des bannières d'annonces
+  const showAnnBanner=nd.length===1&&G.cfg?.combinaisons&&(G.annPts||[0,0]).some(p=>p>0);
+  const base={...G,trick:[],snap:[null,null,null,null],waiting:false,winner:null,done:nd,phase:'PLAY',lw:win,ann:'',cur:win,annDone,showAnnBanner};
   return nd.length===8?calcR(base):base;
 }
 function calcR(G){
@@ -1155,7 +1157,7 @@ function App({cfg,names,onMenu}){
         style={{position:'absolute',top:'44%',right:'13%',transform:'translateY(-50%)',zIndex:10}}/>
 
       {/* ANNONCES */}
-      {cfg?.combinaisons&&!G.annDone&&G.done.length===0&&G.phase==='PLAY'&&
+      {cfg?.combinaisons&&!G.annDone&&G.done.length===1&&G.phase==='PLAY'&&
         [0,1,2,3].map(p=>{
           const combos=(G.annCombos||[])[p]||[];
           if(!combos.length)return null;
@@ -1326,6 +1328,49 @@ function App({cfg,names,onMenu}){
           {G.bP&&G.bP[G.cur]===2&&<div style={{fontSize:13,textAlign:'center',opacity:.8,marginTop:4}}>+20 pts 🏅</div>}
         </div>
       )}
+
+      {/* Bannières annonces — au début du pli 2, une par joueur ayant une annonce */}
+      {G.showAnnBanner&&G.done.length===1&&[0,1,2,3].map(p=>{
+        const combos=(G.annCombos||[])[p]||[];
+        if(!combos.length)return null;
+        const pTeam=team(p);
+        const wins=G.annWinTeam===pTeam;
+        const totalPts=combos.reduce((s,c)=>s+c.pts,0);
+        const best=combos.reduce((b,c)=>c.pts>b.pts?c:b,combos[0]);
+        // Position verticale décalée pour chaque joueur (éviter superposition)
+        const offsets=[0,1,2,3];
+        const idx=offsets.indexOf(p);
+        const topPct=30+idx*12;
+        return(
+          <div key={p} style={{
+            position:'absolute',
+            top:`${topPct}%`,left:'50%',
+            transform:'translate(-50%,-50%)',
+            zIndex:490+p,
+            background:wins
+              ?(pTeam===0?'linear-gradient(135deg,rgba(20,100,20,.97),rgba(10,60,10,.97))':'linear-gradient(135deg,rgba(140,20,20,.97),rgba(80,10,10,.97))')
+              :'linear-gradient(135deg,rgba(60,60,60,.95),rgba(30,30,30,.95))',
+            border:`2px solid ${wins?(pTeam===0?'#4caf50':'#ef5350'):'rgba(255,255,255,.2)'}`,
+            borderRadius:16,
+            padding:'8px 22px',
+            fontSize:15,fontWeight:900,
+            color:'#fff',
+            letterSpacing:1,
+            textShadow:'0 1px 4px rgba(0,0,0,.6)',
+            boxShadow:`0 4px 18px ${wins?(pTeam===0?'rgba(76,175,80,.5)':'rgba(239,83,80,.5)'):'rgba(0,0,0,.4)'}`,
+            animation:'beloteAnim .35s ease-out',
+            pointerEvents:'none',
+            whiteSpace:'nowrap',
+            opacity:wins?1:0.6,
+          }}>
+            <span style={{marginRight:8}}>{p===0?'Vous':p===2?(cfg?.partnerStyle==='prudent'?'Denis':cfg?.partnerStyle==='temeraire'?'Juan':'David'):pName(p)}</span>
+            <span style={{opacity:.8}}>{best.label}</span>
+            <span style={{marginLeft:8,color:wins?'#ffd54f':'rgba(255,255,255,.5)',textDecoration:wins?'none':'line-through'}}>
+              {wins?`+${totalPts} pts`:'annulée'}
+            </span>
+          </div>
+        );
+      })}
       <style>{`@keyframes beloteAnim{from{opacity:0;transform:translate(-50%,-50%) scale(.6)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}`}</style>
 
       {/* Main joueur */}
