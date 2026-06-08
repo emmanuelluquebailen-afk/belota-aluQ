@@ -625,7 +625,7 @@ function calcR(G){
     const b1=bB1>0?` +${bB1}Bel`:'';
     const a0=ann[0]>0?` +${ann[0]}ann`:'';
     const a1=ann[1]>0?` +${ann[1]}ann`:'';
-    return `V+N: ${pts[0]}${b0}${a0} pts | Adv: ${pts[1]}${b1}${a1} pts`;
+    return `Nous: ${pts[0]}${b0}${a0} pts | Eux: ${pts[1]}${b1}${a1} pts`;
   };
   if(res==='ok'){msg=`✅ ${ttn} réussit !`;detail=mkDetail();}
   else if(res==='litige'){msg=`🟡 Litige — ${dtn} prend tout`;detail=mkDetail();}
@@ -1019,8 +1019,7 @@ function App({cfg,names,onMenu}){
             <div style={{display:'flex',justifyContent:'center',gap:20,marginBottom:12}}>
               {[0,1].map(t=>(
                 <div key={t} style={{textAlign:'center'}}>
-                  <div style={{fontSize:10,opacity:.5}}>{t===0?'Vous+Nord':'Adv.'}
-                  </div>
+                  <div style={{fontSize:10,opacity:.5}}>{t===0?'Nous':'Eux'}
                   <div style={{fontSize:18,fontWeight:'bold',color:t===0?'#4caf50':'#ef5350'}}>
                     {'⭐'.repeat(mw[t])}{'☆'.repeat(2-mw[t])}
                   </div>
@@ -1030,27 +1029,69 @@ function App({cfg,names,onMenu}){
             </div>
           )}
 
-          {r&&<>
-            <div style={{fontSize:14,color:'#ffd54f',marginBottom:4}}>{r.msg}</div>
-            <div style={{fontSize:11,opacity:.6,marginBottom:8}}>{r.detail}</div>
-            {(r.bB&&(r.bB[0]>0||r.bB[1]>0))&&(
-              <div style={{fontSize:11,color:'#ffd54f',marginBottom:8}}>
-                🏅 {r.bB[0]>0?`Vous+Nord +${r.bB[0]}pts `:''}
-                   {r.bB[1]>0?`Adv. +${r.bB[1]}pts`:''}
+          {r&&(()=>{
+            // Victoire = Vous+Nord ont plus de points cette manche
+            const weWonManche=r.rp[0]>r.rp[1];
+            const draw=r.rp[0]===r.rp[1];
+            return(<>
+              {/* Titre victoire/défaite */}
+              <div style={{
+                fontSize:22,fontWeight:900,marginBottom:6,
+                color:draw?'#ffd54f':weWonManche?'#4caf50':'#ef5350',
+              }}>
+                {draw?'🟡 Égalité':weWonManche?'✅ Manche gagnée !':'❌ Manche perdue'}
               </div>
-            )}
-            <div style={{display:'flex',justifyContent:'center',gap:24,marginBottom:10}}>
-              <div><div style={{fontSize:10,opacity:.5}}>Vous+Nord</div>
-                <div style={{color:'#4caf50',fontWeight:'bold',fontSize:20}}>+{r.rp[0]}</div></div>
-              <div><div style={{fontSize:10,opacity:.5}}>Adv.</div>
-                <div style={{color:'#ef5350',fontWeight:'bold',fontSize:20}}>+{r.rp[1]}</div></div>
-            </div>
-            <div style={{fontSize:15,fontWeight:'bold',marginBottom:16}}>
-              <span style={{color:'#4caf50'}}>Vous+Nord {G.scores[0]}</span>
-              <span style={{opacity:.3}}> — </span>
-              <span style={{color:'#ef5350'}}>Adv. {G.scores[1]}</span>
-            </div>
-          </>}
+
+              {/* Détail plis */}
+              <div style={{fontSize:11,opacity:.6,marginBottom:10}}>{r.detail}</div>
+
+              {/* Belote bonus */}
+              {(r.bB&&(r.bB[0]>0||r.bB[1]>0))&&(
+                <div style={{fontSize:11,color:'#ffd54f',marginBottom:8}}>
+                  🏅 {r.bB[0]>0?`Vous+Nord +${r.bB[0]}pts Belote `:''}
+                     {r.bB[1]>0?`Adv. +${r.bB[1]}pts Belote`:''}
+                </div>
+              )}
+
+              {/* Points de la manche */}
+              <div style={{
+                background:'rgba(255,255,255,.06)',borderRadius:12,
+                padding:'10px 20px',marginBottom:10,
+              }}>
+                <div style={{fontSize:10,opacity:.5,marginBottom:6,letterSpacing:1}}>POINTS DE LA MANCHE</div>
+                <div style={{display:'flex',justifyContent:'center',gap:32}}>
+                  <div style={{textAlign:'center'}}>
+                    <div style={{fontSize:10,opacity:.5}}>Nous</div>
+                    <div style={{color:weWonManche?'#4caf50':'#ef5350',fontWeight:'bold',fontSize:24}}>+{r.rp[0]}</div>
+                  </div>
+                  <div style={{alignSelf:'center',opacity:.3,fontSize:18}}>—</div>
+                  <div style={{textAlign:'center'}}>
+                    <div style={{fontSize:10,opacity:.5}}>Eux</div>
+                    <div style={{color:weWonManche?'#ef5350':'#4caf50',fontWeight:'bold',fontSize:24}}>+{r.rp[1]}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Total partie */}
+              <div style={{
+                background:'rgba(255,255,255,.06)',borderRadius:12,
+                padding:'10px 20px',marginBottom:14,
+              }}>
+                <div style={{fontSize:10,opacity:.5,marginBottom:6,letterSpacing:1}}>TOTAL PARTIE</div>
+                <div style={{display:'flex',justifyContent:'center',gap:32}}>
+                  <div style={{textAlign:'center'}}>
+                    <div style={{fontSize:10,opacity:.5}}>Nous</div>
+                    <div style={{color:'#4caf50',fontWeight:'bold',fontSize:20}}>{G.scores[0]}</div>
+                  </div>
+                  <div style={{alignSelf:'center',opacity:.3,fontSize:18}}>—</div>
+                  <div style={{textAlign:'center'}}>
+                    <div style={{fontSize:10,opacity:.5}}>Eux</div>
+                    <div style={{color:'#ef5350',fontWeight:'bold',fontSize:20}}>{G.scores[1]}</div>
+                  </div>
+                </div>
+              </div>
+            </>);
+          })()}
 
           {matchOver?(
             <div style={{display:'flex',flexDirection:'column',gap:10}}>
