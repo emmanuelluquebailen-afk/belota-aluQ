@@ -1605,6 +1605,31 @@ function MenuScreen({cfg,setCfg,onPlay}){
                 <div style={{fontSize:15,fontWeight:'bold',color:'white'}}>{d.label}</div>
               </button>
             ))}
+            {/* Reprendre — uniquement à l'étape difficulté */}
+            {(()=>{
+              try{
+                const saved=localStorage.getItem('belota_game');
+                if(saved){const g=JSON.parse(saved);if(g&&g.phase&&g.phase!=='MATCH_OVER'&&g.phase!=='OVER'&&g.phase!=='MANCHE_OVER')return(
+                  <button onClick={onPlay} style={{
+                    marginTop:4,
+                    background:'linear-gradient(135deg,#1565c0,#0d47a1)',
+                    border:'2px solid rgba(255,255,255,.25)',
+                    borderRadius:14,padding:'13px 16px',cursor:'pointer',
+                    display:'flex',alignItems:'center',gap:14,textAlign:'left',
+                    width:'100%',
+                  }}>
+                    <span style={{fontSize:24}}>▶️</span>
+                    <div>
+                      <div style={{fontSize:15,fontWeight:'bold',color:'white'}}>Reprendre la partie</div>
+                      <div style={{fontSize:11,color:'rgba(255,255,255,.5)'}}>
+                        Pli {(g.done||[]).length+1}/8 · {g.scores?`${g.scores[0]} — ${g.scores[1]}`:''}
+                      </div>
+                    </div>
+                  </button>
+                );}
+              }catch(e){}
+              return null;
+            })()}
           </>}
 
           {cfg.difficulty&&<>
@@ -1647,33 +1672,39 @@ function MenuScreen({cfg,setCfg,onPlay}){
                 🃏 JOUER
               </button>
             )}
+            {/* Abandonner — uniquement si partie en cours */}
+            {(()=>{
+              try{
+                const saved=localStorage.getItem('belota_game');
+                if(saved){const g=JSON.parse(saved);if(g&&g.phase&&g.phase!=='MATCH_OVER'&&g.phase!=='OVER'&&g.phase!=='MANCHE_OVER')return(
+                  <button onClick={()=>{
+                    // Enregistrer comme partie abandonnée dans les stats
+                    try{
+                      const sk='belota_stats';
+                      let st=JSON.parse(localStorage.getItem(sk)||'{}');
+                      const ps=g.cfg?.partnerStyle||'actif';
+                      if(!st.total)st.total={m:0,mg:0,pp:0,pg:0,pa:0};
+                      if(!st[ps])st[ps]={m:0,mg:0,pp:0,pg:0,pa:0};
+                      st.total.pa=(st.total.pa||0)+1;
+                      st[ps].pa=(st[ps].pa||0)+1;
+                      localStorage.setItem(sk,JSON.stringify(st));
+                    }catch(e){}
+                    localStorage.removeItem('belota_game');
+                    setCfg(c=>({...c,difficulty:null,partnerStyle:null}));
+                  }} style={{
+                    marginTop:4,
+                    background:'none',
+                    border:'1px solid rgba(255,100,100,.4)',
+                    borderRadius:14,padding:'10px 16px',cursor:'pointer',
+                    color:'rgba(255,100,100,.7)',fontSize:13,textAlign:'center',
+                  }}>
+                    🗑 Abandonner la partie en cours
+                  </button>
+                );}
+              }catch(e){}
+              return null;
+            })()}
           </>}
-          {/* Bouton Reprendre si partie sauvegardée — visible sur les deux étapes */}
-          {(()=>{
-            try{
-              const saved=localStorage.getItem('belota_game');
-              if(saved){const g=JSON.parse(saved);if(g&&g.phase&&g.phase!=='MATCH_OVER'&&g.phase!=='OVER'&&g.phase!=='MANCHE_OVER')return(
-                <button onClick={onPlay} style={{
-                  marginTop:6,
-                  background:'linear-gradient(135deg,#1565c0,#0d47a1)',
-                  border:'2px solid rgba(255,255,255,.25)',
-                  borderRadius:14,padding:'13px 16px',cursor:'pointer',
-                  display:'flex',alignItems:'center',gap:14,textAlign:'left',
-                  width:'100%',
-                }}>
-                  <span style={{fontSize:24}}>▶️</span>
-                  <div>
-                    <div style={{fontSize:15,fontWeight:'bold',color:'white'}}>Reprendre la partie</div>
-                    <div style={{fontSize:11,color:'rgba(255,255,255,.5)'}}>
-                      Pli {(g.done||[]).length+1}/8 · {g.scores?`${g.scores[0]} — ${g.scores[1]}`:''}
-                    </div>
-                  </div>
-                </button>
-              );}
-            }catch(e){}
-            return null;
-          })()}
-        </>}
 
         {/* ─── ONGLET OPTIONS ─── */}
         {tab==='options'&&<>
@@ -1763,6 +1794,7 @@ function MenuScreen({cfg,setCfg,onPlay}){
               <div style={{fontSize:12,opacity:.5,letterSpacing:1,marginBottom:10}}>GLOBAL</div>
               <StatRow label="Manches jouées" val={st.total.m} sub={`${st.total.mg} gagnées · ${pct(st.total.mg,st.total.m)}%`}/>
               <StatRow label="Parties jouées" val={st.total.pp} sub={`${st.total.pg} gagnées · ${pct(st.total.pg,st.total.pp)}%`}/>
+              <StatRow label="Parties abandonnées" val={st.total.pa||0}/>
             </div>
             {/* Par partenaire */}
             <div style={{background:'rgba(0,0,0,.25)',borderRadius:14,padding:16}}>
@@ -1777,6 +1809,7 @@ function MenuScreen({cfg,setCfg,onPlay}){
                     </div>
                     <StatRow label="Manches" val={s.m} sub={`${s.mg} gagnées · ${pct(s.mg,s.m)}%`}/>
                     <StatRow label="Parties"  val={s.pp} sub={`${s.pg} gagnées · ${pct(s.pg,s.pp)}%`}/>
+                    <StatRow label="Abandonnées" val={s.pa||0}/>
                   </div>
                 );
               })}
