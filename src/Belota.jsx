@@ -1007,9 +1007,15 @@ function App({cfg,names,onMenu}){
     const mancheOver=G.phase==='MANCHE_OVER';
     const weWin=mw[0]>=2;
     return(
-      <div style={{...TABLE,display:'flex',alignItems:'center',justifyContent:'center'}}>
-        <div style={{background:'rgba(0,0,0,.88)',borderRadius:18,padding:26,maxWidth:440,
-          width:'92%',textAlign:'center',border:'1px solid rgba(255,255,255,.15)'}}>
+      <div style={{...TABLE,display:'flex',alignItems:'center',justifyContent:'center',overflowY:'auto'}}>
+        <div style={{
+          background:'rgba(0,0,0,.88)',borderRadius:18,
+          padding:'10px 16px',maxWidth:500,
+          width:'96%',textAlign:'center',
+          border:'1px solid rgba(255,255,255,.15)',
+          maxHeight:'96dvh',overflowY:'auto',
+          display:'flex',flexDirection:'column',gap:4,
+        }}>
 
           <div style={{fontSize:17,fontWeight:'bold',marginBottom:10}}>
             {matchOver?(weWin?'🏆 Vous gagnez le match !':'😔 Match perdu'):'✓ Fin de manche'}
@@ -1056,18 +1062,18 @@ function App({cfg,names,onMenu}){
               {/* Points de la manche */}
               <div style={{
                 background:'rgba(255,255,255,.06)',borderRadius:12,
-                padding:'10px 20px',marginBottom:10,
+                padding:'6px 16px',marginBottom:4,
               }}>
-                <div style={{fontSize:10,opacity:.5,marginBottom:6,letterSpacing:1}}>POINTS DE LA MANCHE</div>
+                <div style={{fontSize:9,opacity:.5,marginBottom:4,letterSpacing:1}}>POINTS DE LA MANCHE</div>
                 <div style={{display:'flex',justifyContent:'center',gap:32}}>
                   <div style={{textAlign:'center'}}>
-                    <div style={{fontSize:10,opacity:.5}}>Nous</div>
-                    <div style={{color:weWonManche?'#4caf50':'#ef5350',fontWeight:'bold',fontSize:24}}>+{r.rp[0]}</div>
+                    <div style={{fontSize:9,opacity:.5}}>Nous</div>
+                    <div style={{color:weWonManche?'#4caf50':'#ef5350',fontWeight:'bold',fontSize:20}}>+{r.rp[0]}</div>
                   </div>
-                  <div style={{alignSelf:'center',opacity:.3,fontSize:18}}>—</div>
+                  <div style={{alignSelf:'center',opacity:.3,fontSize:16}}>—</div>
                   <div style={{textAlign:'center'}}>
-                    <div style={{fontSize:10,opacity:.5}}>Eux</div>
-                    <div style={{color:weWonManche?'#ef5350':'#4caf50',fontWeight:'bold',fontSize:24}}>+{r.rp[1]}</div>
+                    <div style={{fontSize:9,opacity:.5}}>Eux</div>
+                    <div style={{color:weWonManche?'#ef5350':'#4caf50',fontWeight:'bold',fontSize:20}}>+{r.rp[1]}</div>
                   </div>
                 </div>
               </div>
@@ -1075,18 +1081,18 @@ function App({cfg,names,onMenu}){
               {/* Total partie */}
               <div style={{
                 background:'rgba(255,255,255,.06)',borderRadius:12,
-                padding:'10px 20px',marginBottom:14,
+                padding:'6px 16px',marginBottom:6,
               }}>
-                <div style={{fontSize:10,opacity:.5,marginBottom:6,letterSpacing:1}}>TOTAL PARTIE</div>
+                <div style={{fontSize:9,opacity:.5,marginBottom:4,letterSpacing:1}}>TOTAL PARTIE</div>
                 <div style={{display:'flex',justifyContent:'center',gap:32}}>
                   <div style={{textAlign:'center'}}>
-                    <div style={{fontSize:10,opacity:.5}}>Nous</div>
-                    <div style={{color:'#4caf50',fontWeight:'bold',fontSize:20}}>{G.scores[0]}</div>
+                    <div style={{fontSize:9,opacity:.5}}>Nous</div>
+                    <div style={{color:'#4caf50',fontWeight:'bold',fontSize:18}}>{G.scores[0]}</div>
                   </div>
-                  <div style={{alignSelf:'center',opacity:.3,fontSize:18}}>—</div>
+                  <div style={{alignSelf:'center',opacity:.3,fontSize:16}}>—</div>
                   <div style={{textAlign:'center'}}>
-                    <div style={{fontSize:10,opacity:.5}}>Eux</div>
-                    <div style={{color:'#ef5350',fontWeight:'bold',fontSize:20}}>{G.scores[1]}</div>
+                    <div style={{fontSize:9,opacity:.5}}>Eux</div>
+                    <div style={{color:'#ef5350',fontWeight:'bold',fontSize:18}}>{G.scores[1]}</div>
                   </div>
                 </div>
               </div>
