@@ -98,16 +98,26 @@ function legal(hand,trick,trump,player){
   if(!trick||!trick.length)return h;
   const lead=trick[0].c.s;
   const tc=h.filter(c=>c.s===trump),lc=h.filter(c=>c.s===lead);
+  // Couleur demandée = atout
   if(lead===trump){
     if(!tc.length)return h;
     const bt=trick.filter(t=>t.c.s===trump).reduce((b,t)=>TS[t.c.r]>TS[b.c.r]?t:b);
     const hi=tc.filter(c=>TS[c.r]>TS[bt.c.r]);return hi.length?hi:tc;
   }
-  if(lc.length)return lc;if(!tc.length)return h;
-  const w=tWin(trick,trump);if(w===(player+2)%4)return h;
+  // On peut suivre la couleur → obligatoire
+  if(lc.length)return lc;
+  // Pas de couleur → obligation de couper si on a de l'atout
+  if(!tc.length)return h; // pas d'atout → défausse libre
+  // On a de l'atout → obligation de couper
+  // Si atout déjà dans le pli → obligation de surcouper si possible
   const pt=trick.filter(t=>t.c.s===trump);
-  if(pt.length){const bt=pt.reduce((b,t)=>TS[t.c.r]>TS[b.c.r]?t:b);const hi=tc.filter(c=>TS[c.r]>TS[bt.c.r]);if(hi.length)return hi;}
-  return tc;
+  if(pt.length){
+    const bt=pt.reduce((b,t)=>TS[t.c.r]>TS[b.c.r]?t:b);
+    const hi=tc.filter(c=>TS[c.r]>TS[bt.c.r]);
+    if(hi.length)return hi; // surcouper
+    return tc; // pisser (atout inférieur, obligé)
+  }
+  return tc; // couper (pas encore d'atout dans le pli)
 }
 
 // ── IA ENCHÈRES ──────────────────────────────────────────────────────────────
