@@ -106,18 +106,19 @@ function legal(hand,trick,trump,player){
   }
   // On peut suivre la couleur → obligatoire
   if(lc.length)return lc;
-  // Pas de couleur → obligation de couper si on a de l'atout
+  // Pas de couleur → obligation de couper SAUF si partenaire gagne déjà le pli
   if(!tc.length)return h; // pas d'atout → défausse libre
-  // On a de l'atout → obligation de couper
-  // Si atout déjà dans le pli → obligation de surcouper si possible
+  const w=tWin(trick,trump);
+  if(w===(player+2)%4)return h; // partenaire gagne → défausse libre (règle officielle)
+  // Adversaire gagne → obligation de couper
   const pt=trick.filter(t=>t.c.s===trump);
   if(pt.length){
     const bt=pt.reduce((b,t)=>TS[t.c.r]>TS[b.c.r]?t:b);
     const hi=tc.filter(c=>TS[c.r]>TS[bt.c.r]);
     if(hi.length)return hi; // surcouper
-    return tc; // pisser (atout inférieur, obligé)
+    return tc; // pisser (obligé)
   }
-  return tc; // couper (pas encore d'atout dans le pli)
+  return tc; // couper
 }
 
 // ── IA ENCHÈRES ──────────────────────────────────────────────────────────────
