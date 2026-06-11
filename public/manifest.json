@@ -1,13 +1,19 @@
 {
-  "name": "Belota",
-  "short_name": "Belota",
-  "description": "Jeu de belote aluQ",
+  "name": "BELOTA",
+  "short_name": "BELOTA",
+  "description": "Jeu de Belote Français by aluQ ENTERTAINMENT",
   "start_url": "/",
   "display": "fullscreen",
   "orientation": "landscape",
-  "background_color": "#0b2411",
-  "theme_color": "#1f5d2b",
+  "background_color": "#0d3b14",
+  "theme_color": "#0d3b14",
   "icons": [
+    {
+      "src": "/belota-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
     {
       "src": "/belota-icon.png",
       "sizes": "512x512",
