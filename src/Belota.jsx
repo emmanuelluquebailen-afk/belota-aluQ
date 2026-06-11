@@ -1518,9 +1518,9 @@ function passBtn(){
 // 🎴  SPLASH SCREEN
 // ══════════════════════════════════════════════════
 function SplashScreen({onDone}){
-  useEffect(()=>{const t=setTimeout(onDone,2200);return()=>clearTimeout(t);},[]);
+  useEffect(()=>{const t=setTimeout(onDone,1500);return()=>clearTimeout(t);},[]);
   return(
-    <div style={{
+    <div onClick={onDone} style={{
       position:'fixed',inset:0,
       background:'linear-gradient(135deg,#1a5c24 0%,#0d3b14 60%,#061e0a 100%)',
       display:'flex',flexDirection:'column',
@@ -1528,6 +1528,7 @@ function SplashScreen({onDone}){
       gap:20,
       paddingTop:'env(safe-area-inset-top)',
       paddingBottom:'env(safe-area-inset-bottom)',
+      cursor:'pointer',
     }}>
       <div style={{
         animation:'splashIn .7s ease-out',
