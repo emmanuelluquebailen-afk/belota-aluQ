@@ -914,7 +914,11 @@ function App({cfg,names,onMenu}){
 
   const isTablet=typeof window!=='undefined'&&(window.innerWidth>=768||window.innerHeight>=768);
   const[ls,setLs]=useState(()=>typeof window!=='undefined'&&(window.innerWidth>window.innerHeight||isTablet));
-  useEffect(()=>{const u=()=>setLs(window.innerWidth>window.innerHeight||window.innerWidth>=768||window.innerHeight>=768);window.addEventListener('resize',u);return()=>window.removeEventListener('resize',u);},[]);
+  useEffect(()=>{
+    const u=()=>setLs(window.innerWidth>window.innerHeight||window.innerWidth>=768||window.innerHeight>=768);
+    window.addEventListener('resize',u);
+    return()=>window.removeEventListener('resize',u);
+  },[]);
 
   useEffect(()=>{
     if(!G.waiting)return;
