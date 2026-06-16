@@ -272,7 +272,7 @@ function strongSuitsPar(annCombos,player){
 }
 
 // ── LOGIQUE PRINCIPALE (Intermédiaire + Expert) ───────────────────────────────
-function aiCardSmart(hand,trump,player,trick,taker,annCombos){
+function aiCardSmart(hand,trump,player,trick,taker,annCombos,done){
   const mv=legal(hand,trick||[],trump,player);
   if(!mv.length)return hand[0];
   const par=(player+2)%4;
@@ -287,11 +287,19 @@ function aiCardSmart(hand,trump,player,trick,taker,annCombos){
     if(isTaker){
       const atouts=mv.filter(c=>c.s===trump);
       if(atouts.length){
-        // Valet en premier s'il est disponible
-        const valet=atouts.find(c=>c.r==='J');
-        if(valet)return valet;
-        // Sinon petit atout pour faire tomber les atouts adverses
-        return smallTrump(hand,trump)||lowestBy(atouts,trump);
+        // Compter les atouts déjà sortis dans les plis précédents
+        const trumpsPlayed=(done||[]).reduce((s,d)=>s+d.cards.filter(c=>c.s===trump).length,0);
+        const trumpsRemaining=8-trumpsPlayed-atouts.length; // atouts adverses potentiellement restants
+        // Si tous les atouts adverses sont déjà tombés, ne pas gaspiller le sien
+        if(trumpsRemaining<=0&&done&&done.length>0){
+          // Garder l'atout pour couper plus tard / 10 de der → entamer hors-atout
+        } else {
+          // Valet en premier s'il est disponible
+          const valet=atouts.find(c=>c.r==='J');
+          if(valet)return valet;
+          // Sinon petit atout pour faire tomber les atouts adverses
+          return smallTrump(hand,trump)||lowestBy(atouts,trump);
+        }
       }
     }
 
@@ -341,7 +349,9 @@ function aiCardSmart(hand,trump,player,trick,taker,annCombos){
     const best=trick.reduce((b,t)=>cs(t.c,trump)>cs(b.c,trump)?t:b);
     const canWin=mv.some(c=>cs(c,trump)>cs(best.c,trump));
     if(canWin)return highestBy(mv,trump); // monter pour gagner
-    return lowestBy(mv,trump);            // jouer petit sinon
+    // On ne peut pas gagner → jouer petit, jamais le 10 si évitable
+    const no10=mv.filter(c=>c.r!=='10');
+    return lowestBy(no10.length?no10:mv,trump);
   }
 
   // Couper
@@ -364,119 +374,9 @@ function aiCardSmart(hand,trump,player,trick,taker,annCombos){
   return safeDiscard(mv,trump,false)||lowestBy(mv,trump);
 }
 
-// ── PARTENAIRE PRUDENT (Denis) ────────────────────────────────────────────────
-function aiCardPrudent(hand,trump,player,trick,taker,annCombos){
-  const mv=legal(hand,trick||[],trump,player);
-  if(!mv.length)return hand[0];
-  const par=(player+2)%4;
-
-  if(!trick||!trick.length){
-    // Prudent : jamais de risque, toujours petit, jamais atout sauf obligé
-    const nt=mv.filter(c=>c.s!==trump);
-    if(nt.length){
-      const noHonor=nt.filter(c=>c.r!=='10'&&c.r!=='A'&&c.r!=='J');
-      return lowestBy(noHonor.length?noHonor:nt,trump);
-    }
-    return smallTrump(hand,trump)||lowestBy(mv,trump);
-  }
-
-  const w=tWin(trick,trump);
-  if(w===par){
-    // Partenaire gagne → passer points si possible
-    const nt=mv.filter(c=>c.s!==trump);
-    if(nt.length){
-      const honor=nt.filter(c=>(c.r==='A'&&has10ofSuit(hand,c.s))||c.r==='10');
-      if(honor.length)return highestBy(honor,trump);
-      return lowestBy(nt,trump);
-    }
-    return smallTrump(hand,trump)||lowestBy(mv,trump);
-  }
-
-  // Adversaire gagne
-  const mustFollowSuit=mv.some(c=>c.s===trick[0].c.s);
-  if(mustFollowSuit){
-    const best=trick.reduce((b,t)=>cs(t.c,trump)>cs(b.c,trump)?t:b);
-    const canWin=mv.some(c=>cs(c,trump)>cs(best.c,trump));
-    return canWin?highestBy(mv,trump):lowestBy(mv,trump);
-  }
-  const mustCut=mv.some(c=>isTrump(c,trump));
-  if(mustCut){
-    // Prudent : couper seulement si ça vaut le coup, jamais le Valet
-    const trumpCards=mv.filter(c=>isTrump(c,trump));
-    const noValet=trumpCards.filter(c=>c.r!=='J');
-    const pool=valetSec(hand,trump)?trumpCards:noValet.length?noValet:trumpCards;
-    return lowestBy(pool,trump);
-  }
-  return safeDiscard(mv,trump,false)||lowestBy(mv,trump);
-}
-
-// ── PARTENAIRE TÊTE BRÛLÉE (Juan) ────────────────────────────────────────────
-function aiCardTemeraire(hand,trump,player,trick,taker,annCombos){
-  const mv=legal(hand,trick||[],trump,player);
-  if(!mv.length)return hand[0];
-  const par=(player+2)%4;
-
-  if(!trick||!trick.length){
-    // Tête brûlée : joue Valet d'abord, puis As si a le 10, sinon fort
-    const atouts=mv.filter(c=>c.s===trump);
-    const valet=atouts.find(c=>c.r==='J');
-    if(valet)return valet;
-    const nt=mv.filter(c=>c.s!==trump);
-    if(nt.length){
-      // As si on a le 10 (appel)
-      const ace=nt.find(c=>c.r==='A'&&has10ofSuit(hand,c.s));
-      if(ace)return ace;
-      // Sinon le plus fort hors-As et 10
-      const noHonor=nt.filter(c=>c.r!=='10'&&c.r!=='A');
-      return highestBy(noHonor.length?noHonor:nt,trump);
-    }
-    // Que des atouts → Valet si sec, sinon le plus fort sans Valet
-    return smallTrump(hand,trump)||lowestBy(mv,trump);
-  }
-
-  const w=tWin(trick,trump);
-  if(w===par){
-    const nt=mv.filter(c=>c.s!==trump);
-    if(nt.length){
-      const honor=nt.filter(c=>(c.r==='A'&&has10ofSuit(hand,c.s))||c.r==='10');
-      if(honor.length)return highestBy(honor,trump);
-      return highestBy(nt,trump);
-    }
-    return smallTrump(hand,trump)||lowestBy(mv,trump);
-  }
-
-  // Adversaire gagne → jouer fort pour tenter de gagner
-  const mustFollowSuit=mv.some(c=>c.s===trick[0].c.s);
-  if(mustFollowSuit){
-    const best=trick.reduce((b,t)=>cs(t.c,trump)>cs(b.c,trump)?t:b);
-    const canWin=mv.some(c=>cs(c,trump)>cs(best.c,trump));
-    return canWin?highestBy(mv,trump):lowestBy(mv,trump);
-  }
-  const mustCut=mv.some(c=>isTrump(c,trump));
-  if(mustCut){
-    const trumpCards=mv.filter(c=>isTrump(c,trump));
-    // Tête brûlée coupe avec le plus fort, mais pas le Valet sauf sec
-    const noValet=trumpCards.filter(c=>c.r!=='J');
-    const pool=valetSec(hand,trump)?trumpCards:noValet.length?noValet:trumpCards;
-    const topTrick=trick.filter(t=>isTrump(t.c,trump));
-    if(topTrick.length){
-      const best=topTrick.reduce((b,t)=>TS[t.c.r]>TS[b.c.r]?t:b);
-      const overcut=pool.filter(c=>TS[c.r]>TS[best.c.r]);
-      if(overcut.length)return highestBy(overcut,trump);
-      return lowestBy(pool,trump);
-    }
-    return highestBy(pool,trump);
-  }
-  return safeDiscard(mv,trump,false)||lowestBy(mv,trump);
-}
-
-function aiCard(hand,trick,trump,player,diff,partnerStyle,taker,annCombos){
-  if(player===2&&partnerStyle){
-    if(partnerStyle==='prudent')   return aiCardPrudent(hand,trump,player,trick,taker,annCombos);
-    if(partnerStyle==='temeraire') return aiCardTemeraire(hand,trump,player,trick,taker,annCombos);
-  }
+function aiCard(hand,trick,trump,player,diff,partnerStyle,taker,annCombos,done){
   if(diff==='debutant')return aiCardDebutant(hand,trick,trump);
-  return aiCardSmart(hand,trump,player,trick,taker,annCombos);
+  return aiCardSmart(hand,trump,player,trick,taker,annCombos,done);
 }
 
 
@@ -651,12 +551,9 @@ function calcR(G){
     try{
       const sk='belota_stats';
       let st=JSON.parse(localStorage.getItem(sk)||'{}');
-      const ps=G.cfg?.partnerStyle||'actif';
-      if(!st.total)st.total={m:0,mg:0,pp:0,pg:0};
-      if(!st[ps])st[ps]={m:0,mg:0,pp:0,pg:0};
+      if(!st.total)st.total={m:0,mg:0,pp:0,pg:0,pa:0};
       st.total.pp=(st.total.pp||0)+1;
-      st[ps].pp=(st[ps].pp||0)+1;
-      if(mw[0]>=2){st.total.pg=(st.total.pg||0)+1;st[ps].pg=(st[ps].pg||0)+1;}
+      if(mw[0]>=2){st.total.pg=(st.total.pg||0)+1;}
       localStorage.setItem(sk,JSON.stringify(st));
     }catch(e){}
   }
@@ -664,12 +561,9 @@ function calcR(G){
     try{
       const sk='belota_stats';
       let st=JSON.parse(localStorage.getItem(sk)||'{}');
-      const ps=G.cfg?.partnerStyle||'actif';
-      if(!st.total)st.total={m:0,mg:0,pp:0,pg:0};
-      if(!st[ps])st[ps]={m:0,mg:0,pp:0,pg:0};
+      if(!st.total)st.total={m:0,mg:0,pp:0,pg:0,pa:0};
       st.total.m=(st.total.m||0)+1;
-      st[ps].m=(st[ps].m||0)+1;
-      if(mancheWinner===0){st.total.mg=(st.total.mg||0)+1;st[ps].mg=(st[ps].mg||0)+1;}
+      if(mancheWinner===0){st.total.mg=(st.total.mg||0)+1;}
       localStorage.setItem(sk,JSON.stringify(st));
     }catch(e){}
   }
@@ -959,7 +853,7 @@ function App({cfg,names,onMenu}){
       setG(prev=>{
         if(prev.phase!=='PLAY'||prev.cur===0||prev.waiting)return prev;
         const p=prev.cur,hand=prev.hands[p].filter(c=>c&&c.id);
-        return doPlay(prev,p,aiCard(hand,prev.trick||[],prev.trump,p,cfg?.difficulty||'intermediaire',cfg?.partnerStyle||'actif',prev.taker,prev.annCombos));
+        return doPlay(prev,p,aiCard(hand,prev.trick||[],prev.trump,p,cfg?.difficulty||'intermediaire',cfg?.partnerStyle||'actif',prev.taker,prev.annCombos,prev.done));
       });
     },AI_DELAY);
     return()=>clearTimeout(t);
@@ -1005,7 +899,7 @@ function App({cfg,names,onMenu}){
     background:`radial-gradient(ellipse at 50% 40%,${tc}ee 0%,${tc}bb 55%,${tc}99 100%)`,
     fontFamily:'Georgia,serif',color:'white',overflow:'hidden',userSelect:'none'};
 
-  const partnerName=cfg?.partnerStyle==='prudent'?'Denis':cfg?.partnerStyle==='temeraire'?'Juan':'David';
+  const partnerName='David';
   const pName=p=>p===0?'Vous':p===1?(names?.ouest||'Ouest'):p===2?partnerName:(names?.est||'Est');
   const hand0=(G.hands[0]||[]).filter(c=>c&&c.id);
   const myTurn=G.phase==='PLAY'&&G.cur===0&&!G.waiting;
@@ -1131,11 +1025,8 @@ function App({cfg,names,onMenu}){
                 try{
                   const sk='belota_stats';
                   let st=JSON.parse(localStorage.getItem(sk)||'{}');
-                  const ps=G.cfg?.partnerStyle||'actif';
                   if(!st.total)st.total={m:0,mg:0,pp:0,pg:0,pa:0};
-                  if(!st[ps])st[ps]={m:0,mg:0,pp:0,pg:0,pa:0};
                   st.total.pa=(st.total.pa||0)+1;
-                  st[ps].pa=(st[ps].pa||0)+1;
                   localStorage.setItem(sk,JSON.stringify(st));
                 }catch(e){}
                 localStorage.removeItem('belota_game');
@@ -1455,7 +1346,7 @@ function App({cfg,names,onMenu}){
             whiteSpace:'nowrap',
             opacity:wins?1:0.6,
           }}>
-            <span style={{marginRight:8}}>{p===0?'Vous':p===2?(cfg?.partnerStyle==='prudent'?'Denis':cfg?.partnerStyle==='temeraire'?'Juan':'David'):pName(p)}</span>
+            <span style={{marginRight:8}}>{p===0?'Vous':p===2?'David':pName(p)}</span>
             <span style={{opacity:.8}}>{best.label}</span>
             <span style={{marginLeft:8,color:wins?'#ffd54f':'rgba(255,255,255,.5)',textDecoration:wins?'none':'line-through'}}>
               {wins?`+${totalPts} pts`:'annulée'}
@@ -1673,7 +1564,7 @@ function MenuScreen({cfg,setCfg,onPlay}){
 
           {cfg.difficulty&&<>
             <div style={{display:'flex',alignItems:'center',marginBottom:8}}>
-              <button onClick={()=>setCfg(c=>({...c,difficulty:null,partnerStyle:null}))} style={{
+              <button onClick={()=>setCfg(c=>({...c,difficulty:null}))} style={{
                 background:'none',border:'none',color:'rgba(255,255,255,.5)',
                 fontSize:13,cursor:'pointer',padding:0,
               }}>← Niveau</button>
@@ -1682,35 +1573,14 @@ function MenuScreen({cfg,setCfg,onPlay}){
               </div>
               <div style={{width:60}}/>
             </div>
-            <div style={{fontSize:11,opacity:.5,letterSpacing:1,marginBottom:8,textAlign:'center'}}>
-              CHOIX DU PARTENAIRE
-            </div>
-            {[
-              {id:'prudent',   emoji:'🛡️', label:'Denis'},
-              {id:'actif',     emoji:'⚡', label:'David'},
-              {id:'temeraire', emoji:'🔥', label:'Juan'},
-            ].map(s=>(
-              <button key={s.id} onClick={()=>setCfg(c=>({...c,partnerStyle:s.id}))} style={{
-                background:cfg.partnerStyle===s.id?'rgba(255,255,255,.18)':'rgba(0,0,0,.25)',
-                border:cfg.partnerStyle===s.id?'2px solid rgba(255,255,255,.4)':'2px solid rgba(255,255,255,.08)',
-                borderRadius:14,padding:'13px 16px',cursor:'pointer',
-                display:'flex',alignItems:'center',gap:12,textAlign:'left',transition:'all .15s',
-              }}>
-                <span style={{fontSize:22}}>{s.emoji}</span>
-                <div style={{fontSize:15,fontWeight:'bold',color:'white'}}>{s.label}</div>
-                {cfg.partnerStyle===s.id&&<div style={{marginLeft:'auto',color:'#4caf50',fontSize:16}}>✓</div>}
-              </button>
-            ))}
-            {cfg.partnerStyle&&(
-              <button onClick={onPlay} style={{
-                marginTop:8,background:'linear-gradient(135deg,#27ae60,#1e8449)',
-                border:'none',borderRadius:16,padding:'15px',
-                fontSize:16,fontWeight:900,color:'white',cursor:'pointer',
-                letterSpacing:1,boxShadow:'0 4px 16px rgba(39,174,96,.4)',
-              }}>
-                🃏 JOUER
-              </button>
-            )}
+            <button onClick={onPlay} style={{
+              marginTop:8,background:'linear-gradient(135deg,#27ae60,#1e8449)',
+              border:'none',borderRadius:16,padding:'15px',
+              fontSize:16,fontWeight:900,color:'white',cursor:'pointer',
+              letterSpacing:1,boxShadow:'0 4px 16px rgba(39,174,96,.4)',
+            }}>
+              🃏 JOUER
+            </button>
             {/* Abandonner — uniquement si partie en cours */}
             {(()=>{
               try{
@@ -1721,15 +1591,12 @@ function MenuScreen({cfg,setCfg,onPlay}){
                     try{
                       const sk='belota_stats';
                       let st=JSON.parse(localStorage.getItem(sk)||'{}');
-                      const ps=g.cfg?.partnerStyle||'actif';
                       if(!st.total)st.total={m:0,mg:0,pp:0,pg:0,pa:0};
-                      if(!st[ps])st[ps]={m:0,mg:0,pp:0,pg:0,pa:0};
                       st.total.pa=(st.total.pa||0)+1;
-                      st[ps].pa=(st[ps].pa||0)+1;
                       localStorage.setItem(sk,JSON.stringify(st));
                     }catch(e){}
                     localStorage.removeItem('belota_game');
-                    setCfg(c=>({...c,difficulty:null,partnerStyle:null}));
+                    setCfg(c=>({...c,difficulty:null}));
                   }} style={{
                     marginTop:4,
                     background:'none',
@@ -1810,7 +1677,7 @@ function MenuScreen({cfg,setCfg,onPlay}){
 
         {/* ─── ONGLET STATS ─── */}
         {tab==='stats'&&(()=>{
-          let st={total:{m:0,mg:0,pp:0,pg:0},prudent:{m:0,mg:0,pp:0,pg:0},actif:{m:0,mg:0,pp:0,pg:0},temeraire:{m:0,mg:0,pp:0,pg:0}};
+          let st={total:{m:0,mg:0,pp:0,pg:0,pa:0}};
           try{const s=localStorage.getItem('belota_stats');if(s)st={...st,...JSON.parse(s)};}catch(e){}
           const pct=(a,b)=>b>0?Math.round(a/b*100):0;
           const StatRow=({label,val,sub})=>(
@@ -1823,11 +1690,6 @@ function MenuScreen({cfg,setCfg,onPlay}){
               </div>
             </div>
           );
-          const partners=[
-            {id:'prudent',  emoji:'🛡️', name:'Denis'},
-            {id:'actif',    emoji:'⚡', name:'David'},
-            {id:'temeraire',emoji:'🔥', name:'Juan'},
-          ];
           return(<>
             {/* Global */}
             <div style={{background:'rgba(0,0,0,.25)',borderRadius:14,padding:16}}>
@@ -1835,24 +1697,6 @@ function MenuScreen({cfg,setCfg,onPlay}){
               <StatRow label="Manches jouées" val={st.total.m} sub={`${st.total.mg} gagnées · ${pct(st.total.mg,st.total.m)}%`}/>
               <StatRow label="Parties jouées" val={st.total.pp} sub={`${st.total.pg} gagnées · ${pct(st.total.pg,st.total.pp)}%`}/>
               <StatRow label="Parties abandonnées" val={st.total.pa||0}/>
-            </div>
-            {/* Par partenaire */}
-            <div style={{background:'rgba(0,0,0,.25)',borderRadius:14,padding:16}}>
-              <div style={{fontSize:12,opacity:.5,letterSpacing:1,marginBottom:10}}>PAR PARTENAIRE</div>
-              {partners.map(p=>{
-                const s=st[p.id]||{m:0,mg:0,pp:0,pg:0};
-                return(
-                  <div key={p.id} style={{marginBottom:12}}>
-                    <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
-                      <span style={{fontSize:16}}>{p.emoji}</span>
-                      <span style={{fontSize:13,fontWeight:'bold',color:'white'}}>{p.name}</span>
-                    </div>
-                    <StatRow label="Manches" val={s.m} sub={`${s.mg} gagnées · ${pct(s.mg,s.m)}%`}/>
-                    <StatRow label="Parties"  val={s.pp} sub={`${s.pg} gagnées · ${pct(s.pg,s.pp)}%`}/>
-                    <StatRow label="Abandonnées" val={s.pa||0}/>
-                  </div>
-                );
-              })}
             </div>
             {/* Reset */}
             <button onClick={()=>{
