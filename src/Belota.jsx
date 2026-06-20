@@ -348,7 +348,11 @@ function aiCardSmart(hand,trump,player,trick,taker,annCombos,done){
   if(mustFollowSuit){
     const best=trick.reduce((b,t)=>cs(t.c,trump)>cs(b.c,trump)?t:b);
     const canWin=mv.some(c=>cs(c,trump)>cs(best.c,trump));
-    if(canWin)return highestBy(mv,trump); // monter pour gagner
+    if(canWin){
+      // Monter avec la carte la plus faible qui suffit (économie d'honneurs)
+      const winners=mv.filter(c=>cs(c,trump)>cs(best.c,trump));
+      return lowestBy(winners,trump);
+    }
     // On ne peut pas gagner → jouer petit, jamais le 10 si évitable
     const no10=mv.filter(c=>c.r!=='10');
     return lowestBy(no10.length?no10:mv,trump);
@@ -1483,18 +1487,17 @@ function MenuScreen({cfg,setCfg,onPlay}){
     }}>
       {/* Logo */}
       <div style={{display:'flex',flexDirection:'column',alignItems:'center',
-        paddingTop:40,paddingBottom:20,gap:10}}>
+        paddingTop:12,paddingBottom:8,gap:6}}>
         <img src="/belota-icon.png" alt="BELOTA"
-          style={{width:80,height:80,borderRadius:18,boxShadow:'0 4px 16px rgba(0,0,0,.5)'}}
+          style={{width:48,height:48,borderRadius:12,boxShadow:'0 4px 16px rgba(0,0,0,.5)'}}
           onError={e=>{e.target.style.display='none';}}/>
-        <div style={{fontSize:28,fontWeight:900,letterSpacing:3,
+        <div style={{fontSize:20,fontWeight:900,letterSpacing:2,
           textShadow:'0 2px 8px rgba(0,0,0,.4)'}}>BELOTA</div>
-        <div style={{fontSize:11,opacity:.5,letterSpacing:2}}>JEU DE BELOTE FRANÇAIS</div>
       </div>
 
       {/* Onglets — masqués sur l'écran info */}
       <div style={{display:tab==='info'?'none':'flex',gap:4,background:'rgba(0,0,0,.3)',
-        borderRadius:20,padding:4,marginBottom:20,width:'90%',maxWidth:420}}>
+        borderRadius:20,padding:4,marginBottom:12,width:'90%',maxWidth:420}}>
         {[
           ['play',  '🃏','Jouer'],
           ['options','⚙️','Règles'],
@@ -1878,14 +1881,28 @@ function Toggle({val,onToggle}){
 // ══════════════════════════════════════════════════
 function BelotaRoot(){
   const[screen,setScreen]=useState('SPLASH');
-  const[cfg,setCfg]=useState({
-    difficulty:null,
-    tableColor:'#00838f',
-    combinaisons:false,
-    valetForce:false,
-    beloteOrder:'francaise',
-    partnerStyle:'actif',
+  const[cfg,setCfg]=useState(()=>{
+    const defaults={
+      difficulty:null,
+      tableColor:'#00838f',
+      combinaisons:false,
+      valetForce:false,
+      beloteOrder:'francaise',
+      partnerStyle:'actif',
+    };
+    try{
+      const saved=localStorage.getItem('belota_cfg');
+      if(saved){
+        const parsed=JSON.parse(saved);
+        // Toujours repartir sans difficulté choisie au lancement (étape menu)
+        return{...defaults,...parsed,difficulty:null};
+      }
+    }catch(e){}
+    return defaults;
   });
+  useEffect(()=>{
+    try{localStorage.setItem('belota_cfg',JSON.stringify(cfg));}catch(e){}
+  },[cfg]);
   const[names,setNames]=useState(()=>genNames());
   const[updateReady,setUpdateReady]=useState(false);
 
