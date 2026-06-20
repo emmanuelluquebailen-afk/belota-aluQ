@@ -272,13 +272,29 @@ function strongSuitsPar(annCombos,player){
 }
 
 // ── LOGIQUE PRINCIPALE (Intermédiaire + Expert) ───────────────────────────────
-function aiCardSmart(hand,trump,player,trick,taker,annCombos,done){
+function aiCardSmart(hand,trump,player,trick,taker,annCombos,done,cfg,bH,bP){
   const mv=legal(hand,trick||[],trump,player);
   if(!mv.length)return hand[0];
   const par=(player+2)%4;
   const isTaker=taker===player;
   const advStrong=strongSuitsAdv(annCombos,player);
   const parStrong=strongSuitsPar(annCombos,player);
+
+  // ── RÈGLE BELGE : Roi obligatoire avant Dame pour la Belote ───────────────
+  const belge=(cfg?.beloteOrder||'francaise')==='belge';
+  const hasBelote=bH&&bH[player];
+  const beloteStep=bP?bP[player]:0;
+  if(belge&&hasBelote&&beloteStep===0){
+    const king=mv.find(c=>c.s===trump&&c.r==='K');
+    if(king)return king; // priorité absolue : jouer le Roi dès que possible
+  }
+  if(hasBelote&&beloteStep===1){
+    // Belote déjà annoncée (Roi joué) → jouer la Dame dès que possible pour la Rebelote
+    const queen=mv.find(c=>c.s===trump&&c.r==='Q');
+    if(queen)return queen;
+  }
+  // Règle française : si Belote pas encore commencée, on peut jouer Roi ou Dame indifféremment
+  // (pas de priorité forcée, le comportement normal s'applique)
 
   // ══ ENTAME (je commence le pli) ═══════════════════════════════════════════
   if(!trick||!trick.length){
@@ -378,9 +394,9 @@ function aiCardSmart(hand,trump,player,trick,taker,annCombos,done){
   return safeDiscard(mv,trump,false)||lowestBy(mv,trump);
 }
 
-function aiCard(hand,trick,trump,player,diff,partnerStyle,taker,annCombos,done){
+function aiCard(hand,trick,trump,player,diff,partnerStyle,taker,annCombos,done,cfg,bH,bP){
   if(diff==='debutant')return aiCardDebutant(hand,trick,trump);
-  return aiCardSmart(hand,trump,player,trick,taker,annCombos,done);
+  return aiCardSmart(hand,trump,player,trick,taker,annCombos,done,cfg,bH,bP);
 }
 
 
@@ -857,7 +873,7 @@ function App({cfg,names,onMenu}){
       setG(prev=>{
         if(prev.phase!=='PLAY'||prev.cur===0||prev.waiting)return prev;
         const p=prev.cur,hand=prev.hands[p].filter(c=>c&&c.id);
-        return doPlay(prev,p,aiCard(hand,prev.trick||[],prev.trump,p,cfg?.difficulty||'intermediaire',cfg?.partnerStyle||'actif',prev.taker,prev.annCombos,prev.done));
+        return doPlay(prev,p,aiCard(hand,prev.trick||[],prev.trump,p,cfg?.difficulty||'intermediaire',cfg?.partnerStyle||'actif',prev.taker,prev.annCombos,prev.done,prev.cfg,prev.bH,prev.bP));
       });
     },AI_DELAY);
     return()=>clearTimeout(t);
